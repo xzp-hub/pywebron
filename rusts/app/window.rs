@@ -482,7 +482,7 @@ fn handle_ipc_message(
                     ))]
                     if handle_id == "__rust_start_resize" {
                         use gtk::gdk::WindowEdge;
-                        use gtk::prelude::WidgetExt;
+                        use gtk::prelude::{WidgetExt, SeatExt, GtkWindowExt};
                         
                         let ht = payload.get("hit_test").and_then(|v| v.as_u64()).unwrap_or(0) as i32;
                         let win_id = payload.get("window_id").and_then(|v| v.as_u64()).unwrap_or(0);
