@@ -2,7 +2,7 @@ from asyncio import sleep as asyncio_sleep, gather
 from tools import SystemMonitoring, cpu_task
 from pywebron.utils import save_file_dialog
 from pywebron import App, StreamSendModes
-from pywebron.configs import DEFAULT_DIR
+from pywebron.configs import PROJECT_ROOT_PATH
 from traceback import format_exc
 from pathlib import Path
 from time import time
@@ -16,10 +16,9 @@ class WindowControlsStruct(app.invoke.struct):
 
 @app.invoke.handle("window_controls_invoke")
 async def window_controls(invoke: app.invoke, struct: WindowControlsStruct):
-    control_type = None
+    control_type, res = None, None
     try:
-        res, control_type = None, struct.control_type
-        match control_type:
+        match control_type := struct.control_type:
             case "minimize_window":
                 res = app.window.minimize_window(invoke.window_id)
             case "maximize_window":
@@ -61,8 +60,8 @@ async def running_create_window(invoke: app.invoke):
 @app.invoke.handle("file_download_invoke")
 async def file_download(invoke: app.invoke):
     try:
-        source_file_path = str(Path(DEFAULT_DIR) / 'assets' / 'pywebron.html')
-        new_path = await save_file_dialog(str(source_file_path))
+        source_path = str(Path(PROJECT_ROOT_PATH) / 'assets' / 'pywebron.html')
+        new_path = await save_file_dialog(str(source_path))
         return await invoke.json_response(200, '文件保存成功', new_path)
     except Exception:
         return await invoke.json_response(500, '文件保存失败', format_exc())
@@ -94,22 +93,23 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
     try:
         await stream.send(200, '欢迎加入聊天室', {"type": "system"}, send_mode=StreamSendModes.BROADCAST)
         while True:
-            match await stream.recv():
+            match res := await stream.recv():
                 case None:
                     await asyncio_sleep(0.1)
                 case "multicast_test":
-                    window_ids = list(app.get_windows().keys())
-                    window_ids.remove(stream.window_id)
-                    await stream.send(200, '组播功能测试', {"type": "chat"},
-                                      send_mode=StreamSendModes.MULTICAST, mcast_win_ids=window_ids[0:1])
+                    (wids := list(app.get_windows().keys())).remove(stream.window_id)
+                    await stream.send(
+                        200, '组播功能测试', {"type": "chat"},
+                        send_mode=StreamSendModes.MULTICAST, mcast_win_ids=wids[0:1]
+                    )
                 case "worker_test":
-                    n = struct.n
-                    result = await worker.run(cpu_task, n)
-                    await stream.send(200, f'Worker 任务完成，n: {n}, result: {result}',
-                                      {"type": "chat", "result": str(
-                                          result), "n": n},
-                                      send_mode=StreamSendModes.UNITYCAST)
-                case str() as res:
+                    res = await worker.run(cpu_task, n := struct.n)
+                    await stream.send(
+                        200, f'Worker 任务完成，n: {n}, result: {res}',
+                        {"type": "chat", "result": res, "n": n},
+                        send_mode=StreamSendModes.UNITYCAST
+                    )
+                case _:
                     await stream.send(200, f'{res}, 收到', {"type": "chat"}, send_mode=StreamSendModes.UNITYCAST)
     except Exception:
         await stream.send(500, '聊天室错误', format_exc())
@@ -117,10 +117,10 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
 
 if __name__ == "__main__":
     app.window.register_window(
-        window_title="PyWebron 控制面板 1",
-        window_width=1800,
-        window_height=1800,
-        window_is_decorations=False,
-        window_is_resizable=True,
+        title="PyWebron 控制面板 1",
+        width=1200,
+        height=1200,
+        show_title_bar=False,
+        enable_resizable=True,
     )
     app.run()

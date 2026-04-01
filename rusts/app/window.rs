@@ -1,7 +1,5 @@
 use crate::app::load_js_api;
 use crate::configs::UserEvent;
-#[cfg(target_os = "windows")]
-use crate::configs::WindowCornerPreference;
 use crate::utils::{generate_win_icon, generate_window_id};
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
@@ -31,7 +29,7 @@ use tao::platform::windows::EventLoopBuilderExtWindows;
 #[cfg(target_os = "windows")]
 use tao::platform::windows::WindowBuilderExtWindows; // 关键：导入 Windows 扩展 trait
 use tao::{
-    dpi::{LogicalSize, PhysicalSize},
+    dpi::LogicalSize,
     event::{Event, WindowEvent::CloseRequested},
     event_loop::{ControlFlow, EventLoopBuilder},
     window::WindowBuilder,
@@ -282,12 +280,6 @@ fn create_window_in_event_loop(
         if config.resizable {
             crate::utils::make_window_frameless_but_resizable(windows::Win32::Foundation::HWND(hwnd));
         }
-
-        // 禁用 Windows 圆角，让 HTML 的 clip-path 控制圆角
-        let _ = proxy.send_event(UserEvent::SetCorner {
-            hwnd: hwnd as usize,
-            corner: 1, // DWMWCP_DONOTROUND = 1
-        });
     }
 
     WINDOWS.insert(id_clone, window);
@@ -335,7 +327,6 @@ pub struct WindowConfig {
     pub decorations: bool,
     pub resizable: bool,
     pub devtools: bool,
-    pub corner: u32,
 }
 
 fn create_window(config: WindowConfig) -> PyResult<u64> {
@@ -623,7 +614,7 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, content, icon_path, decorations, resizable, devtools, corner))]
+#[pyo3(signature = (title, width, height, content, icon_path, decorations, resizable, devtools))]
 pub fn register_window(
     title: String,
     width: u32,
@@ -633,7 +624,6 @@ pub fn register_window(
     decorations: bool,
     resizable: bool,
     devtools: bool,
-    corner: u32,
 ) -> PyResult<bool> {
     let config = WindowConfig {
         title,
@@ -644,7 +634,6 @@ pub fn register_window(
         decorations,
         resizable,
         devtools,
-        corner,
     };
 
     // 直接创建窗口
@@ -779,10 +768,8 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
                 }
             }
             #[cfg(target_os = "windows")]
-            Event::UserEvent(UserEvent::SetCorner { hwnd, corner }) => {
-                let hwnd = windows::Win32::Foundation::HWND(*hwnd as *mut std::ffi::c_void);
-                let pref = WindowCornerPreference::from_u32(*corner);
-                crate::utils::set_window_corner_with_retry(hwnd, pref, 3);
+            Event::UserEvent(UserEvent::SetCorner { .. }) => {
+                // 已禁用圆角功能
             }
             _ => {}
         }
@@ -888,7 +875,6 @@ pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
             window_dict.set_item("window_is_decorations", config.decorations)?;
             window_dict.set_item("window_is_resizable", config.resizable)?;
             window_dict.set_item("window_is_devtools", config.devtools)?;
-            window_dict.set_item("window_corner_radius", config.corner)?;
 
             result_dict.set_item(*window_id, window_dict)?;
         }

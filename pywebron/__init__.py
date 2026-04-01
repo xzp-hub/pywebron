@@ -1,11 +1,4 @@
-# 关键：在模块导入时立即设置 WebView2 透明背景环境变量
-# 必须在任何 WebView2 进程启动之前设置
-import os
-import sys
-
-if sys.platform == "win32":
-    os.environ["WEBVIEW2_DEFAULT_BACKGROUND_COLOR"] = "00000000"
-
+from .configs import StreamSendModes
 from ._pywebron_ import (
     rust_init,
     rust_run,
@@ -14,7 +7,6 @@ from ._pywebron_ import (
     rust_save_file_dialog,
     rust_start_drag_window,
 )
-from .configs import StreamSendModes
 from .app.window import Window
 from .app.invoke import Invoke
 from .app.stream import Stream
@@ -23,9 +15,7 @@ from typing import Dict
 
 
 class App:
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         self.window = Window
         self.invoke = Invoke
         self.stream = Stream

@@ -1,4 +1,4 @@
-from ..configs import DEFAULT_DIR
+from ..configs import PROJECT_ROOT_PATH
 from pathlib import Path
 from .._pywebron_ import (
     rust_register_window,
@@ -13,30 +13,28 @@ from .._pywebron_ import (
 class Window:
     @staticmethod
     def register_window(
-            window_title: str = 'PyWebron App',
-            window_content_path: str = None,
-            window_content_url: str = None,
-            window_width: int = 1200,
-            window_height: int = 900,
-            window_icon_path: str = None,
-            window_is_decorations: bool = True,
-            window_is_resizable: bool = True,
-            window_is_devtools: bool = True,
-            window_corner_radius: int = 1,  # DWMWCP_DONOTROUND = 1
+            title: str = 'PyWebron App',
+            content_path: str = None,
+            content_url: str = None,
+            width: int = 1200,
+            height: int = 900,
+            icon_path: str = None,
+            show_title_bar: bool = True,
+            enable_resizable: bool = True,
+            enable_devtools: bool = True,
     ) -> bool:
-        if all((window_content_path, window_content_url)):
-            raise 'window_content_path and window_content_url cannot be used at the same time'
-        pather = lambda file_name: str(Path(DEFAULT_DIR) / 'assets' / file_name)
+        if all((content_path, content_url)):
+            raise 'content_path and content_url cannot be used at the same time'
+        pather = lambda file_name: str(Path(PROJECT_ROOT_PATH) / 'assets' / file_name)
         return rust_register_window(
-            title=window_title,
-            width=window_width,
-            height=window_height,
-            content=window_content_path or window_content_url or pather('pywebron.html'),
-            icon_path=window_icon_path or pather('pywebron.png'),
-            decorations=window_is_decorations,
-            resizable=window_is_resizable,
-            devtools=window_is_devtools,
-            corner=window_corner_radius,
+            title=title,
+            width=width,
+            height=height,
+            content=content_path or content_url or pather('pywebron.html'),
+            icon_path=icon_path or pather('pywebron.png'),
+            decorations=show_title_bar,
+            resizable=enable_resizable,
+            devtools=enable_devtools,
         )
 
     @staticmethod
