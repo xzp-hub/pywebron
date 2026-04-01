@@ -42,5 +42,8 @@ pub fn setup_dpi_awareness() {
 
 #[cfg(not(target_os = "windows"))]
 pub fn setup_dpi_awareness() {
-    // 非 Windows 平台不需要 DPI 设置
+    // Linux/GTK 平台：设置环境变量禁用 GTK 的自动缩放
+    // 这样可以确保窗口大小与 Windows 保持一致
+    std::env::set_var("GDK_SCALE", "1");
+    std::env::set_var("GDK_DPI_SCALE", "1");
 }
