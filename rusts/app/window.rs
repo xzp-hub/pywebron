@@ -31,7 +31,7 @@ use tao::platform::windows::EventLoopBuilderExtWindows;
 #[cfg(target_os = "windows")]
 use tao::platform::windows::WindowBuilderExtWindows; // 关键：导入 Windows 扩展 trait
 use tao::{
-    dpi::LogicalSize,
+    dpi::{LogicalSize, PhysicalSize},
     event::{Event, WindowEvent::CloseRequested},
     event_loop::{ControlFlow, EventLoopBuilder},
     window::WindowBuilder,
@@ -114,11 +114,11 @@ fn create_window_in_event_loop(
     #[cfg(not(target_os = "windows"))]
     let window_builder = WindowBuilder::new()
         .with_title(&config.title)
-        .with_inner_size(LogicalSize::new(config.width, config.height))
+        .with_inner_size(PhysicalSize::new(config.width, config.height))
         .with_window_icon(generate_win_icon(config.icon_path.clone()))
         .with_decorations(config.decorations)
         .with_resizable(config.resizable)
-        .with_min_inner_size(LogicalSize::new(400u32, 300u32))
+        .with_min_inner_size(PhysicalSize::new(400u32, 300u32))
         .with_transparent(true);
 
     let window = match window_builder.build(event_loop) {
@@ -207,6 +207,14 @@ fn create_window_in_event_loop(
             // 获取带 alpha 通道的 visual
             if let Some(visual) = vbox.screen().and_then(|s| s.rgba_visual()) {
                 vbox.set_visual(Some(&visual));
+            }
+            
+            // 强制设置 GTK 窗口的缩放因子为 1.0，避免 DPI 缩放问题
+            use tao::platform::unix::WindowExtUnix;
+            let gtk_window = window.gtk_window();
+            if let Some(screen) = gtk_window.screen() {
+                // 尝试重置窗口的缩放因子
+                gtk_window.set_default_size(config.width as i32, config.height as i32);
             }
 
             if is_url {
