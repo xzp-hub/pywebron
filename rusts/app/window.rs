@@ -504,11 +504,11 @@ fn handle_ipc_message(
                                 };
                                 gdk_window.begin_resize_drag_for_device(
                                     edge,
-                                    &gdk_window.device(),
+                                    None, // device: 使用默认设备
                                     0, // button
                                     0, // root_x
                                     0, // root_y
-                                    gtk_window.current_event_time(),
+                                    gtk::get_current_event_time(), // 使用全局函数而非方法
                                 );
                             }
                         }
