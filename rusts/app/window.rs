@@ -509,7 +509,7 @@ fn handle_ipc_message(
                                         0, // button
                                         0, // root_x
                                         0, // root_y
-                                        gtk::gdk::CURRENT_TIME,
+                                        0, // timestamp (0 = current time)
                                     );
                                 }
                             }
