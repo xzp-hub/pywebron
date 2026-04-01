@@ -212,10 +212,8 @@ fn create_window_in_event_loop(
             // 强制设置 GTK 窗口的缩放因子为 1.0，避免 DPI 缩放问题
             use tao::platform::unix::WindowExtUnix;
             let gtk_window = window.gtk_window();
-            if let Some(screen) = gtk_window.screen() {
-                // 尝试重置窗口的缩放因子
-                gtk_window.set_default_size(config.width as i32, config.height as i32);
-            }
+            // 显式设置窗口大小，确保使用物理像素
+            gtk_window.set_default_size(config.width as i32, config.height as i32);
 
             if is_url {
                 builder.with_url(&config.content).build_gtk(vbox)
