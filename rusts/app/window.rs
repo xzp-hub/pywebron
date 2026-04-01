@@ -502,14 +502,16 @@ fn handle_ipc_message(
                                     17 => WindowEdge::SouthEast,
                                     _ => WindowEdge::West,
                                 };
-                                gdk_window.begin_resize_drag_for_device(
-                                    edge,
-                                    gdk_window,
-                                    0, // button
-                                    0, // root_x
-                                    0, // root_y
-                                    gtk::current_event_time(), // 使用全局函数
-                                );
+                                if let Some(device) = gdk_window.display().default_seat().and_then(|s| s.pointer()) {
+                                    gdk_window.begin_resize_drag_for_device(
+                                        edge,
+                                        &device,
+                                        0, // button
+                                        0, // root_x
+                                        0, // root_y
+                                        gtk_window.current_event_time(),
+                                    );
+                                }
                             }
                         }
                         
