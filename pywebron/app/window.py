@@ -1,5 +1,4 @@
-from ..configs import PROJECT_ROOT_PATH
-from pathlib import Path
+from ..configs import ASSETS_SRC_DIR
 from .._pywebron_ import (
     rust_register_window,
     rust_minimize_window,
@@ -25,13 +24,16 @@ class Window:
     ) -> bool:
         if all((content_path, content_url)):
             raise 'content_path and content_url cannot be used at the same time'
-        pather = lambda file_name: str(Path(PROJECT_ROOT_PATH) / 'assets' / file_name)
+        content = content_path or content_url or f'{ASSETS_SRC_DIR}/index.html'
+        icon = icon_path or f'{ASSETS_SRC_DIR}/index.png'
+        print(f'[Window] 注册窗口 - content: {content}')
+        print(f'[Window] 注册窗口 - icon: {icon}')
         return rust_register_window(
             title=title,
             width=width,
             height=height,
-            content=content_path or content_url or pather('pywebron.html'),
-            icon_path=icon_path or pather('pywebron.png'),
+            content=content,
+            icon_path=icon,
             decorations=show_title_bar,
             resizable=enable_resizable,
             devtools=enable_devtools,
