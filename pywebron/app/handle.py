@@ -43,16 +43,17 @@ class Handle:
                     return lambda req: (param_name, Worker)
                 case _ if hasattr(annot, '__annotations__'):
                     return lambda req: (param_name, annot(**{
-                        ann: req['payload'].get(ann, getattr(annot, ann, None)) for ann in annot.__annotations__
+                        ann: req['payload'].get(ann, getattr(annot, ann, None))
+                        for ann in annot.__annotations__
                     }))
                 case _:
                     return lambda req: (param_name, req['payload'].get(param_name, default)
                     if default is not Parameter.empty else req['payload'][param_name])
 
-        handlers = [maker(param) for param in params]
+        handles = [maker(param) for param in params]
 
         async def wrapper(req: dict):
-            return await func(**dict(handler(req) for handler in handlers))
+            return await func(**dict(handle(req) for handle in handles))
 
         match cls.__name__:
             case 'Invoke':
