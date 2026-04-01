@@ -118,8 +118,8 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
 if __name__ == "__main__":
     app.window.register_window(
         window_title="PyWebron 控制面板 1",
-        window_width=1200,
-        window_height=1200,
+        window_width=1800,
+        window_height=1800,
         window_is_decorations=False,
         window_is_resizable=True,
     )
