@@ -2,7 +2,6 @@ from ..configs import INVOKE_HANDLES, STREAM_HANDLES
 from dataclasses import dataclass, asdict
 from inspect import Parameter, signature
 from typing import Callable
-
 from .worker import Worker
 
 

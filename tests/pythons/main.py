@@ -47,10 +47,10 @@ async def cpu_intensive_task(invoke: app.invoke, worker: app.worker):
 async def running_create_window(invoke: app.invoke):
     try:
         res = app.window.register_window(
-            window_title="运行时创建窗口",
-            window_width=1200,
-            window_height=1200,
-            window_is_decorations=False,
+            title="运行时创建窗口",
+            width=1200,
+            height=1200,
+            show_title_bar=False,
         )
         return await invoke.json_response(200, f'运行时创建窗口成功：{res}', res)
     except Exception:
@@ -60,7 +60,7 @@ async def running_create_window(invoke: app.invoke):
 @app.invoke.handle("file_download_invoke")
 async def file_download(invoke: app.invoke):
     try:
-        source_path = str(Path(PROJECT_ROOT_PATH) / 'assets' / 'pywebron.html')
+        source_path = f'{PROJECT_ROOT_PATH}/assets/pywebron.html'
         new_path = await save_file_dialog(str(source_path))
         return await invoke.json_response(200, '文件保存成功', new_path)
     except Exception:

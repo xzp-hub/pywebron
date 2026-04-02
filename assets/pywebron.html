@@ -801,7 +801,7 @@
         align-items: center;
         justify-content: center;
         outline: none;
-        border-radius: 20px;
+        border-radius: 5px;
     }
 
     #app-root {
@@ -814,10 +814,11 @@
         flex-direction: column;
         background: linear-gradient(145deg, rgba(65, 65, 117, .9), rgba(68, 58, 96, .95));
         box-sizing: border-box;
-        border-radius: 5px;
         outline: none;
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, .25);
     }
-    
+
     /* 无边框窗口调整大小区域 - 8px 透明边框 */
     .resize-area {
         position: absolute;
@@ -828,32 +829,47 @@
         pointer-events: none;
         z-index: 10000;
     }
-    
+
     .resize-edge {
         position: absolute;
         pointer-events: auto;
         background: transparent;
     }
-    
+
     .resize-edge.top,
     .resize-edge.bottom {
         left: 8px;
         right: 8px;
         height: 8px;
     }
-    
+
     .resize-edge.left,
     .resize-edge.right {
         top: 8px;
         bottom: 8px;
         width: 8px;
     }
-    
-    .resize-edge.top { top: 0; cursor: n-resize; }
-    .resize-edge.bottom { bottom: 0; cursor: s-resize; }
-    .resize-edge.left { left: 0; cursor: w-resize; }
-    .resize-edge.right { right: 0; cursor: e-resize; }
-    
+
+    .resize-edge.top {
+        top: 0;
+        cursor: n-resize;
+    }
+
+    .resize-edge.bottom {
+        bottom: 0;
+        cursor: s-resize;
+    }
+
+    .resize-edge.left {
+        left: 0;
+        cursor: w-resize;
+    }
+
+    .resize-edge.right {
+        right: 0;
+        cursor: e-resize;
+    }
+
     .resize-corner {
         position: absolute;
         width: 8px;
@@ -862,11 +878,30 @@
         background: transparent;
         z-index: 10001;
     }
-    
-    .resize-corner.top-left { top: 0; left: 0; cursor: nw-resize; }
-    .resize-corner.top-right { top: 0; right: 0; cursor: ne-resize; }
-    .resize-corner.bottom-left { bottom: 0; left: 0; cursor: sw-resize; }
-    .resize-corner.bottom-right { bottom: 0; right: 0; cursor: se-resize; }
+
+    .resize-corner.top-left {
+        top: 0;
+        left: 0;
+        cursor: nw-resize;
+    }
+
+    .resize-corner.top-right {
+        top: 0;
+        right: 0;
+        cursor: ne-resize;
+    }
+
+    .resize-corner.bottom-left {
+        bottom: 0;
+        left: 0;
+        cursor: sw-resize;
+    }
+
+    .resize-corner.bottom-right {
+        bottom: 0;
+        right: 0;
+        cursor: se-resize;
+    }
 
 
     .header {
@@ -1453,34 +1488,36 @@
 </div>
 
 <script>
-(function() {
-    const HT = { 'top': 12, 'bottom': 15, 'left': 10, 'right': 11, 
-                 'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17 };
-    
-    document.querySelectorAll('.resize-edge, .resize-corner').forEach(el => {
-        el.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            let edge = '';
-            if (el.classList.contains('top')) edge = 'top';
-            else if (el.classList.contains('bottom')) edge = 'bottom';
-            else if (el.classList.contains('left')) edge = 'left';
-            else if (el.classList.contains('right')) edge = 'right';
-            else if (el.classList.contains('top-left')) edge = 'topleft';
-            else if (el.classList.contains('top-right')) edge = 'topright';
-            else if (el.classList.contains('bottom-left')) edge = 'bottomleft';
-            else if (el.classList.contains('bottom-right')) edge = 'bottomright';
-            
-            if (!edge || !window.pywebron?.window_id) return;
-            
-            // 调用 Rust 开始调整大小
-            window.pywebron.invoke('__rust_start_resize', {
-                window_id: window.pywebron.window_id,
-                hit_test: HT[edge]
+    (function () {
+        const HT = {
+            'top': 12, 'bottom': 15, 'left': 10, 'right': 11,
+            'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17
+        };
+
+        document.querySelectorAll('.resize-edge, .resize-corner').forEach(el => {
+            el.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                let edge = '';
+                if (el.classList.contains('top')) edge = 'top';
+                else if (el.classList.contains('bottom')) edge = 'bottom';
+                else if (el.classList.contains('left')) edge = 'left';
+                else if (el.classList.contains('right')) edge = 'right';
+                else if (el.classList.contains('top-left')) edge = 'topleft';
+                else if (el.classList.contains('top-right')) edge = 'topright';
+                else if (el.classList.contains('bottom-left')) edge = 'bottomleft';
+                else if (el.classList.contains('bottom-right')) edge = 'bottomright';
+
+                if (!edge || !window.pywebron?.window_id) return;
+
+                // 调用 Rust 开始调整大小
+                window.pywebron.invoke('__rust_start_resize', {
+                    window_id: window.pywebron.window_id,
+                    hit_test: HT[edge]
+                });
             });
         });
-    });
-})();
+    })();
 </script>
 </html>

@@ -25,7 +25,7 @@ class Window:
     ) -> bool:
         if all((content_path, content_url)):
             raise 'content_path and content_url cannot be used at the same time'
-        pather = lambda file_name: str(Path(PROJECT_ROOT_PATH) / 'assets' / file_name)
+        pather = lambda file_name: f'{PROJECT_ROOT_PATH}/assets/{file_name}'
         return rust_register_window(
             title=title,
             width=width,
