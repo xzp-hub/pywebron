@@ -6,6 +6,9 @@ from enum import StrEnum
 # 项目根目录路径
 PROJECT_ROOT_PATH = str(Path(__file__).parents[1])
 
+# 资源目录路径
+ASSETS_SRC_DIR = f'{PROJECT_ROOT_PATH}/assets/src'
+
 
 # 流消息发送模式
 class StreamSendModes(StrEnum):
