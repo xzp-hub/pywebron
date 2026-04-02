@@ -100,6 +100,7 @@ pub fn generate_win_icon(path: String) -> Option<Icon> {
 }
 
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 pub fn set_window_corner(hwnd: HWND, pref: WindowCornerPreference) -> Result<(), String> {
     unsafe {
         let val = pref.to_dwm();
@@ -125,6 +126,7 @@ pub fn set_window_corner(hwnd: HWND, pref: WindowCornerPreference) -> Result<(),
 }
 
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 pub fn set_window_corner_with_retry(hwnd: HWND, pref: WindowCornerPreference, retries: u32) {
     for _ in 0..retries {
         if set_window_corner(hwnd, pref).is_ok() {

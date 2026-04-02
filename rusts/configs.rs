@@ -17,6 +17,7 @@ pub enum UserEvent {
 
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub enum WindowCornerPreference {
     Default,
     DoNotRound,
@@ -26,6 +27,7 @@ pub enum WindowCornerPreference {
 
 #[cfg(target_os = "windows")]
 impl WindowCornerPreference {
+    #[allow(dead_code)]
     pub fn from_u32(v: u32) -> Self {
         match v {
             1 => WindowCornerPreference::DoNotRound,
@@ -36,6 +38,7 @@ impl WindowCornerPreference {
     }
 
     #[cfg(target_os = "windows")]
+    #[allow(dead_code)]
     pub fn to_dwm(&self) -> windows::Win32::Graphics::Dwm::DWM_WINDOW_CORNER_PREFERENCE {
         use windows::Win32::Graphics::Dwm::DWM_WINDOW_CORNER_PREFERENCE;
         DWM_WINDOW_CORNER_PREFERENCE(match self {

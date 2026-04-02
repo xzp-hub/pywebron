@@ -4,6 +4,7 @@ from pywebron.utils import save_file_dialog
 from pywebron import App, StreamSendModes
 from pywebron.configs import PROJECT_ROOT_PATH
 from traceback import format_exc
+from pathlib import Path
 from time import time
 
 app = App()
@@ -50,7 +51,6 @@ async def running_create_window(invoke: app.invoke):
             width=1200,
             height=1200,
             show_title_bar=False,
-            content_url='http://localhost:5173/'
         )
         return await invoke.json_response(200, f'运行时创建窗口成功：{res}', res)
     except Exception:
@@ -60,7 +60,9 @@ async def running_create_window(invoke: app.invoke):
 @app.invoke.handle("file_download_invoke")
 async def file_download(invoke: app.invoke):
     try:
-        new_path = await save_file_dialog(f'{PROJECT_ROOT_PATH}/assets/pywebron.html')
+        source_path = str(Path(PROJECT_ROOT_PATH) /
+                          'assets' / 'src' / 'index.html')
+        new_path = await save_file_dialog(str(source_path))
         return await invoke.json_response(200, '文件保存成功', new_path)
     except Exception:
         return await invoke.json_response(500, '文件保存失败', format_exc())
@@ -96,7 +98,8 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
                 case None:
                     await asyncio_sleep(0.1)
                 case "multicast_test":
-                    (wids := list(app.get_windows().keys())).remove(stream.window_id)
+                    (wids := list(app.get_windows().keys())).remove(
+                        stream.window_id)
                     await stream.send(
                         200, '组播功能测试', {"type": "chat"},
                         send_mode=StreamSendModes.MULTICAST, mcast_win_ids=wids[0:1]
@@ -119,9 +122,8 @@ if __name__ == "__main__":
         title="PyWebron 控制面板 1",
         width=1200,
         height=1200,
-        show_title_bar=True,
+        # show_title_bar=False,
         enable_resizable=True,
-        content_path=f'{PROJECT_ROOT_PATH}/assets/pywebron.html',
-        # content_url='http://localhost:5173/'
+        content_url= 'http://localhost:5173/'
     )
     app.run()

@@ -109,6 +109,9 @@ fn create_window_in_event_loop(
         .with_transparent(true)
         .with_undecorated_shadow(false);
 
+    eprintln!("[Window] 创建窗口：{} | decorations={} | size={}x{}", 
+              config.title, config.decorations, config.width, config.height);
+
     #[cfg(not(target_os = "windows"))]
     let window_builder = WindowBuilder::new()
         .with_title(&config.title)
@@ -174,8 +177,9 @@ fn create_window_in_event_loop(
             .with_transparent(true)
             .with_background_color((0, 0, 0, 0)) // RGBA: 透明背景
             .with_initialization_script(&format!(
-                "window.pywebron={{window_id:{}}};{}",
+                "window.pywebron={{window_id:{},hasSystemTitleBar:{}}};{}",
                 id_clone,
+                config.decorations,
                 load_js_api()
             ))
             .with_ipc_handler(move |request| {
@@ -277,7 +281,7 @@ fn create_window_in_event_loop(
 
     #[cfg(target_os = "windows")]
     if !hwnd.is_null() {
-        if config.resizable {
+        if config.resizable && !config.decorations {
             crate::utils::make_window_frameless_but_resizable(windows::Win32::Foundation::HWND(hwnd));
         }
     }
@@ -575,8 +579,9 @@ pub fn init() -> PyResult<()> {
     std::env::set_var("WEBVIEW2_DEFAULT_BACKGROUND_COLOR", "00000000");
 
     // 预热 WebView2 Runtime（后台线程，不阻塞）
-    #[cfg(target_os = "windows")]
-    prewarm_webview2();
+    // 暂时禁用预热，避免出现额外的窗口
+    // #[cfg(target_os = "windows")]
+    // prewarm_webview2();
 
     Ok(())
 }
