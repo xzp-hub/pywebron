@@ -51,6 +51,7 @@ async def running_create_window(invoke: app.invoke):
             width=1200,
             height=1200,
             show_title_bar=False,
+            content_url='http://localhost:5173/'
         )
         return await invoke.json_response(200, f'运行时创建窗口成功：{res}', res)
     except Exception:
