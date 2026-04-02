@@ -60,8 +60,7 @@ async def running_create_window(invoke: app.invoke):
 @app.invoke.handle("file_download_invoke")
 async def file_download(invoke: app.invoke):
     try:
-        source_path = f'{PROJECT_ROOT_PATH}/assets/pywebron.html'
-        new_path = await save_file_dialog(str(source_path))
+        new_path = await save_file_dialog(f'{PROJECT_ROOT_PATH}/assets/pywebron.html')
         return await invoke.json_response(200, '文件保存成功', new_path)
     except Exception:
         return await invoke.json_response(500, '文件保存失败', format_exc())
