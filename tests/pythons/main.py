@@ -119,7 +119,9 @@ if __name__ == "__main__":
         title="PyWebron 控制面板 1",
         width=1200,
         height=1200,
-        show_title_bar=False,
+        show_title_bar=True,
         enable_resizable=True,
+        content_path=f'{PROJECT_ROOT_PATH}/assets/pywebron.html',
+        # content_url='http://localhost:5173/'
     )
     app.run()
