@@ -4,7 +4,6 @@ from pywebron.utils import save_file_dialog
 from pywebron import App, StreamSendModes
 from pywebron.configs import PROJECT_ROOT_PATH
 from traceback import format_exc
-from pathlib import Path
 from time import time
 
 app = App()
