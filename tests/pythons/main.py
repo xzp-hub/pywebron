@@ -124,6 +124,6 @@ if __name__ == "__main__":
         height=1200,
         show_title_bar=True,
         enable_resizable=True,
-        content_url= 'http://localhost:5173/'
+        # content_url= 'http://localhost:5173/'
     )
     app.run()

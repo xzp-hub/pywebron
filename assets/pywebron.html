@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PyWebron 控制面板</title>
 </head>
 <script>
@@ -612,194 +612,184 @@
 </script>
 
 <body>
-    <div style="width: 100%; height: 100%; background: transparent; border-radius: 15px;">
-        <div id="app-root">
-            <div class="header" id="windowHeader">
-                <div class="h-left">
-                    <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                        <polyline points="2 17 12 22 22 17" />
-                        <polyline points="2 12 12 17 22 12" />
+    <div id="app-root">
+        <div class="header" id="windowHeader">
+            <div class="h-left">
+                <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                    <polyline points="2 17 12 22 22 17" />
+                    <polyline points="2 12 12 17 22 12" />
+                </svg>
+                <span class="h-title">PyWebron 控制面板</span>
+            </div>
+            <div class="h-ctrls">
+                <button class="win-btn" onclick="windowAction('min')" title="最小化">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="12" x2="20" y2="12" />
                     </svg>
-                    <span class="h-title">PyWebron 控制面板</span>
+                </button>
+                <button id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <rect x="4" y="4" width="16" height="16" rx="1" />
+                    </svg>
+                </button>
+                <button class="win-btn close" onclick="windowAction('shut')" title="关闭">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="content">
+            <div class="left">
+                <div class="card monitor">
+                    <div class="card-h">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                            <line x1="8" y1="21" x2="16" y2="21" />
+                            <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                        <span>系统监控</span>
+                    </div>
+                    <div class="card-b">
+                        <div class="m-gauges">
+                            <div class="m-item">
+                                <div class="m-canvas">
+                                    <canvas id="cpuCanvas"></canvas>
+                                </div>
+                                <div id="cpuHeader" class="m-label">CPU使用率</div>
+                            </div>
+                            <div class="m-item">
+                                <div class="m-canvas">
+                                    <canvas id="memoryCanvas"></canvas>
+                                </div>
+                                <div id="ramHeader" class="m-label">内存使用率</div>
+                            </div>
+                            <div class="m-item">
+                                <div class="m-canvas">
+                                    <canvas id="swapCanvas"></canvas>
+                                </div>
+                                <div id="vrmHeader" class="m-label">交换区使用率</div>
+                            </div>
+                        </div>
+                        <div class="m-io">
+                            <div class="io-header">
+                                <div class="io-tabs">
+                                    <button id="diskTab" class="io-tab active" onclick="switchIoType('disk')">磁盘IO
+                                    </button>
+                                    <button id="netTab" class="io-tab" onclick="switchIoType('net')">网络IO</button>
+                                </div>
+                                <div class="io-stats">
+                                    <div class="io-stat"><span class="io-stat-label" id="ioLabel1">总读取</span><span
+                                            class="io-stat-val" id="ioVal1">0 GB</span></div>
+                                    <div class="io-stat"><span class="io-stat-label" id="ioLabel2">总写入</span><span
+                                            class="io-stat-val" id="ioVal2">0 GB</span></div>
+                                </div>
+                                <div class="io-legend" id="ioLegend">
+                                    <div class="io-leg-item"><span class="io-leg-color" id="ioColor1"
+                                            style="background:#00D4FF"></span><span id="ioLegText1">读取</span>
+                                    </div>
+                                    <div class="io-leg-item"><span class="io-leg-color" id="ioColor2"
+                                            style="background:#FF6B6B"></span><span id="ioLegText2">写入</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="io-chart">
+                                <canvas id="ioCanvas"></canvas>
+                                <div id="ioTooltip" class="io-tooltip"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="h-ctrls">
-                    <button class="win-btn" onclick="windowAction('min')" title="最小化">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <line x1="4" y1="12" x2="20" y2="12" />
+                <div class="card chat">
+                    <div class="card-h">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path
+                                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                         </svg>
-                    </button>
-                    <button id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1.5">
-                            <rect x="4" y="4" width="16" height="16" rx="1" />
-                        </svg>
-                    </button>
-                    <button class="win-btn close" onclick="windowAction('shut')" title="关闭">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                    </button>
+                        <span>聊天室</span>
+                    </div>
+                    <div class="card-b chat-body">
+                        <div id="welcomeMessage" class="chat-welcome">欢迎加入聊天室</div>
+                        <div id="chatMessages" class="chat-msgs"></div>
+                    </div>
+                    <div class="chat-foot">
+                        <input type="text" id="chatInput" class="chat-in" placeholder="输入消息按回车发送..." maxlength="200">
+                        <button id="chatSendBtn" class="chat-send">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13" />
+                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="content">
-                <div class="left">
-                    <div class="card monitor">
-                        <div class="card-h">
-                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="2" y="3" width="20" height="14" rx="2" />
-                                <line x1="8" y1="21" x2="16" y2="21" />
-                                <line x1="12" y1="17" x2="12" y2="21" />
-                            </svg>
-                            <span>系统监控</span>
-                        </div>
-                        <div class="card-b">
-                            <div class="m-gauges">
-                                <div class="m-item">
-                                    <div class="m-canvas">
-                                        <canvas id="cpuCanvas"></canvas>
-                                    </div>
-                                    <div id="cpuHeader" class="m-label">CPU使用率</div>
-                                </div>
-                                <div class="m-item">
-                                    <div class="m-canvas">
-                                        <canvas id="memoryCanvas"></canvas>
-                                    </div>
-                                    <div id="ramHeader" class="m-label">内存使用率</div>
-                                </div>
-                                <div class="m-item">
-                                    <div class="m-canvas">
-                                        <canvas id="swapCanvas"></canvas>
-                                    </div>
-                                    <div id="vrmHeader" class="m-label">交换区使用率</div>
-                                </div>
-                            </div>
-                            <div class="m-io">
-                                <div class="io-header">
-                                    <div class="io-tabs">
-                                        <button id="diskTab" class="io-tab active" onclick="switchIoType('disk')">磁盘IO
-                                        </button>
-                                        <button id="netTab" class="io-tab" onclick="switchIoType('net')">网络IO</button>
-                                    </div>
-                                    <div class="io-stats">
-                                        <div class="io-stat"><span class="io-stat-label" id="ioLabel1">总读取</span><span
-                                                class="io-stat-val" id="ioVal1">0 GB</span></div>
-                                        <div class="io-stat"><span class="io-stat-label" id="ioLabel2">总写入</span><span
-                                                class="io-stat-val" id="ioVal2">0 GB</span></div>
-                                    </div>
-                                    <div class="io-legend" id="ioLegend">
-                                        <div class="io-leg-item"><span class="io-leg-color" id="ioColor1"
-                                                style="background:#00D4FF"></span><span id="ioLegText1">读取</span>
-                                        </div>
-                                        <div class="io-leg-item"><span class="io-leg-color" id="ioColor2"
-                                                style="background:#FF6B6B"></span><span id="ioLegText2">写入</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="io-chart">
-                                    <canvas id="ioCanvas"></canvas>
-                                    <div id="ioTooltip" class="io-tooltip"></div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="right">
+                <div class="card download">
+                    <div class="card-h">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span>文件下载测试</span>
                     </div>
-                    <div class="card chat">
-                        <div class="card-h">
-                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path
-                                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                            </svg>
-                            <span>聊天室</span>
-                        </div>
-                        <div class="card-b chat-body">
-                            <div id="welcomeMessage" class="chat-welcome">欢迎加入聊天室</div>
-                            <div id="chatMessages" class="chat-msgs"></div>
-                        </div>
-                        <div class="chat-foot">
-                            <input type="text" id="chatInput" class="chat-in" placeholder="输入消息按回车发送..."
-                                maxlength="200">
-                            <button id="chatSendBtn" class="chat-send">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="22" y1="2" x2="11" y2="13" />
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="right">
-                    <div class="card download">
-                        <div class="card-h">
-                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
+                    <div class="card-b">
+                        <button id="downloadBtn" class="dl-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                 <polyline points="7 10 12 15 17 10" />
                                 <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
-                            <span>文件下载测试</span>
-                        </div>
-                        <div class="card-b">
-                            <button id="downloadBtn" class="dl-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                    <polyline points="7 10 12 15 17 10" />
-                                    <line x1="12" y1="15" x2="12" y2="3" />
-                                </svg>
-                                <span>下载文件</span></button>
-                            <div id="downloadStatus" class="dl-status">点击按钮选择保存目录</div>
-                        </div>
+                            <span>下载文件</span></button>
+                        <div id="downloadStatus" class="dl-status">点击按钮选择保存目录</div>
                     </div>
-                    <div class="card cpu-task">
-                        <div class="card-h">
-                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-                                <rect x="9" y="9" width="6" height="6" />
-                                <line x1="9" y1="1" x2="9" y2="4" />
-                                <line x1="15" y1="1" x2="15" y2="4" />
-                                <line x1="9" y1="20" x2="9" y2="23" />
-                                <line x1="15" y1="20" x2="15" y2="23" />
-                                <line x1="20" y1="9" x2="23" y2="9" />
-                                <line x1="20" y1="14" x2="23" y2="14" />
-                                <line x1="1" y1="9" x2="4" y2="9" />
-                                <line x1="1" y1="14" x2="4" y2="14" />
+                </div>
+                <div class="card cpu-task">
+                    <div class="card-h">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+                            <rect x="9" y="9" width="6" height="6" />
+                            <line x1="9" y1="1" x2="9" y2="4" />
+                            <line x1="15" y1="1" x2="15" y2="4" />
+                            <line x1="9" y1="20" x2="9" y2="23" />
+                            <line x1="15" y1="20" x2="15" y2="23" />
+                            <line x1="20" y1="9" x2="23" y2="9" />
+                            <line x1="20" y1="14" x2="23" y2="14" />
+                            <line x1="1" y1="9" x2="4" y2="9" />
+                            <line x1="1" y1="14" x2="4" y2="14" />
+                        </svg>
+                        <span>CPU任务测试</span>
+                    </div>
+                    <div class="card-b">
+                        <button id="cpuTaskBtn" class="dl-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                             </svg>
-                            <span>CPU任务测试</span>
-                        </div>
-                        <div class="card-b">
-                            <button id="cpuTaskBtn" class="dl-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                                </svg>
-                                <span>执行CPU密集任务</span></button>
-                            <div id="cpuTaskStatus" class="dl-status">点击按钮执行两次CPU密集计算</div>
-                        </div>
+                            <span>执行CPU密集任务</span></button>
+                        <div id="cpuTaskStatus" class="dl-status">点击按钮执行两次CPU密集计算</div>
                     </div>
-                    <div class="card create-window">
-                        <div class="card-h">
-                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
+                </div>
+                <div class="card create-window">
+                    <div class="card-h">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <line x1="12" y1="8" x2="12" y2="16" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                        </svg>
+                        <span>运行时创建窗口</span>
+                    </div>
+                    <div class="card-b">
+                        <button id="createWindowBtn" class="dl-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                                 <line x1="12" y1="8" x2="12" y2="16" />
                                 <line x1="8" y1="12" x2="16" y2="12" />
                             </svg>
-                            <span>运行时创建窗口</span>
-                        </div>
-                        <div class="card-b">
-                            <button id="createWindowBtn" class="dl-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                    <line x1="12" y1="8" x2="12" y2="16" />
-                                    <line x1="8" y1="12" x2="16" y2="12" />
-                                </svg>
-                                <span>创建新窗口</span></button>
-                            <div id="createWindowStatus" class="dl-status">点击按钮在运行时创建新窗口</div>
-                        </div>
+                            <span>创建新窗口</span></button>
+                        <div id="createWindowStatus" class="dl-status">点击按钮在运行时创建新窗口</div>
                     </div>
                 </div>
             </div>
@@ -808,24 +798,21 @@
 </body>
 <style>
     * {
-        margin: 0;
-        padding: 0;
+        margin: 0 !important;
+        padding: 0 !important;
         box-sizing: border-box;
     }
 
     html,
     body {
-        width: 100%;
-        height: 100%;
+        width: 100% !important;
+        height: 100% !important;
         overflow: hidden;
         font-family: 'Segoe UI', sans-serif;
-        background-color: transparent;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        background-color: transparent !important;
         outline: none;
-        padding: 0;
-        margin: 0;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
     #app-root {
@@ -843,7 +830,6 @@
         border-radius: 5px;
         border-top-left-radius: 0;
         border-top-right-radius: 0;
-        /* border: 1px solid rgba(255, 255, 255, .25); */
     }
 
     /* 有系统标题栏时，占满整个窗口 */
@@ -1024,7 +1010,7 @@
 
     .card {
         border-radius: 5px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: none;
         display: flex;
         flex-direction: column;
         overflow: hidden;

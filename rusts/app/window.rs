@@ -265,7 +265,38 @@ fn create_window_in_event_loop(
                     }
                 }
             };
-            builder.with_html(&html_content).build(&window)
+            
+            // 关键：使用 data URL 而不是直接 with_html，这样可以提供 base URL
+            let file_path = std::path::Path::new(&config.content);
+            let absolute_path = if file_path.is_absolute() {
+                file_path.to_path_buf()
+            } else {
+                std::env::current_dir()
+                    .unwrap_or_default()
+                    .join(file_path)
+            };
+            
+            // 获取文件所在目录作为 base URL
+            let base_dir = absolute_path.parent().unwrap_or(std::path::Path::new(""));
+            
+            #[cfg(target_os = "windows")]
+            let base_url = format!("file:///{}/", base_dir.display().to_string().replace("\\", "/"));
+            
+            #[cfg(not(target_os = "windows"))]
+            let base_url = format!("file://{}/", base_dir.display());
+            
+            eprintln!("[Window] HTML base URL: {}", base_url);
+            
+            // 在 HTML 中注入 base 标签
+            let html_with_base = if html_content.contains("<head>") {
+                html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
+            } else if html_content.contains("<html>") {
+                html_content.replace("<html>", &format!("<html><head><base href=\"{}\"></head>", base_url))
+            } else {
+                format!("<html><head><base href=\"{}\"></head><body>{}</body></html>", base_url, html_content)
+            };
+            
+            builder.with_html(&html_with_base).build(&window)
         } else {
             builder.with_html(&config.content).build(&window)
         };
