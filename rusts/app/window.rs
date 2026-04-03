@@ -146,8 +146,8 @@ fn create_window_in_event_loop(
             let hbrush = GetStockObject(BLACK_BRUSH);
             let _ = SetClassLongPtrW(win_hwnd, GCLP_HBRBACKGROUND, hbrush.0 as isize);
 
-            // 如果窗口可调整大小且无边框，添加 WS_THICKFRAME 样式
-            if config.resizable && !config.decorations {
+            // 如果窗口可调整大小，确保有 WS_THICKFRAME 样式
+            if config.resizable {
                 use windows::Win32::UI::WindowsAndMessaging::{
                     GetWindowLongPtrW, SetWindowLongPtrW, GWL_STYLE, WS_THICKFRAME,
                 };
@@ -282,7 +282,12 @@ fn create_window_in_event_loop(
     #[cfg(target_os = "windows")]
     if !hwnd.is_null() {
         if config.resizable && !config.decorations {
+            eprintln!("[Window] 调用 make_window_frameless_but_resizable | resizable={} | decorations={}", 
+                      config.resizable, config.decorations);
             crate::utils::make_window_frameless_but_resizable(windows::Win32::Foundation::HWND(hwnd));
+        } else {
+            eprintln!("[Window] 跳过 make_window_frameless_but_resizable | resizable={} | decorations={}", 
+                      config.resizable, config.decorations);
         }
     }
 
