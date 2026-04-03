@@ -15,7 +15,6 @@
     const isLinux = navigator.userAgent.toLowerCase().includes('linux') ||
         navigator.platform.toLowerCase().includes('linux');
 
-    const existingWindowId = window.pywebron?.window_id;
     window.pywebron = {
         interceptors: {
             response: {
@@ -35,9 +34,6 @@
 
     if (existingWindowId !== undefined) {
         window.pywebron.window_id = existingWindowId;
-    }
-
-    // P1: IPC 消息分发入口（Rust 通过 evaluate_script 调用）
     window.__pywebron_dispatch = function (msg) {
         const t = performance.now();
         const {handle_id, handle_type, request_id, payload} = msg;
@@ -308,6 +304,5 @@
             }).catch(e => console.warn('[Drag] Failed:', e.message));
         }
 
-
+    // 注入 resize-area 样式和元素
     });
-})();

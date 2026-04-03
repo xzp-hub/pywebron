@@ -9,11 +9,11 @@
 <script>
     const $ = id => document.getElementById(id);
     let isMaximized = false, gaugeAnims = {}, chatStream, msgIds = new Set();
-    const FONTS = { percent: 17, label: 12, stats: 14 };
+    const FONTS = {percent: 17, label: 12, stats: 14};
     const MONITORS = [
-        { key: 'cpu', canvas: 'cpuCanvas', header: 'cpuHeader', label: 'CPU 使用率', color: '#00D4FF' },
-        { key: 'ram', canvas: 'memoryCanvas', header: 'ramHeader', label: '内存使用率', color: '#00FF88' },
-        { key: 'vrm', canvas: 'swapCanvas', header: 'vrmHeader', label: '交换区使用率', color: '#FF6B6B' }
+        {key: 'cpu', canvas: 'cpuCanvas', header: 'cpuHeader', label: 'CPU 使用率', color: '#00D4FF'},
+        {key: 'ram', canvas: 'memoryCanvas', header: 'ramHeader', label: '内存使用率', color: '#00FF88'},
+        {key: 'vrm', canvas: 'swapCanvas', header: 'vrmHeader', label: '交换区使用率', color: '#FF6B6B'}
     ];
 
     // IO 监控数据
@@ -21,18 +21,18 @@
     let lastIoData = null;
     let ioDataPoints = [];  // 存储数据点位置用于tooltip
     let ioHoveredIndex = -1;  // 当前悬停的数据点索引
-    const ioHistory = { disk: { read: [], write: [], times: [] }, net: { upload: [], download: [], times: [] } };
+    const ioHistory = {disk: {read: [], write: [], times: []}, net: {upload: [], download: [], times: []}};
     const IO_MAX_POINTS = 5;  // 只保留5个数据点
     const IO_COLORS = {
-        disk: { read: '#00D4FF', write: '#FF6B6B' },
-        net: { upload: '#00FF88', download: '#FFB347' }
+        disk: {read: '#00D4FF', write: '#FF6B6B'},
+        net: {upload: '#00FF88', download: '#FFB347'}
     };
 
     async function windowAction(type) {
-        const map = { min: 'minimize_window', max: 'maximize_window', rep: 'reappear_window', shut: 'shutdown_window' };
+        const map = {min: 'minimize_window', max: 'maximize_window', rep: 'reappear_window', shut: 'shutdown_window'};
         const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
         try {
-            const res = await window.pywebron.invoke('window_controls_invoke', { control_type: map[action] }, 5000);
+            const res = await window.pywebron.invoke('window_controls_invoke', {control_type: map[action]}, 5000);
             if (res?.code === 200) {
                 isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
                 console.log('[Window] isMaximized after=', isMaximized);
@@ -56,7 +56,7 @@
         const cx = rect.width / 2, cy = rect.height / 2, r = (Math.min(cx, cy) - 10) * 1.08, lw = 8;
         const id = canvas.id;
         let cur = gaugeAnims[id]?.cur || 0;
-        gaugeAnims[id] = { val, cur };
+        gaugeAnims[id] = {val, cur};
 
         const render = v => {
             ctx.clearRect(0, 0, rect.width, rect.height);
@@ -106,7 +106,7 @@
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
         const w = rect.width, h = rect.height;
-        const pad = { t: 20, r: 15, b: 35, l: 55 };
+        const pad = {t: 20, r: 15, b: 35, l: 55};
         const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
 
         ctx.clearRect(0, 0, w, h);
@@ -145,11 +145,11 @@
         // 存储每个数据点的信息
         for (let i = 0; i < effectiveLen; i++) {
             const x = getX(i);
-            const pointData = { x, time: history.times[i], values: {} };
+            const pointData = {x, time: history.times[i], values: {}};
             keys.forEach((key, ki) => {
                 const val = history[key][i];
                 const y = pad.t + ch * (1 - Math.min(val, yMax) / yMax);
-                pointData.values[key] = { val, y, label: labels[ki], color: colors[key] };
+                pointData.values[key] = {val, y, label: labels[ki], color: colors[key]};
             });
             ioDataPoints.push(pointData);
         }
@@ -357,7 +357,7 @@
     }
 
     function updateIoData(time, ios) {
-        lastIoData = { time, ios };
+        lastIoData = {time, ios};
 
         // 获取速度值
         const diskReadKB = ios.disk_io.read_speed;
@@ -418,35 +418,44 @@
     }
 
     async function startMonitoring() {
-        if (!window.pywebron?.stream) return setTimeout(startMonitoring, 100);
+        if (!window.pywebron?.stream) {
+            console.log('[Monitor] stream API not ready, retrying...');
+            return setTimeout(startMonitoring, 100);
+        }
         const t0 = performance.now();
         try {
-            const t1 = performance.now();
+            console.log('[Monitor] Connecting to stream...');
             const stream = await window.pywebron.stream('system_monitoring_stream');
-            const t2 = performance.now();
-            console.log(`[Timing][Frontend] stream() 连接建立耗时: ${(t2 - t1).toFixed(1)}ms`);
+            console.log('[Monitor] Connected in', (performance.now() - t0).toFixed(1), 'ms');
             let firstData = true;
             stream.recv(data => {
+                console.log('[Monitor] Data received:', JSON.stringify(data));
                 if (firstData) {
                     firstData = false;
-                    console.log(`[Timing][Frontend] 首次数据耗时: ${(performance.now() - t0).toFixed(1)}ms (从窗口加载开始计)`);
-                    console.log(`[Timing][Frontend] stream连接建立后到首次数据: ${(performance.now() - t2).toFixed(1)}ms (从连接建立完成开始计)`);
+                    console.log('[Monitor] First data after', (performance.now() - t0).toFixed(1), 'ms');
                 }
-                // 数据在 payload.data 中
                 const payload = data.data || data;
                 const time = payload.time;
                 const info = payload.info;
+                console.log('[Monitor] Parsed - time:', time, 'info:', info);
                 MONITORS.forEach(m => {
                     const d = info?.[m.key];
                     if (d?.usage !== undefined) {
+                        console.log('[Monitor] Drawing', m.key, ':', d.usage);
                         drawGauge($(m.canvas), d.usage, m.label, m.color);
                         $(m.header).textContent = d.stats || m.label;
                     }
                 });
-                if (info?.ios) updateIoData(time, info.ios);
-            }).end(() => setTimeout(startMonitoring, 1000));
+                if (info?.ios) {
+                    console.log('[Monitor] IO data:', info.ios);
+                    updateIoData(time, info.ios);
+                }
+            }).end(() => {
+                console.log('[Monitor] Stream ended, reconnecting...');
+                setTimeout(startMonitoring, 1000);
+            });
         } catch (e) {
-            console.error('[Monitor]', e);
+            console.error('[Monitor] Error:', e);
             setTimeout(startMonitoring, 1000);
         }
     }
@@ -462,64 +471,42 @@
     }
 
     async function downloadFile() {
-        const btn = $('downloadBtn'), status = $('downloadStatus');
+        const btn = $('downloadBtn');
+        if (!btn) return;
         btn.disabled = true;
-        status.textContent = '正在打开保存对话框...';
         try {
             const res = await window.pywebron.invoke('file_download_invoke');
-            if (res?.code !== 200) status.textContent = `保存失败：${res?.mssg || '未知错误'}`;
-            else if (res.data?.cancelled) status.textContent = '已取消保存';
-            else if (res.data?.saved_path) status.innerHTML = `✅ 文件已保存:<br><span style="font-size:11px;color:#00D4FF">${res.data.saved_path}</span>`;
-            else status.textContent = '保存失败：未返回文件路径';
+            console.log('[Download] Result:', res);
         } catch (e) {
-            status.textContent = `下载失败：${e.message}`;
+            console.error('[Download] Error:', e);
         } finally {
             btn.disabled = false;
         }
     }
 
     async function runCpuTask() {
-        const btn = $('cpuTaskBtn'), status = $('cpuTaskStatus');
+        const btn = $('cpuTaskBtn');
+        if (!btn) return;
         btn.disabled = true;
-        status.textContent = '正在执行CPU密集任务...';
-        status.style.color = '#00D4FF';
-        const startTime = Date.now();
         try {
             const res = await window.pywebron.invoke('cpu_intensive_task_invoke_command');
-            const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-            if (res?.code === 200) {
-                const data = res.data || {};
-                status.innerHTML = `✅ 任务完成<br><span style="font-size:11px">结果: ${data.res || 'N/A'}<br>耗时: ${data.time?.toFixed(3) || elapsed}s</span>`;
-                status.style.color = '#00FF88';
-            } else {
-                status.textContent = `任务失败：${res?.mssg || '未知错误'}`;
-                status.style.color = '#FF6B6B';
-            }
+            console.log('[CPUTask] Result:', res);
         } catch (e) {
-            status.textContent = `执行失败：${e.message}`;
-            status.style.color = '#FF6B6B';
+            console.error('[CPUTask] Error:', e);
         } finally {
             btn.disabled = false;
         }
     }
 
     async function createNewWindow() {
-        const btn = $('createWindowBtn'), status = $('createWindowStatus');
+        const btn = $('createWindowBtn');
+        if (!btn) return;
         btn.disabled = true;
-        status.textContent = '正在创建新窗口...';
-        status.style.color = '#00D4FF';
         try {
             const res = await window.pywebron.invoke('running_create_window_invoke_handle');
-            if (res?.code === 200) {
-                status.innerHTML = `✅ ${res.mssg || '窗口创建成功'}<br><span style="font-size:11px;color:#00D4FF">结果: ${res.data}</span>`;
-                status.style.color = '#00FF88';
-            } else {
-                status.textContent = `创建失败：${res?.mssg || '未知错误'}`;
-                status.style.color = '#FF6B6B';
-            }
+            console.log('[CreateWindow] Result:', res);
         } catch (e) {
-            status.textContent = `创建失败：${e.message}`;
-            status.style.color = '#FF6B6B';
+            console.error('[CreateWindow] Error:', e);
         } finally {
             btn.disabled = false;
         }
@@ -561,7 +548,7 @@
     function sendMsg() {
         const input = $('chatInput'), msg = input.value.trim();
         if (!msg || !chatStream?.send) return;
-        displayMsg({ type: 'message', message: msg, window_id: window.pywebron.window_id }, true);
+        displayMsg({type: 'message', message: msg, window_id: window.pywebron.window_id}, true);
         chatStream.send(msg);
         input.value = '';
     }
@@ -569,7 +556,7 @@
     async function init() {
         // 有系统标题栏时，添加类名以占满整个窗口
         if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
-            const appRoot = document.getElementById('app-root');
+            const appRoot = document.getElementById('app');
             if (appRoot) {
                 appRoot.classList.add('has-system-title-bar');
             }
@@ -608,370 +595,244 @@
         $('netTab')?.addEventListener('click', () => switchIoType('net'));
     }
 
-    document.readyState === 'interactive' ? init() : document.addEventListener('DOMContentLoaded', init, { once: true });
+    document.readyState === 'interactive' ? init() : document.addEventListener('DOMContentLoaded', init, {once: true});
 </script>
 
 <body>
-    <div id="app-root">
-        <div class="header" id="windowHeader">
-            <div class="h-left">
-                <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                    <polyline points="2 17 12 22 22 17" />
-                    <polyline points="2 12 12 17 22 12" />
-                </svg>
-                <span class="h-title">PyWebron 控制面板</span>
-            </div>
-            <div class="h-ctrls">
-                <button class="win-btn" onclick="windowAction('min')" title="最小化">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="4" y1="12" x2="20" y2="12" />
-                    </svg>
-                </button>
-                <button id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="1.5">
-                        <rect x="4" y="4" width="16" height="16" rx="1" />
-                    </svg>
-                </button>
-                <button class="win-btn close" onclick="windowAction('shut')" title="关闭">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                </button>
-            </div>
+<div class='app'>
+    <div class="header" id="windowHeader">
+        <div class="h-left">
+            <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+            </svg>
+            <span class="h-title">PyWebron 控制面板</span>
         </div>
-        <div class="content">
-            <div class="left">
-                <div class="card monitor">
-                    <div class="card-h">
+        <div class="h-ctrls">
+            <button class="win-btn" onclick="windowAction('min')" title="最小化">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                </svg>
+            </button>
+            <button id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.5">
+                    <rect x="4" y="4" width="16" height="16" rx="1"/>
+                </svg>
+            </button>
+            <button class="win-btn close" onclick="windowAction('shut')" title="关闭">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div class="content">
+        <div class="left">
+            <div class="card monitor">
+                <div class="card-h">
+                    <div class="card-icon-wrap">
                         <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" />
-                            <line x1="8" y1="21" x2="16" y2="21" />
-                            <line x1="12" y1="17" x2="12" y2="21" />
+                            <rect x="2" y="3" width="20" height="14" rx="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
                         </svg>
-                        <span>系统监控</span>
                     </div>
-                    <div class="card-b">
-                        <div class="m-gauges">
-                            <div class="m-item">
-                                <div class="m-canvas">
-                                    <canvas id="cpuCanvas"></canvas>
-                                </div>
-                                <div id="cpuHeader" class="m-label">CPU使用率</div>
+                    <span>系统监控</span>
+                </div>
+                <div class="card-b">
+                    <div class="m-gauges">
+                        <div class="m-item">
+                            <div class="m-canvas">
+                                <canvas id="cpuCanvas"></canvas>
                             </div>
-                            <div class="m-item">
-                                <div class="m-canvas">
-                                    <canvas id="memoryCanvas"></canvas>
-                                </div>
-                                <div id="ramHeader" class="m-label">内存使用率</div>
+                            <div id="cpuHeader" class="m-label">CPU使用率</div>
+                        </div>
+                        <div class="m-item">
+                            <div class="m-canvas">
+                                <canvas id="memoryCanvas"></canvas>
                             </div>
-                            <div class="m-item">
-                                <div class="m-canvas">
-                                    <canvas id="swapCanvas"></canvas>
+                            <div id="ramHeader" class="m-label">内存使用率</div>
+                        </div>
+                        <div class="m-item">
+                            <div class="m-canvas">
+                                <canvas id="swapCanvas"></canvas>
+                            </div>
+                            <div id="vrmHeader" class="m-label">交换区使用率</div>
+                        </div>
+                    </div>
+                    <div class="m-io">
+                        <div class="io-header">
+                            <div class="io-tabs">
+                                <button id="diskTab" class="io-tab active" onclick="switchIoType('disk')">磁盘IO
+                                </button>
+                                <button id="netTab" class="io-tab" onclick="switchIoType('net')">网络IO</button>
+                            </div>
+                            <div class="io-stats">
+                                <div class="io-stat"><span class="io-stat-label" id="ioLabel1">总读取</span><span
+                                        class="io-stat-val" id="ioVal1">0 GB</span></div>
+                                <div class="io-stat"><span class="io-stat-label" id="ioLabel2">总写入</span><span
+                                        class="io-stat-val" id="ioVal2">0 GB</span></div>
+                            </div>
+                            <div class="io-legend" id="ioLegend">
+                                <div class="io-leg-item"><span class="io-leg-color" id="ioColor1"
+                                                               style="background:#00D4FF"></span><span id="ioLegText1">读取</span>
                                 </div>
-                                <div id="vrmHeader" class="m-label">交换区使用率</div>
+                                <div class="io-leg-item"><span class="io-leg-color" id="ioColor2"
+                                                               style="background:#FF6B6B"></span><span id="ioLegText2">写入</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="m-io">
-                            <div class="io-header">
-                                <div class="io-tabs">
-                                    <button id="diskTab" class="io-tab active" onclick="switchIoType('disk')">磁盘IO
-                                    </button>
-                                    <button id="netTab" class="io-tab" onclick="switchIoType('net')">网络IO</button>
-                                </div>
-                                <div class="io-stats">
-                                    <div class="io-stat"><span class="io-stat-label" id="ioLabel1">总读取</span><span
-                                            class="io-stat-val" id="ioVal1">0 GB</span></div>
-                                    <div class="io-stat"><span class="io-stat-label" id="ioLabel2">总写入</span><span
-                                            class="io-stat-val" id="ioVal2">0 GB</span></div>
-                                </div>
-                                <div class="io-legend" id="ioLegend">
-                                    <div class="io-leg-item"><span class="io-leg-color" id="ioColor1"
-                                            style="background:#00D4FF"></span><span id="ioLegText1">读取</span>
-                                    </div>
-                                    <div class="io-leg-item"><span class="io-leg-color" id="ioColor2"
-                                            style="background:#FF6B6B"></span><span id="ioLegText2">写入</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="io-chart">
-                                <canvas id="ioCanvas"></canvas>
-                                <div id="ioTooltip" class="io-tooltip"></div>
-                            </div>
+                        <div class="io-chart">
+                            <canvas id="ioCanvas"></canvas>
+                            <div id="ioTooltip" class="io-tooltip"></div>
                         </div>
                     </div>
                 </div>
-                <div class="card chat">
-                    <div class="card-h">
+            </div>
+            <div class="card chat">
+                <div class="card-h">
+                    <div class="card-icon-wrap">
                         <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path
-                                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
                         </svg>
-                        <span>聊天室</span>
                     </div>
-                    <div class="card-b chat-body">
-                        <div id="welcomeMessage" class="chat-welcome">欢迎加入聊天室</div>
-                        <div id="chatMessages" class="chat-msgs"></div>
-                    </div>
-                    <div class="chat-foot">
-                        <input type="text" id="chatInput" class="chat-in" placeholder="输入消息按回车发送..." maxlength="200">
-                        <button id="chatSendBtn" class="chat-send">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="22" y1="2" x2="11" y2="13" />
-                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                            </svg>
-                        </button>
-                    </div>
+                    <span>聊天室</span>
+                </div>
+                <div class="card-b chat-body">
+                    <div id="welcomeMessage" class="chat-welcome">欢迎加入聊天室</div>
+                    <div id="chatMessages" class="chat-msgs"></div>
+                </div>
+                <div class="chat-foot">
+                    <input type="text" id="chatInput" class="chat-in" placeholder="输入消息按回车发送..."
+                           maxlength="200">
+                    <button id="chatSendBtn" class="chat-send">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            <div class="right">
-                <div class="card download">
-                    <div class="card-h">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
+        </div>
+        <div class="right">
+            <div class="card invoke-cards">
+                <div class="card-b">
+                    <button id="downloadBtn" class="dl-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
-                        <span>文件下载测试</span>
-                    </div>
-                    <div class="card-b">
-                        <button id="downloadBtn" class="dl-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            <span>下载文件</span></button>
-                        <div id="downloadStatus" class="dl-status">点击按钮选择保存目录</div>
-                    </div>
-                </div>
-                <div class="card cpu-task">
-                    <div class="card-h">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-                            <rect x="9" y="9" width="6" height="6" />
-                            <line x1="9" y1="1" x2="9" y2="4" />
-                            <line x1="15" y1="1" x2="15" y2="4" />
-                            <line x1="9" y1="20" x2="9" y2="23" />
-                            <line x1="15" y1="20" x2="15" y2="23" />
-                            <line x1="20" y1="9" x2="23" y2="9" />
-                            <line x1="20" y1="14" x2="23" y2="14" />
-                            <line x1="1" y1="9" x2="4" y2="9" />
-                            <line x1="1" y1="14" x2="4" y2="14" />
+                        <span>下载文件</span>
+                    </button>
+                    <button id="cpuTaskBtn" class="dl-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                         </svg>
-                        <span>CPU任务测试</span>
-                    </div>
-                    <div class="card-b">
-                        <button id="cpuTaskBtn" class="dl-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                            </svg>
-                            <span>执行CPU密集任务</span></button>
-                        <div id="cpuTaskStatus" class="dl-status">点击按钮执行两次CPU密集计算</div>
-                    </div>
-                </div>
-                <div class="card create-window">
-                    <div class="card-h">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <line x1="12" y1="8" x2="12" y2="16" />
-                            <line x1="8" y1="12" x2="16" y2="12" />
+                        <span>执行 CPU 密集任务</span>
+                    </button>
+                    <button id="createWindowBtn" class="dl-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
                         </svg>
-                        <span>运行时创建窗口</span>
-                    </div>
-                    <div class="card-b">
-                        <button id="createWindowBtn" class="dl-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                <line x1="12" y1="8" x2="12" y2="16" />
-                                <line x1="8" y1="12" x2="16" y2="12" />
-                            </svg>
-                            <span>创建新窗口</span></button>
-                        <div id="createWindowStatus" class="dl-status">点击按钮在运行时创建新窗口</div>
-                    </div>
+                        <span>创建新窗口</span>
+                    </button>
                 </div>
+            </div>
+            <div class="card terminal">
+                <div class="card-h">
+                    <div class="card-icon-wrap">
+                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 17 10 11 4 5"/>
+                            <line x1="12" y1="19" x2="20" y2="19"/>
+                        </svg>
+                    </div>
+                    <span>终端日志</span>
+                </div>
+                <div class="card-b terminal-body" id="terminalLogs"></div>
             </div>
         </div>
     </div>
+</div>
 </body>
 <style>
-    * {
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box;
-    }
-
-    html,
-    body {
-        width: 100% !important;
-        height: 100% !important;
-        overflow: hidden;
-        font-family: 'Segoe UI', sans-serif;
-        background-color: transparent !important;
-        outline: none;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    #app-root {
-        position: relative;
+    html, body {
+        margin: 0;
+        padding: 0;
         width: 100%;
         height: 100%;
-        padding: 5px;
+    }
+
+    html {
+        background-color: white;
+    }
+
+    body {
+        background: #2b2e31;
+    }
+
+    .app {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
         gap: 5px;
         display: flex;
         flex-direction: column;
-        background: linear-gradient(145deg, rgba(65, 65, 117, .9), rgba(68, 58, 96, .95));
-        box-sizing: border-box;
-        outline: none;
-        /* 需要左下和右下圆角 */
-        border-radius: 5px;
-        border-top-left-radius: 0;
-        border-top-right-radius: 0;
-    }
-
-    /* 有系统标题栏时，占满整个窗口 */
-    #app-root.has-system-title-bar {
-        width: 100%;
-        height: 100%;
-        padding: 0;
-        border-radius: 0;
-    }
-
-    /* 无边框窗口调整大小区域 - 8px 透明边框 */
-    .resize-area {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        pointer-events: none;
-        z-index: 10000;
-    }
-
-    .resize-edge {
-        position: absolute;
-        pointer-events: auto;
-        background: transparent;
-    }
-
-    .resize-edge.top,
-    .resize-edge.bottom {
-        left: 8px;
-        right: 8px;
-        height: 8px;
-    }
-
-    .resize-edge.left,
-    .resize-edge.right {
-        top: 8px;
-        bottom: 8px;
-        width: 8px;
-    }
-
-    .resize-edge.top {
-        top: 0;
-        cursor: n-resize;
-    }
-
-    .resize-edge.bottom {
-        bottom: 0;
-        cursor: s-resize;
-    }
-
-    .resize-edge.left {
-        left: 0;
-        cursor: w-resize;
-    }
-
-    .resize-edge.right {
-        right: 0;
-        cursor: e-resize;
-    }
-
-    .resize-corner {
-        position: absolute;
-        width: 8px;
-        height: 8px;
-        pointer-events: auto;
-        background: transparent;
-        z-index: 10001;
-    }
-
-    .resize-corner.top-left {
-        top: 0;
-        left: 0;
-        cursor: nw-resize;
-    }
-
-    .resize-corner.top-right {
-        top: 0;
-        right: 0;
-        cursor: ne-resize;
-    }
-
-    .resize-corner.bottom-left {
-        bottom: 0;
-        left: 0;
-        cursor: sw-resize;
-    }
-
-    .resize-corner.bottom-right {
-        bottom: 0;
-        right: 0;
-        cursor: se-resize;
+        border-radius: 0 0 5px 5px;
     }
 
 
     .header {
         width: 100%;
-        height: 40px;
-        padding: 5px;
-        border-radius: 5px;
+        height: 30px;
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: rgba(184, 183, 183, .1);
-        backdrop-filter: blur(6px);
-        border: 1px solid rgba(255, 255, 255, .25);
-        -webkit-app-region: drag;
-        user-select: none;
+        backdrop-filter: blur(12px);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .h-left {
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 8px;
     }
 
     .h-icon {
-        width: 30px;
-        height: 30px;
+        width: 16px;
+        height: 16px;
         color: #00D4FF;
         filter: drop-shadow(0 0 4px rgba(0, 212, 255, .5));
     }
 
     .h-title {
-        font-size: 20px;
+        font-size: 12px;
         color: #fff;
-        line-height: 30px;
+        line-height: 16px;
     }
 
     .h-ctrls {
         display: flex;
-        gap: 5px;
+        gap: 0;
         -webkit-app-region: no-drag;
     }
 
     .win-btn {
         width: 30px;
         height: 30px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: none;
         background: transparent;
         color: rgba(255, 255, 255, .7);
-        border-radius: 5px;
+        border-radius: 0;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -992,6 +853,9 @@
         flex: 1;
         display: flex;
         gap: 5px;
+        margin-left: 5px;
+        margin-right: 5px;
+        margin-bottom: 5px;
     }
 
     .left {
@@ -1008,9 +872,50 @@
         gap: 5px;
     }
 
+    .invoke-cards {
+        flex: 0 0 auto;
+        border: 1px solid rgba(255, 255, 255, .25);
+        border-radius: 5px;
+        background: rgba(184, 183, 183, .08);
+    }
+
+    .invoke-cards .card-b {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .terminal {
+        flex: 1;
+        min-height: 0;
+        border: 1px solid rgba(255, 255, 255, .25);
+        border-radius: 5px;
+        background: rgba(184, 183, 183, .08);
+    }
+
+    .terminal-body {
+        padding: 10px;
+        overflow-y: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.8);
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .terminal-body::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .terminal-body::-webkit-scrollbar-thumb {
+        background: rgba(100, 100, 255, .3);
+        border-radius: 2px;
+    }
+
     .card {
         border-radius: 5px;
-        border: none;
+        border: 1px solid rgba(255, 255, 255, .25);
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -1019,7 +924,6 @@
 
     .card-h {
         height: 30px;
-        padding: 5px;
         display: flex;
         align-items: center;
         gap: 5px;
@@ -1029,18 +933,27 @@
         border-radius: 5px 5px 0 0;
     }
 
-    .card-h span {
-        font-size: 16px;
-        font-weight: 600;
-        color: #fff;
-        letter-spacing: .5px;
+    .card-icon-wrap {
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .card-icon {
-        width: 22px;
-        height: 22px;
+        width: 16px;
+        height: 16px;
         color: #00D4FF;
         filter: drop-shadow(0 0 4px rgba(0, 212, 255, .5));
+    }
+
+    .card-h span {
+        font-size: 12px;
+        font-weight: 600;
+        color: #fff;
+        letter-spacing: .5px;
+        line-height: 1;
     }
 
     .card-b {
@@ -1050,7 +963,8 @@
 
     .monitor {
         flex: 1;
-        min-height: 400px;
+        min-height: 0;
+        border: 1px solid rgba(255, 255, 255, .25);
     }
 
     .monitor .card-b {
@@ -1150,7 +1064,7 @@
         color: #00D4FF;
     }
 
-    .io-tab.active+.io-tab {
+    .io-tab.active + .io-tab {
         border-left-color: rgba(0, 212, 255, .5);
     }
 
@@ -1268,7 +1182,7 @@
         gap: 6px;
     }
 
-    .io-tooltip-row+.io-tooltip-row {
+    .io-tooltip-row + .io-tooltip-row {
         margin-top: 4px;
     }
 
@@ -1290,6 +1204,7 @@
     .chat {
         flex: 1;
         background: rgba(184, 183, 183, .1);
+        border: 1px solid rgba(255, 255, 255, .25);
     }
 
     .chat-body {
@@ -1446,7 +1361,7 @@
     .download,
     .cpu-task,
     .create-window {
-        height: 180px;
+        border: 1px solid rgba(255, 255, 255, .25);
     }
 
     .download .card-b,
@@ -1486,8 +1401,8 @@
     }
 
     .dl-btn svg {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
     }
 
     .dl-status {
