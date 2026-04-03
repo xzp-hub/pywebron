@@ -567,6 +567,14 @@
     }
 
     async function init() {
+        // 有系统标题栏时，添加类名以占满整个窗口
+        if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
+            const appRoot = document.getElementById('app-root');
+            if (appRoot) {
+                appRoot.classList.add('has-system-title-bar');
+            }
+        }
+
         MONITORS.forEach(m => {
             $(m.header).style.fontSize = FONTS.stats + 'px';
             drawGauge($(m.canvas), 0, '', m.color, false);
@@ -822,8 +830,8 @@
 
     #app-root {
         position: relative;
-        width: calc(100% - 10px);
-        height: calc(100% - 10px);
+        width: 100%;
+        height: 100%;
         padding: 5px;
         gap: 5px;
         display: flex;
@@ -831,8 +839,19 @@
         background: linear-gradient(145deg, rgba(65, 65, 117, .9), rgba(68, 58, 96, .95));
         box-sizing: border-box;
         outline: none;
+        /* 需要左下和右下圆角 */
         border-radius: 5px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+        /* border: 1px solid rgba(255, 255, 255, .25); */
+    }
+
+    /* 有系统标题栏时，占满整个窗口 */
+    #app-root.has-system-title-bar {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        border-radius: 0;
     }
 
     /* 无边框窗口调整大小区域 - 8px 透明边框 */
@@ -1510,6 +1529,15 @@
 
 <script>
     (function () {
+        // 如果有系统标题栏，隐藏 resize-area，避免与系统边框冲突
+        if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
+            const resizeArea = document.getElementById('resize-area');
+            if (resizeArea) {
+                resizeArea.style.display = 'none';
+            }
+            return;
+        }
+
         const HT = {
             'top': 12, 'bottom': 15, 'left': 10, 'right': 11,
             'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17
