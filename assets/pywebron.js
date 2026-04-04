@@ -1,5 +1,12 @@
 (function () {
-    if (window.__pywebron_initialized) return;
+    console.log('[PyWebron JS] ========== 脚本开始执行 ==========');
+    console.log('[PyWebron JS] window.__pywebron_initialized:', window.__pywebron_initialized);
+    console.log('[PyWebron JS] window.pywebron (before):', window.pywebron);
+
+    if (window.__pywebron_initialized) {
+        console.log('[PyWebron JS] 已经初始化过，跳过');
+        return;
+    }
     window.__pywebron_initialized = true;
 
     const pending = new Map(), streams = new Map();
@@ -11,11 +18,20 @@
 
     const streamMessages = new Map();
 
-    // 平台检测（通过 userAgent 判断）
     const isLinux = navigator.userAgent.toLowerCase().includes('linux') ||
         navigator.platform.toLowerCase().includes('linux');
 
+    const savedWindowId = window.pywebron?.window_id;
+    const savedHasSystemTitleBar = window.pywebron?.hasSystemTitleBar;
+
+    console.log('[PyWebron JS] savedWindowId:', savedWindowId);
+    console.log('[PyWebron JS] savedHasSystemTitleBar:', savedHasSystemTitleBar);
+    console.log('[PyWebron JS] isLinux:', isLinux);
+
     window.pywebron = {
+        window_id: savedWindowId,
+        hasSystemTitleBar: savedHasSystemTitleBar,
+        isLinux: isLinux,
         interceptors: {
             response: {
                 use(fn) {
@@ -27,16 +43,12 @@
                     interceptors.error.push(fn);
                 }
             }
-        },
-        // 平台标识
-        isLinux: isLinux
+        }
     };
 
-    if (existingWindowId !== undefined) {
-        window.pywebron.window_id = existingWindowId;
     window.__pywebron_dispatch = function (msg) {
         const t = performance.now();
-        const {handle_id, handle_type, request_id, payload} = msg;
+        const { handle_id, handle_type, request_id, payload } = msg;
 
         if (handle_type === 'invoke') {
             const h = pending.get(request_id);
@@ -179,7 +191,6 @@
         }
     }
 
-    // 通过 wry IPC 发送消息到 Rust
     function ipcSend(message) {
         if (window.ipc && window.ipc.postMessage) {
             const t = performance.now();
@@ -187,26 +198,11 @@
             const elapsed = performance.now() - t;
             if (elapsed > 0.5) console.log(`[Timing][JS] ipcSend 耗时: ${elapsed.toFixed(2)}ms | type=${message.handle_type}`);
         } else {
-            console.error('[JS] window.ipc.postMessage 不可用');
+            console.error('[PyWebron JS] window.ipc.postMessage 不可用');
         }
     }
 
-    const savedWindowId = window.pywebron.window_id;
     Object.assign(window.pywebron, {
-        window_id: savedWindowId || window.pywebron?.window_id,
-
-        interceptors: {
-            response: {
-                use(fn) {
-                    interceptors.response.push(fn);
-                }
-            },
-            error: {
-                use(fn) {
-                    interceptors.error.push(fn);
-                }
-            }
-        },
         generateRequestId(handleId) {
             const timestamp = Date.now();
             const random = Math.random().toString(36).slice(2, 8);
@@ -214,11 +210,12 @@
         },
 
         async invoke(handle, payload = {}, timeout = 6e4) {
+            console.log('[PyWebron JS] invoke 调用:', handle, 'payload:', payload);
             performance.now();
             const request_id = this.generateRequestId(handle);
 
             return new Promise((resolve, reject) => {
-                pending.set(request_id, {resolve, reject});
+                pending.set(request_id, { resolve, reject });
 
                 const message = {
                     window_id: this.window_id,
@@ -232,14 +229,15 @@
 
                 setTimeout(() => {
                     if (pending.delete(request_id)) {
-                        console.log(`[JS] invoke 超时：${request_id}`);
-                        reject(new Error('Timeout'))
+                        console.log(`[PyWebron JS] invoke 超时：${request_id}`);
+                        reject(new Error('Timeout'));
                     }
                 }, timeout);
             });
         },
 
         async stream(handle, payload = {}) {
+            console.log('[PyWebron JS] stream 调用:', handle, 'payload:', payload);
             const t_start = performance.now();
             const hid = String(handle);
             const request_id = this.generateRequestId(hid);
@@ -253,14 +251,14 @@
 
                 recv(cb) {
                     this.onData = cb;
-                    return this
+                    return this;
                 },
                 end(cb) {
                     this.onEnd = cb;
-                    return this
+                    return this;
                 },
                 close() {
-                    streams.delete(this.handle)
+                    streams.delete(this.handle);
                 },
                 send(data) {
                     const t = performance.now();
@@ -275,7 +273,7 @@
                     ipcSend(message);
                     const elapsed = performance.now() - t;
                     console.log(`[Timing][JS] stream.send 耗时: ${elapsed.toFixed(2)}ms | handle=${hid}`);
-                    return this
+                    return this;
                 }
             };
 
@@ -295,7 +293,6 @@
             return obj;
         },
 
-        // Linux专用：启动窗口拖动（通过invoke调用后端）
         startDrag(button = 1) {
             if (!this.isLinux) return;
             this.invoke('__rust_start_drag_window', {
@@ -303,6 +300,10 @@
                 button: button
             }).catch(e => console.warn('[Drag] Failed:', e.message));
         }
-
-    // 注入 resize-area 样式和元素
     });
+
+    console.log('[PyWebron JS] ========== API 初始化完成 ==========');
+    console.log('[PyWebron JS] window.pywebron (after):', window.pywebron);
+    console.log('[PyWebron JS] window.pywebron.invoke:', typeof window.pywebron.invoke);
+    console.log('[PyWebron JS] window.pywebron.stream:', typeof window.pywebron.stream);
+})();

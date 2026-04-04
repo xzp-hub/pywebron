@@ -1,82 +1,50 @@
-(function() {
-    if (window.__pywebron_resize_initialized) return;
-    window.__pywebron_resize_initialized = true;
+(function () {
+    console.log('[Resize JS] ========== resize 脚本开始执行 ==========');
+    console.log('[Resize JS] window.pywebron:', window.pywebron);
 
     if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
+        console.log('[Resize JS] 检测到系统标题栏，隐藏 resize-area');
+        const resizeArea = document.getElementById('resize-area');
+        if (resizeArea) {
+            resizeArea.style.display = 'none';
+        }
         return;
     }
 
-    var HT = {
+    const HT = {
         'top': 12, 'bottom': 15, 'left': 10, 'right': 11,
         'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17
     };
 
-    function createResizeArea() {
-        if (document.getElementById('pywebron-resize-area')) return;
-
-        var resizeArea = document.createElement('div');
-        resizeArea.id = 'pywebron-resize-area';
-        resizeArea.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:9999;';
-
-        var edges = [
-            {name: 'top', style: 'top:0;left:8px;right:8px;height:8px;cursor:n-resize;'},
-            {name: 'bottom', style: 'bottom:0;left:8px;right:8px;height:8px;cursor:s-resize;'},
-            {name: 'left', style: 'left:0;top:8px;bottom:8px;width:8px;cursor:w-resize;'},
-            {name: 'right', style: 'right:0;top:8px;bottom:8px;width:8px;cursor:e-resize;'}
-        ];
-
-        var corners = [
-            {name: 'topleft', style: 'top:0;left:0;width:8px;height:8px;cursor:nw-resize;'},
-            {name: 'topright', style: 'top:0;right:0;width:8px;height:8px;cursor:ne-resize;'},
-            {name: 'bottomleft', style: 'bottom:0;left:0;width:8px;height:8px;cursor:sw-resize;'},
-            {name: 'bottomright', style: 'bottom:0;right:0;width:8px;height:8px;cursor:se-resize;'}
-        ];
-
-        edges.forEach(function(edge) {
-            var el = document.createElement('div');
-            el.className = 'pywebron-resize-edge';
-            el.dataset.edge = edge.name;
-            el.style.cssText = 'position:absolute;pointer-events:auto;background:transparent;' + edge.style;
-            resizeArea.appendChild(el);
-        });
-
-        corners.forEach(function(corner) {
-            var el = document.createElement('div');
-            el.className = 'pywebron-resize-corner';
-            el.dataset.edge = corner.name;
-            el.style.cssText = 'position:absolute;pointer-events:auto;background:transparent;' + corner.style;
-            resizeArea.appendChild(el);
-        });
-
-        document.body.appendChild(resizeArea);
-
-        resizeArea.addEventListener('mousedown', function(e) {
-            var target = e.target;
-            if (!target.classList.contains('pywebron-resize-edge') && 
-                !target.classList.contains('pywebron-resize-corner')) return;
-
+    console.log('[Resize JS] 设置 resize 事件监听');
+    document.querySelectorAll('.resize-edge, .resize-corner').forEach(el => {
+        el.addEventListener('mousedown', (e) => {
             e.preventDefault();
             e.stopPropagation();
 
-            var edge = target.dataset.edge;
-            if (!edge || !window.pywebron?.window_id) return;
+            let edge = '';
+            if (el.classList.contains('top')) edge = 'top';
+            else if (el.classList.contains('bottom')) edge = 'bottom';
+            else if (el.classList.contains('left')) edge = 'left';
+            else if (el.classList.contains('right')) edge = 'right';
+            else if (el.classList.contains('top-left')) edge = 'topleft';
+            else if (el.classList.contains('top-right')) edge = 'topright';
+            else if (el.classList.contains('bottom-left')) edge = 'bottomleft';
+            else if (el.classList.contains('bottom-right')) edge = 'bottomright';
 
-            if (window.pywebron.invoke) {
-                window.pywebron.invoke('__rust_start_resize', {
-                    window_id: window.pywebron.window_id,
-                    hit_test: HT[edge]
-                }).catch(function(err) {
-                    console.warn('[PyWebron Resize] Failed:', err.message);
-                });
+            console.log('[Resize JS] mousedown on edge:', edge);
+            if (!edge || !window.pywebron?.window_id || !window.pywebron?.invoke) {
+                console.log('[Resize JS] 条件不满足，跳过');
+                return;
             }
+
+            console.log('[Resize JS] 调用 __rust_start_resize, window_id:', window.pywebron.window_id, 'hit_test:', HT[edge]);
+            window.pywebron.invoke('__rust_start_resize', {
+                window_id: window.pywebron.window_id,
+                hit_test: HT[edge]
+            });
         });
-    }
+    });
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', createResizeArea);
-    } else {
-        createResizeArea();
-    }
-
-    setTimeout(createResizeArea, 100);
+    console.log('[Resize JS] ========== resize 脚本执行完毕 ==========');
 })();

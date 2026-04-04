@@ -7,13 +7,25 @@
     <title>PyWebron 控制面板</title>
 </head>
 <script>
+    console.log('[Script] ========== 脚本开始执行 ==========');
+    console.log('[Script] document.readyState:', document.readyState);
+    console.log('[Script] window.pywebron:', window.pywebron);
+    console.log('[Script] window.pywebron 类型:', typeof window.pywebron);
+    if (window.pywebron) {
+        console.log('[Script] pywebron.invoke:', typeof window.pywebron.invoke);
+        console.log('[Script] pywebron.stream:', typeof window.pywebron.stream);
+        console.log('[Script] pywebron.window_id:', window.pywebron.window_id);
+        console.log('[Script] pywebron.hasSystemTitleBar:', window.pywebron.hasSystemTitleBar);
+        console.log('[Script] pywebron.isLinux:', window.pywebron.isLinux);
+    }
+
     const $ = id => document.getElementById(id);
     let isMaximized = false, gaugeAnims = {}, chatStream, msgIds = new Set();
-    const FONTS = {percent: 17, label: 12, stats: 14};
+    const FONTS = { percent: 17, label: 12, stats: 14 };
     const MONITORS = [
-        {key: 'cpu', canvas: 'cpuCanvas', header: 'cpuHeader', label: 'CPU 使用率', color: '#00D4FF'},
-        {key: 'ram', canvas: 'memoryCanvas', header: 'ramHeader', label: '内存使用率', color: '#00FF88'},
-        {key: 'vrm', canvas: 'swapCanvas', header: 'vrmHeader', label: '交换区使用率', color: '#FF6B6B'}
+        { key: 'cpu', canvas: 'cpuCanvas', header: 'cpuHeader', label: 'CPU 使用率', color: '#00D4FF' },
+        { key: 'ram', canvas: 'memoryCanvas', header: 'ramHeader', label: '内存使用率', color: '#00FF88' },
+        { key: 'vrm', canvas: 'swapCanvas', header: 'vrmHeader', label: '交换区使用率', color: '#FF6B6B' }
     ];
 
     // IO 监控数据
@@ -21,18 +33,27 @@
     let lastIoData = null;
     let ioDataPoints = [];  // 存储数据点位置用于tooltip
     let ioHoveredIndex = -1;  // 当前悬停的数据点索引
-    const ioHistory = {disk: {read: [], write: [], times: []}, net: {upload: [], download: [], times: []}};
+    const ioHistory = { disk: { read: [], write: [], times: [] }, net: { upload: [], download: [], times: [] } };
     const IO_MAX_POINTS = 5;  // 只保留5个数据点
     const IO_COLORS = {
-        disk: {read: '#00D4FF', write: '#FF6B6B'},
-        net: {upload: '#00FF88', download: '#FFB347'}
+        disk: { read: '#00D4FF', write: '#FF6B6B' },
+        net: { upload: '#00FF88', download: '#FFB347' }
     };
 
     async function windowAction(type) {
-        const map = {min: 'minimize_window', max: 'maximize_window', rep: 'reappear_window', shut: 'shutdown_window'};
+        console.log('[Window] windowAction 调用, type:', type);
+        console.log('[Window] window.pywebron:', window.pywebron);
+        const map = { min: 'minimize_window', max: 'maximize_window', rep: 'reappear_window', shut: 'shutdown_window' };
         const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
+        console.log('[Window] 计算的 action:', action);
         try {
-            const res = await window.pywebron.invoke('window_controls_invoke', {control_type: map[action]}, 5000);
+            if (!window.pywebron?.invoke) {
+                console.error('[Window] pywebron.invoke 不可用');
+                return;
+            }
+            console.log('[Window] 调用 invoke, command:', 'window_controls_invoke', 'params:', { control_type: map[action] });
+            const res = await window.pywebron.invoke('window_controls_invoke', { control_type: map[action] }, 5000);
+            console.log('[Window] invoke 返回结果:', res);
             if (res?.code === 200) {
                 isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
                 console.log('[Window] isMaximized after=', isMaximized);
@@ -44,7 +65,7 @@
                     : '<rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>';
             }
         } catch (e) {
-            console.error('[Window]', e.message);
+            console.error('[Window] 错误:', e.message, e.stack);
         }
     }
 
@@ -56,7 +77,7 @@
         const cx = rect.width / 2, cy = rect.height / 2, r = (Math.min(cx, cy) - 10) * 1.08, lw = 8;
         const id = canvas.id;
         let cur = gaugeAnims[id]?.cur || 0;
-        gaugeAnims[id] = {val, cur};
+        gaugeAnims[id] = { val, cur };
 
         const render = v => {
             ctx.clearRect(0, 0, rect.width, rect.height);
@@ -106,7 +127,7 @@
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
         const w = rect.width, h = rect.height;
-        const pad = {t: 20, r: 15, b: 35, l: 55};
+        const pad = { t: 20, r: 15, b: 35, l: 55 };
         const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
 
         ctx.clearRect(0, 0, w, h);
@@ -145,11 +166,11 @@
         // 存储每个数据点的信息
         for (let i = 0; i < effectiveLen; i++) {
             const x = getX(i);
-            const pointData = {x, time: history.times[i], values: {}};
+            const pointData = { x, time: history.times[i], values: {} };
             keys.forEach((key, ki) => {
                 const val = history[key][i];
                 const y = pad.t + ch * (1 - Math.min(val, yMax) / yMax);
-                pointData.values[key] = {val, y, label: labels[ki], color: colors[key]};
+                pointData.values[key] = { val, y, label: labels[ki], color: colors[key] };
             });
             ioDataPoints.push(pointData);
         }
@@ -357,7 +378,7 @@
     }
 
     function updateIoData(time, ios) {
-        lastIoData = {time, ios};
+        lastIoData = { time, ios };
 
         // 获取速度值
         const diskReadKB = ios.disk_io.read_speed;
@@ -418,6 +439,9 @@
     }
 
     async function startMonitoring() {
+        console.log('[Monitor] startMonitoring 调用');
+        console.log('[Monitor] window.pywebron:', window.pywebron);
+        console.log('[Monitor] window.pywebron?.stream:', window.pywebron?.stream);
         if (!window.pywebron?.stream) {
             console.log('[Monitor] stream API not ready, retrying...');
             return setTimeout(startMonitoring, 100);
@@ -427,6 +451,7 @@
             console.log('[Monitor] Connecting to stream...');
             const stream = await window.pywebron.stream('system_monitoring_stream');
             console.log('[Monitor] Connected in', (performance.now() - t0).toFixed(1), 'ms');
+            console.log('[Monitor] stream 对象:', stream);
             let firstData = true;
             stream.recv(data => {
                 console.log('[Monitor] Data received:', JSON.stringify(data));
@@ -455,58 +480,99 @@
                 setTimeout(startMonitoring, 1000);
             });
         } catch (e) {
-            console.error('[Monitor] Error:', e);
+            console.error('[Monitor] Error:', e, e.stack);
             setTimeout(startMonitoring, 1000);
         }
     }
 
     async function startChat() {
-        if (!window.pywebron?.stream) return setTimeout(startChat, 100);
+        console.log('[Chat] startChat 调用');
+        console.log('[Chat] window.pywebron:', window.pywebron);
+        console.log('[Chat] window.pywebron?.stream:', window.pywebron?.stream);
+        if (!window.pywebron?.stream) {
+            console.log('[Chat] stream API not ready, retrying...');
+            return setTimeout(startChat, 100);
+        }
         try {
+            console.log('[Chat] Connecting to chat stream...');
             chatStream = await window.pywebron.stream('chat_room_stream');
+            console.log('[Chat] Connected, chatStream:', chatStream);
             chatStream.recv(displayMsg);
         } catch (e) {
-            console.error('[Chat]', e);
+            console.error('[Chat] Error:', e, e.stack);
         }
     }
 
     async function downloadFile() {
+        console.log('[Download] downloadFile 调用');
         const btn = $('downloadBtn');
-        if (!btn) return;
+        if (!btn) {
+            console.error('[Download] downloadBtn 不存在');
+            return;
+        }
         btn.disabled = true;
         try {
+            console.log('[Download] window.pywebron:', window.pywebron);
+            console.log('[Download] window.pywebron?.invoke:', window.pywebron?.invoke);
+            if (!window.pywebron?.invoke) {
+                console.error('[Download] Error: pywebron API not available');
+                return;
+            }
+            console.log('[Download] 调用 invoke: file_download_invoke');
             const res = await window.pywebron.invoke('file_download_invoke');
             console.log('[Download] Result:', res);
         } catch (e) {
-            console.error('[Download] Error:', e);
+            console.error('[Download] Error:', e, e.stack);
         } finally {
             btn.disabled = false;
         }
     }
 
     async function runCpuTask() {
+        console.log('[CPUTask] runCpuTask 调用');
         const btn = $('cpuTaskBtn');
-        if (!btn) return;
+        if (!btn) {
+            console.error('[CPUTask] cpuTaskBtn 不存在');
+            return;
+        }
         btn.disabled = true;
         try {
+            console.log('[CPUTask] window.pywebron:', window.pywebron);
+            console.log('[CPUTask] window.pywebron?.invoke:', window.pywebron?.invoke);
+            if (!window.pywebron?.invoke) {
+                console.error('[CPUTask] Error: pywebron API not available');
+                return;
+            }
+            console.log('[CPUTask] 调用 invoke: cpu_intensive_task_invoke_command');
             const res = await window.pywebron.invoke('cpu_intensive_task_invoke_command');
             console.log('[CPUTask] Result:', res);
         } catch (e) {
-            console.error('[CPUTask] Error:', e);
+            console.error('[CPUTask] Error:', e, e.stack);
         } finally {
             btn.disabled = false;
         }
     }
 
     async function createNewWindow() {
+        console.log('[CreateWindow] createNewWindow 调用');
         const btn = $('createWindowBtn');
-        if (!btn) return;
+        if (!btn) {
+            console.error('[CreateWindow] createWindowBtn 不存在');
+            return;
+        }
         btn.disabled = true;
         try {
+            console.log('[CreateWindow] window.pywebron:', window.pywebron);
+            console.log('[CreateWindow] window.pywebron?.invoke:', window.pywebron?.invoke);
+            if (!window.pywebron?.invoke) {
+                console.error('[CreateWindow] Error: pywebron API not available');
+                return;
+            }
+            console.log('[CreateWindow] 调用 invoke: running_create_window_invoke_handle');
             const res = await window.pywebron.invoke('running_create_window_invoke_handle');
             console.log('[CreateWindow] Result:', res);
         } catch (e) {
-            console.error('[CreateWindow] Error:', e);
+            console.error('[CreateWindow] Error:', e, e.stack);
         } finally {
             btn.disabled = false;
         }
@@ -548,44 +614,66 @@
     function sendMsg() {
         const input = $('chatInput'), msg = input.value.trim();
         if (!msg || !chatStream?.send) return;
-        displayMsg({type: 'message', message: msg, window_id: window.pywebron.window_id}, true);
+        displayMsg({ type: 'message', message: msg, window_id: window.pywebron.window_id }, true);
         chatStream.send(msg);
         input.value = '';
     }
 
     async function init() {
-        // 有系统标题栏时，添加类名以占满整个窗口
+        console.log('[Init] ========== init 函数开始执行 ==========');
+        console.log('[Init] window.pywebron:', window.pywebron);
+        console.log('[Init] window.pywebron 类型:', typeof window.pywebron);
+        if (window.pywebron) {
+            console.log('[Init] pywebron.invoke:', typeof window.pywebron.invoke);
+            console.log('[Init] pywebron.stream:', typeof window.pywebron.stream);
+            console.log('[Init] pywebron.window_id:', window.pywebron.window_id);
+            console.log('[Init] pywebron.hasSystemTitleBar:', window.pywebron.hasSystemTitleBar);
+            console.log('[Init] pywebron.isLinux:', window.pywebron.isLinux);
+        } else {
+            console.log('[Init] pywebron 未定义!');
+        }
+
         if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
+            console.log('[Init] 检测到系统标题栏');
             const appRoot = document.getElementById('app');
             if (appRoot) {
                 appRoot.classList.add('has-system-title-bar');
+                console.log('[Init] 已添加 has-system-title-bar 类');
             }
         }
 
+        console.log('[Init] 开始初始化监控仪表盘');
         MONITORS.forEach(m => {
             $(m.header).style.fontSize = FONTS.stats + 'px';
             drawGauge($(m.canvas), 0, '', m.color, false);
         });
+        console.log('[Init] 监控仪表盘初始化完成');
+
+        console.log('[Init] 设置 IO 图表悬停事件');
         setupIoChartHover();
 
-        // Linux专用：设置窗口拖动
         if (window.pywebron?.isLinux) {
+            console.log('[Init] Linux 系统，设置窗口拖动');
             const header = $('windowHeader');
             if (header) {
                 header.addEventListener('mousedown', (e) => {
-                    // 排除按钮区域
                     if (e.target.closest('.h-ctrls') || e.target.closest('.win-btn')) return;
+                    console.log('[Init] 开始拖动窗口');
                     window.pywebron.startDrag(1);
                 });
-                // 双击最大化/还原
                 header.addEventListener('dblclick', (e) => {
                     if (e.target.closest('.h-ctrls') || e.target.closest('.win-btn')) return;
+                    console.log('[Init] 双击切换最大化');
                     windowAction('toggle');
                 });
             }
         }
 
+        console.log('[Init] 启动监控和聊天服务');
         await Promise.all([startMonitoring(), startChat()]);
+        console.log('[Init] 监控和聊天服务启动完成');
+
+        console.log('[Init] 绑定事件监听器');
         $('chatSendBtn')?.addEventListener('click', sendMsg);
         $('chatInput')?.addEventListener('keypress', e => e.key === 'Enter' && sendMsg());
         $('downloadBtn')?.addEventListener('click', downloadFile);
@@ -593,176 +681,192 @@
         $('createWindowBtn')?.addEventListener('click', createNewWindow);
         $('diskTab')?.addEventListener('click', () => switchIoType('disk'));
         $('netTab')?.addEventListener('click', () => switchIoType('net'));
+        console.log('[Init] ========== init 函数执行完成 ==========');
     }
 
-    document.readyState === 'interactive' ? init() : document.addEventListener('DOMContentLoaded', init, {once: true});
+    console.log('[Script] 准备调用 init 函数');
+    console.log('[Script] document.readyState:', document.readyState);
+    if (document.readyState === 'interactive') {
+        console.log('[Script] document.readyState 是 interactive, 直接调用 init()');
+        init();
+    } else {
+        console.log('[Script] document.readyState 不是 interactive, 添加 DOMContentLoaded 监听器');
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[Script] DOMContentLoaded 事件触发');
+            init();
+        }, { once: true });
+    }
+    console.log('[Script] ========== 脚本初始化代码执行完毕 ==========');
 </script>
 
 <body>
-<div class='app'>
-    <div class="header" id="windowHeader">
-        <div class="h-left">
-            <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-                <polyline points="2 17 12 22 22 17"/>
-                <polyline points="2 12 12 17 22 12"/>
-            </svg>
-            <span class="h-title">PyWebron 控制面板</span>
+    <div class='app'>
+        <div class="header" id="windowHeader">
+            <div class="h-left">
+                <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                    <polyline points="2 17 12 22 22 17" />
+                    <polyline points="2 12 12 17 22 12" />
+                </svg>
+                <span class="h-title">PyWebron 控制面板</span>
+            </div>
+            <div class="h-ctrls">
+                <button class="win-btn" onclick="windowAction('min')" title="最小化">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="12" x2="20" y2="12" />
+                    </svg>
+                </button>
+                <button id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <rect x="4" y="4" width="16" height="16" rx="1" />
+                    </svg>
+                </button>
+                <button class="win-btn close" onclick="windowAction('shut')" title="关闭">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
         </div>
-        <div class="h-ctrls">
-            <button class="win-btn" onclick="windowAction('min')" title="最小化">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="4" y1="12" x2="20" y2="12"/>
-                </svg>
-            </button>
-            <button id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="1.5">
-                    <rect x="4" y="4" width="16" height="16" rx="1"/>
-                </svg>
-            </button>
-            <button class="win-btn close" onclick="windowAction('shut')" title="关闭">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
+        <div class="content">
+            <div class="left">
+                <div class="card monitor">
+                    <div class="card-h">
+                        <div class="card-icon-wrap">
+                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" />
+                                <line x1="8" y1="21" x2="16" y2="21" />
+                                <line x1="12" y1="17" x2="12" y2="21" />
+                            </svg>
+                        </div>
+                        <span>系统监控</span>
+                    </div>
+                    <div class="card-b">
+                        <div class="m-gauges">
+                            <div class="m-item">
+                                <div class="m-canvas">
+                                    <canvas id="cpuCanvas"></canvas>
+                                </div>
+                                <div id="cpuHeader" class="m-label">CPU使用率</div>
+                            </div>
+                            <div class="m-item">
+                                <div class="m-canvas">
+                                    <canvas id="memoryCanvas"></canvas>
+                                </div>
+                                <div id="ramHeader" class="m-label">内存使用率</div>
+                            </div>
+                            <div class="m-item">
+                                <div class="m-canvas">
+                                    <canvas id="swapCanvas"></canvas>
+                                </div>
+                                <div id="vrmHeader" class="m-label">交换区使用率</div>
+                            </div>
+                        </div>
+                        <div class="m-io">
+                            <div class="io-header">
+                                <div class="io-tabs">
+                                    <button id="diskTab" class="io-tab active" onclick="switchIoType('disk')">磁盘IO
+                                    </button>
+                                    <button id="netTab" class="io-tab" onclick="switchIoType('net')">网络IO</button>
+                                </div>
+                                <div class="io-stats">
+                                    <div class="io-stat"><span class="io-stat-label" id="ioLabel1">总读取</span><span
+                                            class="io-stat-val" id="ioVal1">0 GB</span></div>
+                                    <div class="io-stat"><span class="io-stat-label" id="ioLabel2">总写入</span><span
+                                            class="io-stat-val" id="ioVal2">0 GB</span></div>
+                                </div>
+                                <div class="io-legend" id="ioLegend">
+                                    <div class="io-leg-item"><span class="io-leg-color" id="ioColor1"
+                                            style="background:#00D4FF"></span><span id="ioLegText1">读取</span>
+                                    </div>
+                                    <div class="io-leg-item"><span class="io-leg-color" id="ioColor2"
+                                            style="background:#FF6B6B"></span><span id="ioLegText2">写入</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="io-chart">
+                                <canvas id="ioCanvas"></canvas>
+                                <div id="ioTooltip" class="io-tooltip"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card chat">
+                    <div class="card-h">
+                        <div class="card-icon-wrap">
+                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                            </svg>
+                        </div>
+                        <span>聊天室</span>
+                    </div>
+                    <div class="card-b chat-body">
+                        <div id="welcomeMessage" class="chat-welcome">欢迎加入聊天室</div>
+                        <div id="chatMessages" class="chat-msgs"></div>
+                    </div>
+                    <div class="chat-foot">
+                        <input type="text" id="chatInput" class="chat-in" placeholder="输入消息按回车发送..." maxlength="200">
+                        <button id="chatSendBtn" class="chat-send">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13" />
+                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="right">
+                <div class="card invoke-cards">
+                    <div class="card-b">
+                        <button id="downloadBtn" class="dl-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            <span>下载文件</span>
+                        </button>
+                        <button id="cpuTaskBtn" class="dl-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                            </svg>
+                            <span>执行 CPU 密集任务</span>
+                        </button>
+                        <button id="createWindowBtn" class="dl-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <line x1="12" y1="8" x2="12" y2="16" />
+                                <line x1="8" y1="12" x2="16" y2="12" />
+                            </svg>
+                            <span>创建新窗口</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="card terminal">
+                    <div class="card-h">
+                        <div class="card-icon-wrap">
+                            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="4 17 10 11 4 5" />
+                                <line x1="12" y1="19" x2="20" y2="19" />
+                            </svg>
+                        </div>
+                        <span>终端日志</span>
+                    </div>
+                    <div class="card-b terminal-body" id="terminalLogs"></div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="content">
-        <div class="left">
-            <div class="card monitor">
-                <div class="card-h">
-                    <div class="card-icon-wrap">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2"/>
-                            <line x1="8" y1="21" x2="16" y2="21"/>
-                            <line x1="12" y1="17" x2="12" y2="21"/>
-                        </svg>
-                    </div>
-                    <span>系统监控</span>
-                </div>
-                <div class="card-b">
-                    <div class="m-gauges">
-                        <div class="m-item">
-                            <div class="m-canvas">
-                                <canvas id="cpuCanvas"></canvas>
-                            </div>
-                            <div id="cpuHeader" class="m-label">CPU使用率</div>
-                        </div>
-                        <div class="m-item">
-                            <div class="m-canvas">
-                                <canvas id="memoryCanvas"></canvas>
-                            </div>
-                            <div id="ramHeader" class="m-label">内存使用率</div>
-                        </div>
-                        <div class="m-item">
-                            <div class="m-canvas">
-                                <canvas id="swapCanvas"></canvas>
-                            </div>
-                            <div id="vrmHeader" class="m-label">交换区使用率</div>
-                        </div>
-                    </div>
-                    <div class="m-io">
-                        <div class="io-header">
-                            <div class="io-tabs">
-                                <button id="diskTab" class="io-tab active" onclick="switchIoType('disk')">磁盘IO
-                                </button>
-                                <button id="netTab" class="io-tab" onclick="switchIoType('net')">网络IO</button>
-                            </div>
-                            <div class="io-stats">
-                                <div class="io-stat"><span class="io-stat-label" id="ioLabel1">总读取</span><span
-                                        class="io-stat-val" id="ioVal1">0 GB</span></div>
-                                <div class="io-stat"><span class="io-stat-label" id="ioLabel2">总写入</span><span
-                                        class="io-stat-val" id="ioVal2">0 GB</span></div>
-                            </div>
-                            <div class="io-legend" id="ioLegend">
-                                <div class="io-leg-item"><span class="io-leg-color" id="ioColor1"
-                                                               style="background:#00D4FF"></span><span id="ioLegText1">读取</span>
-                                </div>
-                                <div class="io-leg-item"><span class="io-leg-color" id="ioColor2"
-                                                               style="background:#FF6B6B"></span><span id="ioLegText2">写入</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="io-chart">
-                            <canvas id="ioCanvas"></canvas>
-                            <div id="ioTooltip" class="io-tooltip"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card chat">
-                <div class="card-h">
-                    <div class="card-icon-wrap">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path
-                                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                        </svg>
-                    </div>
-                    <span>聊天室</span>
-                </div>
-                <div class="card-b chat-body">
-                    <div id="welcomeMessage" class="chat-welcome">欢迎加入聊天室</div>
-                    <div id="chatMessages" class="chat-msgs"></div>
-                </div>
-                <div class="chat-foot">
-                    <input type="text" id="chatInput" class="chat-in" placeholder="输入消息按回车发送..."
-                           maxlength="200">
-                    <button id="chatSendBtn" class="chat-send">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="22" y1="2" x2="11" y2="13"/>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-        <div class="right">
-            <div class="card invoke-cards">
-                <div class="card-b">
-                    <button id="downloadBtn" class="dl-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        <span>下载文件</span>
-                    </button>
-                    <button id="cpuTaskBtn" class="dl-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                        </svg>
-                        <span>执行 CPU 密集任务</span>
-                    </button>
-                    <button id="createWindowBtn" class="dl-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
-                        <span>创建新窗口</span>
-                    </button>
-                </div>
-            </div>
-            <div class="card terminal">
-                <div class="card-h">
-                    <div class="card-icon-wrap">
-                        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="4 17 10 11 4 5"/>
-                            <line x1="12" y1="19" x2="20" y2="19"/>
-                        </svg>
-                    </div>
-                    <span>终端日志</span>
-                </div>
-                <div class="card-b terminal-body" id="terminalLogs"></div>
-            </div>
-        </div>
-    </div>
-</div>
 </body>
 <style>
-    html, body {
+    html,
+    body {
         margin: 0;
         padding: 0;
         width: 100%;
@@ -1064,7 +1168,7 @@
         color: #00D4FF;
     }
 
-    .io-tab.active + .io-tab {
+    .io-tab.active+.io-tab {
         border-left-color: rgba(0, 212, 255, .5);
     }
 
@@ -1182,7 +1286,7 @@
         gap: 6px;
     }
 
-    .io-tooltip-row + .io-tooltip-row {
+    .io-tooltip-row+.io-tooltip-row {
         margin-top: 4px;
     }
 
@@ -1415,6 +1519,86 @@
         font-size: 13px;
         text-align: center;
     }
+
+    .resize-area {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 9999;
+    }
+
+    .resize-corner,
+    .resize-edge {
+        position: absolute;
+        pointer-events: auto;
+    }
+
+    .resize-corner.top-left {
+        top: 0;
+        left: 0;
+        width: 10px;
+        height: 10px;
+        cursor: nw-resize;
+    }
+
+    .resize-corner.top-right {
+        top: 0;
+        right: 0;
+        width: 10px;
+        height: 10px;
+        cursor: ne-resize;
+    }
+
+    .resize-corner.bottom-left {
+        bottom: 0;
+        left: 0;
+        width: 10px;
+        height: 10px;
+        cursor: sw-resize;
+    }
+
+    .resize-corner.bottom-right {
+        bottom: 0;
+        right: 0;
+        width: 10px;
+        height: 10px;
+        cursor: se-resize;
+    }
+
+    .resize-edge.top {
+        top: 0;
+        left: 10px;
+        right: 10px;
+        height: 5px;
+        cursor: n-resize;
+    }
+
+    .resize-edge.bottom {
+        bottom: 0;
+        left: 10px;
+        right: 10px;
+        height: 5px;
+        cursor: s-resize;
+    }
+
+    .resize-edge.left {
+        top: 10px;
+        left: 0;
+        width: 5px;
+        bottom: 10px;
+        cursor: w-resize;
+    }
+
+    .resize-edge.right {
+        top: 10px;
+        right: 0;
+        width: 5px;
+        bottom: 10px;
+        cursor: e-resize;
+    }
 </style>
 
 <div id="resize-area" class="resize-area">
@@ -1429,9 +1613,12 @@
 </div>
 
 <script>
+    console.log('[Resize] ========== resize 脚本开始执行 ==========');
+    console.log('[Resize] window.pywebron:', window.pywebron);
     (function () {
-        // 如果有系统标题栏，隐藏 resize-area，避免与系统边框冲突
+        console.log('[Resize] IIFE 开始执行');
         if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
+            console.log('[Resize] 检测到系统标题栏，隐藏 resize-area');
             const resizeArea = document.getElementById('resize-area');
             if (resizeArea) {
                 resizeArea.style.display = 'none';
@@ -1444,6 +1631,7 @@
             'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17
         };
 
+        console.log('[Resize] 设置 resize 事件监听');
         document.querySelectorAll('.resize-edge, .resize-corner').forEach(el => {
             el.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -1459,16 +1647,22 @@
                 else if (el.classList.contains('bottom-left')) edge = 'bottomleft';
                 else if (el.classList.contains('bottom-right')) edge = 'bottomright';
 
-                if (!edge || !window.pywebron?.window_id) return;
+                console.log('[Resize] mousedown on edge:', edge);
+                if (!edge || !window.pywebron?.window_id || !window.pywebron?.invoke) {
+                    console.log('[Resize] 条件不满足，跳过');
+                    return;
+                }
 
-                // 调用 Rust 开始调整大小
+                console.log('[Resize] 调用 __rust_start_resize, window_id:', window.pywebron.window_id, 'hit_test:', HT[edge]);
                 window.pywebron.invoke('__rust_start_resize', {
                     window_id: window.pywebron.window_id,
                     hit_test: HT[edge]
                 });
             });
         });
+        console.log('[Resize] IIFE 执行完成');
     })();
+    console.log('[Resize] ========== resize 脚本执行完毕 ==========');
 </script>
 
 </html>

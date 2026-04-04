@@ -27,9 +27,9 @@ async def window_controls(invoke: app.invoke, struct: WindowControlsStruct):
                 res = app.window.reappear_window(invoke.window_id)
             case "shutdown_window":
                 res = app.window.shutdown_window(invoke.window_id)
-        return await invoke.json_response(200, f'{control_type} 操作成功', res)
+        return await invoke.json_response(200, f"{control_type} 操作成功", res)
     except Exception:
-        return await invoke.json_response(500, f'{control_type} 操作失败', format_exc())
+        return await invoke.json_response(500, f"{control_type} 操作失败", format_exc())
 
 
 @app.invoke.handle("cpu_intensive_task_invoke_command")
@@ -38,9 +38,9 @@ async def cpu_intensive_task(invoke: app.invoke, worker: app.worker):
         start = time()
         task1, task2 = await gather(worker.run(cpu_task, 1), worker.run(cpu_task, 2))
         res = {"res": str(task1 + task2), "time": time() - start}
-        return await invoke.json_response(200, 'cpu 任务测试成功', res)
+        return await invoke.json_response(200, "cpu 任务测试成功", res)
     except Exception:
-        return await invoke.json_response(500, 'cpu 任务测试失败', format_exc())
+        return await invoke.json_response(500, "cpu 任务测试失败", format_exc())
 
 
 @app.invoke.handle("running_create_window_invoke_handle")
@@ -52,37 +52,36 @@ async def running_create_window(invoke: app.invoke):
             height=1200,
             show_title_bar=False,
         )
-        return await invoke.json_response(200, f'运行时创建窗口成功：{res}', res)
+        return await invoke.json_response(200, f"运行时创建窗口成功：{res}", res)
     except Exception:
-        return await invoke.json_response(500, '运行时创建窗口失败', format_exc())
+        return await invoke.json_response(500, "运行时创建窗口失败", format_exc())
 
 
 @app.invoke.handle("file_download_invoke")
 async def file_download(invoke: app.invoke):
     try:
-        source_path = str(Path(PROJECT_ROOT_PATH) /
-                          'assets' / 'src' / 'index.html')
+        source_path = str(Path(PROJECT_ROOT_PATH) / "assets" / "src" / "index.html")
         new_path = await save_file_dialog(str(source_path))
-        return await invoke.json_response(200, '文件保存成功', new_path)
+        return await invoke.json_response(200, "文件保存成功", new_path)
     except Exception:
-        return await invoke.json_response(500, '文件保存失败', format_exc())
+        return await invoke.json_response(500, "文件保存失败", format_exc())
 
 
 @app.stream.handle("system_monitoring_stream")
 async def system_monitoring(stream: app.stream):
     try:
         res = await SystemMonitoring.run(fast_mode=True)
-        await stream.send(200, '监控数据获取成功', res)
+        await stream.send(200, "监控数据获取成功", res)
         await asyncio_sleep(1)
         while True:
             try:
                 res = await SystemMonitoring.run()
-                await stream.send(200, '监控数据获取成功', res)
+                await stream.send(200, "监控数据获取成功", res)
                 await asyncio_sleep(3)
             except Exception:
-                await stream.send(500, '监控数据获取失败', format_exc())
+                await stream.send(500, "监控数据获取失败", format_exc())
     except Exception:
-        await stream.send(500, '监控数据获取失败', format_exc())
+        await stream.send(500, "监控数据获取失败", format_exc())
 
 
 class ChatRoomStruct(app.stream.struct):
@@ -92,29 +91,42 @@ class ChatRoomStruct(app.stream.struct):
 @app.stream.handle("chat_room_stream")
 async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStruct):
     try:
-        await stream.send(200, '欢迎加入聊天室', {"type": "system"}, send_mode=StreamSendModes.BROADCAST)
+        await stream.send(
+            200,
+            "欢迎加入聊天室",
+            {"type": "system"},
+            send_mode=StreamSendModes.BROADCAST,
+        )
         while True:
             match res := await stream.recv():
                 case None:
                     await asyncio_sleep(0.1)
                 case "multicast_test":
-                    (wids := list(app.get_windows().keys())).remove(
-                        stream.window_id)
+                    (wids := list(app.get_windows().keys())).remove(stream.window_id)
                     await stream.send(
-                        200, '组播功能测试', {"type": "chat"},
-                        send_mode=StreamSendModes.MULTICAST, mcast_win_ids=wids[0:1]
+                        200,
+                        "组播功能测试",
+                        {"type": "chat"},
+                        send_mode=StreamSendModes.MULTICAST,
+                        mcast_win_ids=wids[0:1],
                     )
                 case "worker_test":
                     res = await worker.run(cpu_task, n := struct.n)
                     await stream.send(
-                        200, f'Worker 任务完成，n: {n}, result: {res}',
+                        200,
+                        f"Worker 任务完成，n: {n}, result: {res}",
                         {"type": "chat", "result": res, "n": n},
-                        send_mode=StreamSendModes.UNITYCAST
+                        send_mode=StreamSendModes.UNITYCAST,
                     )
                 case _:
-                    await stream.send(200, f'{res}, 收到', {"type": "chat"}, send_mode=StreamSendModes.UNITYCAST)
+                    await stream.send(
+                        200,
+                        f"收到 {res}",
+                        {"type": "chat"},
+                        send_mode=StreamSendModes.UNITYCAST,
+                    )
     except Exception:
-        await stream.send(500, '聊天室错误', format_exc())
+        await stream.send(500, "聊天室错误", format_exc())
 
 
 if __name__ == "__main__":
@@ -127,4 +139,3 @@ if __name__ == "__main__":
         # content_url= 'http://localhost:5173/'
     )
     app.run()
-# sss
