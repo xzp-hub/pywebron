@@ -14,26 +14,28 @@ from .._pywebron_ import (
 class Window:
     @staticmethod
     def register_window(
-            title: str = 'PyWebron App',
-            content_path: str = None,
-            content_url: str = None,
-            width: int = 1200,
-            height: int = 900,
-            icon_path: str = None,
-            show_title_bar: bool = True,
-            enable_resizable: bool = True,
-            enable_devtools: bool = True,
+        title: str = "PyWebron App",
+        content_path: str = None,
+        content_url: str = None,
+        width: int = 1200,
+        height: int = 900,
+        icon_path: str = None,
+        show_title_bar: bool = True,
+        enable_resizable: bool = True,
+        enable_devtools: bool = True,
     ) -> bool:
         if all((content_path, content_url)):
-            raise 'content_path and content_url cannot be used at the same time'
+            raise "content_path and content_url cannot be used at the same time"
 
-        def pather(file_name): return f'{PROJECT_ROOT_PATH}/assets/{file_name}'
+        def pather(file_name):
+            return f"{PROJECT_ROOT_PATH}/assets/{file_name}"
+
         return rust_register_window(
             title=title,
             width=width,
             height=height,
-            content=content_path or content_url or pather('pywebron.html'),
-            icon_path=icon_path or pather('pywebron.png'),
+            content=content_path or content_url or pather("pywebron.html"),
+            icon_path=icon_path or pather("pywebron.png"),
             decorations=show_title_bar,
             resizable=enable_resizable,
             devtools=enable_devtools,
@@ -60,5 +62,5 @@ class Window:
         return rust_start_drag_window(window_id, button, 0, 0)
 
     @staticmethod
-    def setup_drag_region(window_id: int, selector: str = ".header") -> bool:
+    def drag_window(window_id: int, selector: str = ".header") -> bool:
         return rust_setup_drag_region(window_id, selector)

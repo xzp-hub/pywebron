@@ -22,7 +22,7 @@ class SetupDragRegionStruct(app.invoke.struct):
 async def setup_drag_region(invoke: app.invoke, struct: SetupDragRegionStruct):
     try:
         selector = struct.selector
-        res = app.window.setup_drag_region(invoke.window_id, selector)
+        res = app.window.drag_window(invoke.window_id, selector)
         return await invoke.json_response(
             200, "拖拽区域设置成功", {"selector": selector, "result": res}
         )
