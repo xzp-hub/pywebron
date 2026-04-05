@@ -2,7 +2,6 @@ mod configs;
 mod utils;
 
 mod app {
-    pub mod dpi;
     pub mod invoke;
     pub mod stream;
     pub mod window;
@@ -22,15 +21,13 @@ pub use app::*;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 
-// 使用 mimalloc 全局内存分配器（性能优于系统默认分配器）
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL_MIMALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[pymodule]
 fn _pywebron_(pymodule: &Bound<'_, PyModule>) -> PyResult<()> {
-    // 在模块加载时立即设置 DPI 意识（必须在程序启动早期执行）
-    app::dpi::setup_dpi_awareness();
+    utils::setup_dpi_awareness();
 
     pymodule.add_function(wrap_pyfunction!(app::init, pymodule)?)?;
     pymodule.add_function(wrap_pyfunction!(app::run, pymodule)?)?;

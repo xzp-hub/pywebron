@@ -16,7 +16,7 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{
         CallWindowProcW, DefWindowProcW, GetPropW, GetWindowLongPtrW, SetPropW, SetWindowLongPtrW,
         SetWindowPos, GWLP_WNDPROC, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
-        SWP_SHOWWINDOW, WM_NCCALCSIZE, WNDPROC,
+        SWP_SHOWWINDOW, WM_NCCALCSIZE, WNDPROC, SetProcessDPIAware,
     },
 };
 
@@ -34,8 +34,6 @@ unsafe extern "system" fn frameless_proc(
     let orig_proc: WNDPROC = std::mem::transmute(orig_proc_ptr.0);
 
     if msg == WM_NCCALCSIZE {
-        // 无论 wparam 是 TRUE 还是 FALSE，返回 0 都表示客户区覆盖整个窗口
-        // 这会隐藏 WS_THICKFRAME 的可视边框，但保留系统的拖拽缩放功能
         return LRESULT(0);
     }
 
@@ -46,17 +44,14 @@ unsafe extern "system" fn frameless_proc(
     }
 }
 
-/// 将窗口子类化，拦截 WM_NCCALCSIZE 以移除可视边框但保留缩放功能
 #[cfg(target_os = "windows")]
 pub fn make_window_frameless_but_resizable(hwnd: HWND) {
     unsafe {
         let prop_name = windows::core::w!("pywebron_orig_proc");
-        // 避免重复子类化
         if !GetPropW(hwnd, prop_name).0.is_null() {
             return;
         }
 
-        // 添加 WS_THICKFRAME 以允许系统缩放
         use windows::Win32::UI::WindowsAndMessaging::{GWL_STYLE, WS_THICKFRAME};
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         let _ = SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_THICKFRAME.0 as isize);
@@ -66,7 +61,6 @@ pub fn make_window_frameless_but_resizable(hwnd: HWND) {
             let _ = SetPropW(hwnd, prop_name, windows::Win32::Foundation::HANDLE(orig_proc as *mut std::ffi::c_void).into());
         }
 
-        // 刷新窗口框架
         let _ = SetWindowPos(
             hwnd,
             None,
@@ -134,4 +128,42 @@ pub fn set_window_corner_with_retry(hwnd: HWND, pref: WindowCornerPreference, re
         }
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
+}
+
+/// 设置进程 DPI 意识（Windows）
+#[cfg(target_os = "windows")]
+pub fn setup_dpi_awareness() {
+    unsafe {
+        let shcore = b"shcore.dll\0";
+        let hmodule = windows::Win32::System::LibraryLoader::GetModuleHandleA(
+            windows::core::PCSTR(shcore.as_ptr()),
+        );
+
+        if let Ok(hmodule) = hmodule {
+            let proc_name = b"SetProcessDpiAwareness\0";
+            let proc_addr = windows::Win32::System::LibraryLoader::GetProcAddress(
+                hmodule,
+                windows::core::PCSTR(proc_name.as_ptr()),
+            );
+
+            if let Some(addr) = proc_addr {
+                type SetProcessDpiAwarenessFn = unsafe extern "system" fn(u32) -> i32;
+                let func: SetProcessDpiAwarenessFn = std::mem::transmute(addr);
+                let result = func(2);
+
+                if result == 0 {
+                    return;
+                }
+            }
+        }
+
+        let _ = SetProcessDPIAware();
+    }
+}
+
+/// 设置进程 DPI 意识（非 Windows 平台）
+#[cfg(not(target_os = "windows"))]
+pub fn setup_dpi_awareness() {
+    std::env::set_var("GDK_SCALE", "1");
+    std::env::set_var("GDK_DPI_SCALE", "1");
 }

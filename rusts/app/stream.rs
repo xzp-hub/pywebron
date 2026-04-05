@@ -7,9 +7,7 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 pub fn load_js_api() -> String {
-    let js_content = include_str!("../../assets/pywebron.js");
-    let resize_content = include_str!("../../assets/resize.js");
-    format!("{};{}", js_content, resize_content)
+    include_str!("../../assets/pywebron.js").to_string()
 }
 
 // === Stream 接收数据队列（有界队列防止 OOM，handle_id:window_id -> Queue） ===
