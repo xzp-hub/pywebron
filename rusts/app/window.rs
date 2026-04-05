@@ -106,7 +106,7 @@ fn create_window_in_event_loop(
         .with_decorations(config.decorations)
         .with_resizable(config.resizable)
         .with_min_inner_size(LogicalSize::new(400u32, 300u32))
-        .with_visible(true)
+        .with_transparent(true)
         .with_undecorated_shadow(false);
 
     eprintln!(
@@ -122,7 +122,7 @@ fn create_window_in_event_loop(
         .with_decorations(config.decorations)
         .with_resizable(config.resizable)
         .with_min_inner_size(PhysicalSize::new(400u32, 300u32))
-        .with_visible(true);
+        .with_transparent(true);
 
     let window = match window_builder.build(event_loop) {
         Ok(w) => w,
@@ -137,15 +137,15 @@ fn create_window_in_event_loop(
         use tao::platform::windows::WindowExtWindows;
         let hwnd = window.hwnd() as *mut std::ffi::c_void;
 
-        // Windows 背景色设置（深紫色，与加载动画背景一致)
-        use windows::Win32::Graphics::Gdi::CreateSolidBrush;
+        // Windows 透明背景设置
+        use windows::Win32::Graphics::Gdi::{GetStockObject, BLACK_BRUSH};
         use windows::Win32::UI::WindowsAndMessaging::{SetClassLongPtrW, GCLP_HBRBACKGROUND};
 
         unsafe {
             let win_hwnd = windows::Win32::Foundation::HWND(hwnd);
 
             // 设置窗口背景为深紫色（与加载动画背景一致)
-            let hbrush = CreateSolidBrush(windows::Win32::Foundation::COLORREF(0x004B2D2D));
+            let hbrush = GetStockObject(BLACK_BRUSH);
             let _ = SetClassLongPtrW(win_hwnd, GCLP_HBRBACKGROUND, hbrush.0 as isize);
 
             // 如果窗口可调整大小，确保有 WS_THICKFRAME 样式
@@ -185,8 +185,8 @@ fn create_window_in_event_loop(
         });
         let builder = WebViewBuilder::new()
             .with_devtools(config.devtools)
-            .with_transparent(false)
-            .with_background_color((45, 45, 75, 255))
+            .with_transparent(true)
+            .with_background_color((0, 0, 0, 0))
             .with_initialization_script(&format!(
                 "window.pywebron={};{}",
                 serde_json::to_string(&window_config_json).unwrap_or_default(),
