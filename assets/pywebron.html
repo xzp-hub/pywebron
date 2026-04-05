@@ -663,22 +663,11 @@
         console.log('[Init] 设置 IO 图表悬停事件');
         setupIoChartHover();
 
-        if (window.pywebron?.isLinux) {
-            console.log('[Init] Linux 系统，设置窗口拖动');
-            const header = $('windowHeader');
-            if (header) {
-                header.addEventListener('mousedown', (e) => {
-                    if (e.target.closest('.h-ctrls') || e.target.closest('.win-btn')) return;
-                    console.log('[Init] 开始拖动窗口');
-                    window.pywebron.startDrag(1);
-                });
-                header.addEventListener('dblclick', (e) => {
-                    if (e.target.closest('.h-ctrls') || e.target.closest('.win-btn')) return;
-                    console.log('[Init] 双击切换最大化');
-                    windowAction('toggle');
-                });
-            }
-        }
+        console.log('[Init] 设置窗口拖动');
+        const result = await window.pywebron.invoke('setup_drag_region_invoke', {
+            selector: '#windowHeader'
+        });
+        console.log('[PyWebron JS] setup_drag_region_invoke result:', result);
 
         console.log('[Init] 启动监控和聊天服务');
         await Promise.all([startMonitoring(), startChat()]);
@@ -941,7 +930,6 @@
     .h-ctrls {
         display: flex;
         gap: 0;
-        -webkit-app-region: no-drag;
     }
 
     .win-btn {

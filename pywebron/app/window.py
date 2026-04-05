@@ -7,6 +7,7 @@ from .._pywebron_ import (
     rust_reappear_window,
     rust_shutdown_window,
     rust_start_drag_window,
+    rust_setup_drag_region,
 )
 
 
@@ -57,3 +58,7 @@ class Window:
     @staticmethod
     def start_drag_window(window_id: int, button: int = 1) -> bool:
         return rust_start_drag_window(window_id, button, 0, 0)
+
+    @staticmethod
+    def setup_drag_region(window_id: int, selector: str = ".header") -> bool:
+        return rust_setup_drag_region(window_id, selector)

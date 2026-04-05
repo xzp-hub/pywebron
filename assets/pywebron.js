@@ -299,7 +299,9 @@
                 window_id: this.window_id,
                 button: button
             }).catch(e => console.warn('[Drag] Failed:', e.message));
-        }
+        },
+
+
     });
 
     console.log('[PyWebron JS] ========== API 初始化完成 ==========');

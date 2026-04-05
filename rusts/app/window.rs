@@ -109,8 +109,10 @@ fn create_window_in_event_loop(
         .with_transparent(true)
         .with_undecorated_shadow(false);
 
-    eprintln!("[Window] 创建窗口：{} | decorations={} | size={}x{}", 
-              config.title, config.decorations, config.width, config.height);
+    eprintln!(
+        "[Window] 创建窗口：{} | decorations={} | size={}x{}",
+        config.title, config.decorations, config.width, config.height
+    );
 
     #[cfg(not(target_os = "windows"))]
     let window_builder = WindowBuilder::new()
@@ -210,7 +212,7 @@ fn create_window_in_event_loop(
             if let Some(visual) = vbox.screen().and_then(|s| s.rgba_visual()) {
                 vbox.set_visual(Some(&visual));
             }
-            
+
             // 强制设置 GTK 窗口的缩放因子为 1.0，避免 DPI 缩放问题
             use tao::platform::unix::WindowExtUnix;
             let gtk_window = window.gtk_window();
@@ -265,37 +267,44 @@ fn create_window_in_event_loop(
                     }
                 }
             };
-            
+
             // 关键：使用 data URL 而不是直接 with_html，这样可以提供 base URL
             let file_path = std::path::Path::new(&config.content);
             let absolute_path = if file_path.is_absolute() {
                 file_path.to_path_buf()
             } else {
-                std::env::current_dir()
-                    .unwrap_or_default()
-                    .join(file_path)
+                std::env::current_dir().unwrap_or_default().join(file_path)
             };
-            
+
             // 获取文件所在目录作为 base URL
             let base_dir = absolute_path.parent().unwrap_or(std::path::Path::new(""));
-            
+
             #[cfg(target_os = "windows")]
-            let base_url = format!("file:///{}/", base_dir.display().to_string().replace("\\", "/"));
-            
+            let base_url = format!(
+                "file:///{}/",
+                base_dir.display().to_string().replace("\\", "/")
+            );
+
             #[cfg(not(target_os = "windows"))]
             let base_url = format!("file://{}/", base_dir.display());
-            
+
             eprintln!("[Window] HTML base URL: {}", base_url);
-            
+
             // 在 HTML 中注入 base 标签
             let html_with_base = if html_content.contains("<head>") {
                 html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
             } else if html_content.contains("<html>") {
-                html_content.replace("<html>", &format!("<html><head><base href=\"{}\"></head>", base_url))
+                html_content.replace(
+                    "<html>",
+                    &format!("<html><head><base href=\"{}\"></head>", base_url),
+                )
             } else {
-                format!("<html><head><base href=\"{}\"></head><body>{}</body></html>", base_url, html_content)
+                format!(
+                    "<html><head><base href=\"{}\"></head><body>{}</body></html>",
+                    base_url, html_content
+                )
             };
-            
+
             builder.with_html(&html_with_base).build(&window)
         } else {
             builder.with_html(&config.content).build(&window)
@@ -313,12 +322,18 @@ fn create_window_in_event_loop(
     #[cfg(target_os = "windows")]
     if !hwnd.is_null() {
         if config.resizable && !config.decorations {
-            eprintln!("[Window] 调用 make_window_frameless_but_resizable | resizable={} | decorations={}", 
-                      config.resizable, config.decorations);
-            crate::utils::make_window_frameless_but_resizable(windows::Win32::Foundation::HWND(hwnd));
+            eprintln!(
+                "[Window] 调用 make_window_frameless_but_resizable | resizable={} | decorations={}",
+                config.resizable, config.decorations
+            );
+            crate::utils::make_window_frameless_but_resizable(windows::Win32::Foundation::HWND(
+                hwnd,
+            ));
         } else {
-            eprintln!("[Window] 跳过 make_window_frameless_but_resizable | resizable={} | decorations={}", 
-                      config.resizable, config.decorations);
+            eprintln!(
+                "[Window] 跳过 make_window_frameless_but_resizable | resizable={} | decorations={}",
+                config.resizable, config.decorations
+            );
         }
     }
 
@@ -466,19 +481,29 @@ fn handle_ipc_message(
                         });
                         return;
                     }
-                                        
+
                     // 特殊处理：Windows 无边框窗口调整大小
                     #[cfg(target_os = "windows")]
                     if handle_id == "__rust_start_resize" {
-                        use windows::Win32::UI::WindowsAndMessaging::{SendMessageW, WM_NCLBUTTONDOWN};
                         use windows::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture;
+                        use windows::Win32::UI::WindowsAndMessaging::{
+                            SendMessageW, WM_NCLBUTTONDOWN,
+                        };
 
-                        let ht = payload.get("hit_test").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                        let win_id = payload.get("window_id").and_then(|v| v.as_u64()).unwrap_or(0);
+                        let ht = payload
+                            .get("hit_test")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0) as usize;
+                        let win_id = payload
+                            .get("window_id")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
 
                         if let Some(window) = WINDOWS.get(&win_id) {
                             use tao::platform::windows::WindowExtWindows;
-                            let hwnd = windows::Win32::Foundation::HWND(window.hwnd() as *mut std::ffi::c_void);
+                            let hwnd = windows::Win32::Foundation::HWND(
+                                window.hwnd() as *mut std::ffi::c_void
+                            );
                             unsafe {
                                 let _ = ReleaseCapture();
                                 let _ = SendMessageW(
@@ -489,7 +514,7 @@ fn handle_ipc_message(
                                 );
                             }
                         }
-                                            
+
                         // 发送成功响应
                         let response = serde_json::json!({
                             "window_id": window_id,
@@ -519,11 +544,17 @@ fn handle_ipc_message(
                     ))]
                     if handle_id == "__rust_start_resize" {
                         use gtk::gdk::WindowEdge;
-                        use gtk::prelude::{WidgetExt, SeatExt};
-                        
-                        let ht = payload.get("hit_test").and_then(|v| v.as_u64()).unwrap_or(0) as i32;
-                        let win_id = payload.get("window_id").and_then(|v| v.as_u64()).unwrap_or(0);
-                        
+                        use gtk::prelude::{SeatExt, WidgetExt};
+
+                        let ht = payload
+                            .get("hit_test")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0) as i32;
+                        let win_id = payload
+                            .get("window_id")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0);
+
                         if let Some(window) = WINDOWS.get(&win_id) {
                             use tao::platform::unix::WindowExtUnix;
                             let gtk_window = window.gtk_window();
@@ -539,11 +570,13 @@ fn handle_ipc_message(
                                     17 => WindowEdge::SouthEast,
                                     _ => WindowEdge::West,
                                 };
-                                if let Some(device) = gdk_window.display().default_seat().and_then(|s| s.pointer()) {
+                                if let Some(device) = gdk_window
+                                    .display()
+                                    .default_seat()
+                                    .and_then(|s| s.pointer())
+                                {
                                     gdk_window.begin_resize_drag_for_device(
-                                        edge,
-                                        &device,
-                                        0, // button
+                                        edge, &device, 0, // button
                                         0, // root_x
                                         0, // root_y
                                         0, // timestamp (0 = current time)
@@ -551,7 +584,7 @@ fn handle_ipc_message(
                                 }
                             }
                         }
-                        
+
                         // 发送成功响应
                         let response = serde_json::json!({
                             "window_id": window_id,
@@ -869,6 +902,89 @@ pub fn start_drag_window(id: u64, button: u32, _x: i32, _y: i32) -> PyResult<boo
 )))]
 #[pyfunction(name = "rust_start_drag_window")]
 pub fn start_drag_window(_id: u64, _button: u32, _x: i32, _y: i32) -> PyResult<bool> {
+    Ok(true)
+}
+
+#[pyfunction(name = "rust_setup_drag_region")]
+pub fn setup_drag_region(id: u64, selector: &str) -> PyResult<bool> {
+    let proxy = EVENT_PROXIES
+        .get(&id)
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
+
+    #[cfg(target_os = "windows")]
+    {
+        let js_code = format!(
+            r#"(function() {{
+                const el = document.querySelector('{}');
+                if (el) {{
+                    el.style.webkitAppRegion = 'drag';
+                    el.querySelectorAll('button, input, [onclick], .win-btn').forEach(child => {{
+                        child.style.webkitAppRegion = 'no-drag';
+                    }});
+                }}
+            }})()"#,
+            selector
+        );
+        let _ = proxy.send_event(UserEvent::EvaluateScript {
+            window_id: id,
+            script: js_code,
+        });
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let js_code = format!(
+            r#"(function() {{
+                const el = document.querySelector('{}');
+                if (el) {{
+                    el.style.webkitAppRegion = 'drag';
+                    el.querySelectorAll('button, input, [onclick], .win-btn').forEach(child => {{
+                        child.style.webkitAppRegion = 'no-drag';
+                    }});
+                }}
+            }})()"#,
+            selector
+        );
+        let _ = proxy.send_event(UserEvent::EvaluateScript {
+            window_id: id,
+            script: js_code,
+        });
+    }
+
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    {
+        let js_code = format!(
+            r#"(function() {{
+                const el = document.querySelector('{}');
+                if (el) {{
+                    el.addEventListener('mousedown', (e) => {{
+                        if (e.target.closest('button, input, [onclick], .win-btn')) return;
+                        if (window.pywebron && window.pywebron.startDrag) {{
+                            window.pywebron.startDrag(1);
+                        }}
+                    }});
+                    el.addEventListener('dblclick', (e) => {{
+                        if (e.target.closest('button, input, [onclick], .win-btn')) return;
+                        if (window.pywebron && window.pywebron.invoke) {{
+                            window.pywebron.invoke('window_controls_invoke', {{ control_type: 'toggle' }});
+                        }}
+                    }});
+                }}
+            }})()"#,
+            selector
+        );
+        let _ = proxy.send_event(UserEvent::EvaluateScript {
+            window_id: id,
+            script: js_code,
+        });
+    }
+
     Ok(true)
 }
 

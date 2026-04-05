@@ -14,6 +14,22 @@ class WindowControlsStruct(app.invoke.struct):
     control_type: str
 
 
+class SetupDragRegionStruct(app.invoke.struct):
+    selector: str = ".header"
+
+
+@app.invoke.handle("setup_drag_region_invoke")
+async def setup_drag_region(invoke: app.invoke, struct: SetupDragRegionStruct):
+    try:
+        selector = struct.selector
+        res = app.window.setup_drag_region(invoke.window_id, selector)
+        return await invoke.json_response(
+            200, "拖拽区域设置成功", {"selector": selector, "result": res}
+        )
+    except Exception:
+        return await invoke.json_response(500, "拖拽区域设置失败", format_exc())
+
+
 @app.invoke.handle("window_controls_invoke")
 async def window_controls(invoke: app.invoke, struct: WindowControlsStruct):
     control_type, res = None, None
