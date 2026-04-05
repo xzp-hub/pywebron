@@ -1,7 +1,5 @@
 (function () {
     console.log('[PyWebron JS] ========== 脚本开始执行 ==========');
-    console.log('[PyWebron JS] window.__pywebron_initialized:', window.__pywebron_initialized);
-    console.log('[PyWebron JS] window.pywebron (before):', window.pywebron);
 
     if (window.__pywebron_initialized) {
         console.log('[PyWebron JS] 已经初始化过，跳过');
@@ -21,16 +19,19 @@
     const isLinux = navigator.userAgent.toLowerCase().includes('linux') ||
         navigator.platform.toLowerCase().includes('linux');
 
-    const savedWindowId = window.pywebron?.window_id;
-    const savedHasSystemTitleBar = window.pywebron?.hasSystemTitleBar;
+    const savedConfig = window.pywebron || {};
 
-    console.log('[PyWebron JS] savedWindowId:', savedWindowId);
-    console.log('[PyWebron JS] savedHasSystemTitleBar:', savedHasSystemTitleBar);
+    console.log('[PyWebron JS] savedConfig:', savedConfig);
     console.log('[PyWebron JS] isLinux:', isLinux);
 
     window.pywebron = {
-        window_id: savedWindowId,
-        hasSystemTitleBar: savedHasSystemTitleBar,
+        window_id: savedConfig.window_id,
+        title: savedConfig.title,
+        width: savedConfig.width,
+        height: savedConfig.height,
+        hasSystemTitleBar: savedConfig.hasSystemTitleBar,
+        resizable: savedConfig.resizable,
+        devtools: savedConfig.devtools,
         isLinux: isLinux,
         interceptors: {
             response: {

@@ -13,12 +13,12 @@ from typing import Dict
 
 
 class App:
-    def __init__(self):
+    def __init__(self, prewarm_webview: bool = False):
         self.window = Window
         self.invoke = Invoke
         self.stream = Stream
         self.worker = Worker
-        rust_init()
+        rust_init(prewarm_webview)
 
     def run(self):
         rust_run()  # 直接调用，rust_run 是同步函数

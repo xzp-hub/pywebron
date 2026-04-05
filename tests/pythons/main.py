@@ -7,7 +7,7 @@ from traceback import format_exc
 from pathlib import Path
 from time import time
 
-app = App()
+app = App(prewarm_webview=False)
 
 
 class WindowControlsStruct(app.invoke.struct):

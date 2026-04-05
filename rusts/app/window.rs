@@ -174,18 +174,25 @@ fn create_window_in_event_loop(
 
         let proxy_for_handler = proxy.clone();
         let window_id_for_ipc = id_clone;
+        let window_config_json = serde_json::json!({
+            "window_id": id_clone,
+            "title": config.title,
+            "width": config.width,
+            "height": config.height,
+            "hasSystemTitleBar": config.decorations,
+            "resizable": config.resizable,
+            "devtools": config.devtools
+        });
         let builder = WebViewBuilder::new()
             .with_devtools(config.devtools)
             .with_transparent(true)
-            .with_background_color((0, 0, 0, 0)) // RGBA: 透明背景
+            .with_background_color((0, 0, 0, 0))
             .with_initialization_script(&format!(
-                "window.pywebron={{window_id:{},hasSystemTitleBar:{}}};{}",
-                id_clone,
-                config.decorations,
+                "window.pywebron={};{}",
+                serde_json::to_string(&window_config_json).unwrap_or_default(),
                 load_js_api()
             ))
             .with_ipc_handler(move |request| {
-                // 处理来自前端的 IPC 消息
                 handle_ipc_message(request, window_id_for_ipc, &proxy_for_handler);
             });
 
@@ -647,16 +654,15 @@ fn handle_ipc_message(
 }
 
 #[pyfunction(name = "rust_init")]
-pub fn init() -> PyResult<()> {
-    // 关键：设置 WebView2 透明背景环境变量（必须在创建任何 WebView 之前）
-    // 格式：AARRGGBB，00 表示完全透明
+#[pyo3(signature = (prewarm_webview=false))]
+pub fn init(prewarm_webview: bool) -> PyResult<()> {
     #[cfg(target_os = "windows")]
     std::env::set_var("WEBVIEW2_DEFAULT_BACKGROUND_COLOR", "00000000");
 
-    // 预热 WebView2 Runtime（后台线程，不阻塞）
-    // 暂时禁用预热，避免出现额外的窗口
-    // #[cfg(target_os = "windows")]
-    // prewarm_webview2();
+    #[cfg(target_os = "windows")]
+    if prewarm_webview {
+        prewarm_webview2();
+    }
 
     Ok(())
 }
