@@ -32,6 +32,21 @@
         }
     }
 
+    function showWindow() {
+        hideLoading();
+        const wid = savedConfig.window_id;
+        if (wid !== undefined && window.ipc && window.ipc.postMessage) {
+            const message = {
+                window_id: wid,
+                handle_id: '__rust_show_window',
+                handle_type: 'invoke',
+                request_id: `__rust_show_window_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                payload: { window_id: wid }
+            };
+            window.ipc.postMessage(JSON.stringify(message));
+        }
+    }
+
     window.pywebron = {
         window_id: savedConfig.window_id,
         title: savedConfig.title,
@@ -42,6 +57,7 @@
         devtools: savedConfig.devtools,
         isLinux: isLinux,
         hideLoading: hideLoading,
+        showWindow: showWindow,
         interceptors: {
             response: {
                 use(fn) {

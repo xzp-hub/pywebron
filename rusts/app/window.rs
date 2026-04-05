@@ -106,7 +106,7 @@ fn create_window_in_event_loop(
         .with_decorations(config.decorations)
         .with_resizable(config.resizable)
         .with_min_inner_size(LogicalSize::new(400u32, 300u32))
-        .with_transparent(true)
+        .with_visible(true)
         .with_undecorated_shadow(false);
 
     eprintln!(
@@ -122,7 +122,7 @@ fn create_window_in_event_loop(
         .with_decorations(config.decorations)
         .with_resizable(config.resizable)
         .with_min_inner_size(PhysicalSize::new(400u32, 300u32))
-        .with_transparent(true);
+        .with_visible(true);
 
     let window = match window_builder.build(event_loop) {
         Ok(w) => w,
@@ -137,15 +137,15 @@ fn create_window_in_event_loop(
         use tao::platform::windows::WindowExtWindows;
         let hwnd = window.hwnd() as *mut std::ffi::c_void;
 
-        // Windows 透明背景设置
-        use windows::Win32::Graphics::Gdi::{GetStockObject, BLACK_BRUSH};
+        // Windows 背景色设置（深紫色，与加载动画背景一致)
+        use windows::Win32::Graphics::Gdi::CreateSolidBrush;
         use windows::Win32::UI::WindowsAndMessaging::{SetClassLongPtrW, GCLP_HBRBACKGROUND};
 
         unsafe {
             let win_hwnd = windows::Win32::Foundation::HWND(hwnd);
 
-            // 设置窗口背景为黑色（DWM 会将黑色视为透明）
-            let hbrush = GetStockObject(BLACK_BRUSH);
+            // 设置窗口背景为深紫色（与加载动画背景一致)
+            let hbrush = CreateSolidBrush(windows::Win32::Foundation::COLORREF(0x004B2D2D));
             let _ = SetClassLongPtrW(win_hwnd, GCLP_HBRBACKGROUND, hbrush.0 as isize);
 
             // 如果窗口可调整大小，确保有 WS_THICKFRAME 样式
@@ -183,25 +183,12 @@ fn create_window_in_event_loop(
             "resizable": config.resizable,
             "devtools": config.devtools
         });
-        let loading_script = r#"
-(function(){
-    var s=document.createElement('style');
-    s.id='__pywebron_loading_style__';
-    s.textContent='#__pywebron_loading__{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(65,65,117,0.95),rgba(68,58,96,0.98));z-index:999999;transition:opacity 0.3s ease}#__pywebron_loading__ .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00D4FF;border-radius:50%;animation:__pywebron_spin__ 0.8s linear infinite;margin:0 auto 16px}#__pywebron_loading__ .text{color:rgba(255,255,255,0.8);font-size:14px;font-family:"Segoe UI",sans-serif}@keyframes __pywebron_spin__{to{transform:rotate(360deg)}}';
-    (document.head||document.documentElement).appendChild(s);
-    var l=document.createElement('div');
-    l.id='__pywebron_loading__';
-    l.innerHTML='<div style="text-align:center"><div class="spinner"></div><div class="text">加载中...</div></div>';
-    var t=setInterval(function(){if(document.body){clearInterval(t);document.body.insertBefore(l,document.body.firstChild)}},10);
-})();
-"#;
         let builder = WebViewBuilder::new()
             .with_devtools(config.devtools)
-            .with_transparent(true)
-            .with_background_color((0, 0, 0, 0))
+            .with_transparent(false)
+            .with_background_color((45, 45, 75, 255))
             .with_initialization_script(&format!(
-                "{}window.pywebron={};{}",
-                loading_script,
+                "window.pywebron={};{}",
                 serde_json::to_string(&window_config_json).unwrap_or_default(),
                 load_js_api()
             ))
@@ -310,21 +297,36 @@ fn create_window_in_event_loop(
 
             eprintln!("[Window] HTML base URL: {}", base_url);
 
+            let loading_css = r#"<style id="__pywebron_loading_style__">#__pywebron_loading__{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(65,65,117,0.95),rgba(68,58,96,0.98));z-index:999999;transition:opacity 0.3s ease}#__pywebron_loading__ .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00D4FF;border-radius:50%;animation:__pywebron_spin__ 0.8s linear infinite;margin:0 auto 16px}#__pywebron_loading__ .text{color:rgba(255,255,255,0.8);font-size:14px;font-family:"Segoe UI",sans-serif}@keyframes __pywebron_spin__{to{transform:rotate(360deg)}}</style>"#;
+            let loading_html = r#"<div id="__pywebron_loading__"><div style="text-align:center"><div class="spinner"></div><div class="text">加载中...</div></div></div>"#;
+
             let html_with_base = if html_content.contains("<head>") {
-                html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
+                html_content.replace(
+                    "<head>",
+                    &format!("<head>{}<base href=\"{}\">", loading_css, base_url),
+                )
             } else if html_content.contains("<html>") {
                 html_content.replace(
                     "<html>",
-                    &format!("<html><head><base href=\"{}\"></head>", base_url),
+                    &format!(
+                        "<html><head>{}<base href=\"{}\"></head>",
+                        loading_css, base_url
+                    ),
                 )
             } else {
                 format!(
-                    "<html><head><base href=\"{}\"></head><body>{}</body></html>",
-                    base_url, html_content
+                    "<html><head>{}<base href=\"{}\"></head><body>{}{}</body></html>",
+                    loading_css, base_url, loading_html, html_content
                 )
             };
 
-            builder.with_html(&html_with_base).build(&window)
+            let html_with_loading = if html_with_base.contains("<body>") {
+                html_with_base.replace("<body>", &format!("<body>{}", loading_html))
+            } else {
+                html_with_base
+            };
+
+            builder.with_html(&html_with_loading).build(&window)
         } else {
             builder.with_html(&config.content).build(&window)
         };
@@ -447,8 +449,8 @@ fn handle_ipc_message(
     proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
 ) {
     let t_entry = std::time::Instant::now();
-
     let body = request.body();
+
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(body) {
         let t_parse = t_entry.elapsed();
         if t_parse.as_micros() > 50 {
@@ -477,6 +479,29 @@ fn handle_ipc_message(
 
             match handle_type.as_str() {
                 "invoke" => {
+                    // 特殊处理：显示窗口（前端准备好后调用）
+                    if handle_id == "__rust_show_window" {
+                        if let Some(window) = WINDOWS.get(&window_id) {
+                            window.set_visible(true);
+                        }
+                        let response = serde_json::json!({
+                            "window_id": window_id,
+                            "handle_id": handle_id,
+                            "handle_type": "invoke",
+                            "request_id": request_id,
+                            "payload": {"code": 200, "mssg": "ok", "data": null}
+                        });
+                        let js_code = format!(
+                            "window.__pywebron_dispatch({})",
+                            serde_json::to_string(&response).unwrap_or_default()
+                        );
+                        let _ = proxy.send_event(UserEvent::EvaluateScript {
+                            window_id,
+                            script: js_code,
+                        });
+                        return;
+                    }
+
                     // 特殊处理：Linux 窗口拖动（通过内部函数，不导出到Python）
                     #[cfg(any(
                         target_os = "linux",

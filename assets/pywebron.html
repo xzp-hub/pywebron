@@ -682,27 +682,18 @@
         $('diskTab')?.addEventListener('click', () => switchIoType('disk'));
         $('netTab')?.addEventListener('click', () => switchIoType('net'));
 
-        // 隐藏加载动画
-        if (window.pywebron?.hideLoading) {
-            window.pywebron.hideLoading();
+        // 显示窗口（隐藏加载动画 + 通知后端显示）
+        if (window.pywebron?.showWindow) {
+            window.pywebron.showWindow();
         }
-
-        console.log('[Init] ========== init 函数执行完成 ==========');
     }
 
     console.log('[Script] 准备调用 init 函数');
-    console.log('[Script] document.readyState:', document.readyState);
-    if (document.readyState === 'interactive') {
-        console.log('[Script] document.readyState 是 interactive, 直接调用 init()');
-        init();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
     } else {
-        console.log('[Script] document.readyState 不是 interactive, 添加 DOMContentLoaded 监听器');
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('[Script] DOMContentLoaded 事件触发');
-            init();
-        }, { once: true });
+        init();
     }
-    console.log('[Script] ========== 脚本初始化代码执行完毕 ==========');
 </script>
 
 <body>
