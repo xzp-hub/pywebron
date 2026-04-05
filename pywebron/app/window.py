@@ -1,13 +1,11 @@
 from ..configs import PROJECT_ROOT_PATH
-from pathlib import Path
 from .._pywebron_ import (
     rust_register_window,
     rust_minimize_window,
     rust_maximize_window,
     rust_reappear_window,
     rust_shutdown_window,
-    rust_start_drag_window,
-    rust_setup_drag_region,
+    rust_dragdrop_window,
 )
 
 
@@ -58,9 +56,5 @@ class Window:
         return rust_shutdown_window(window_id)
 
     @staticmethod
-    def start_drag_window(window_id: int, button: int = 1) -> bool:
-        return rust_start_drag_window(window_id, button, 0, 0)
-
-    @staticmethod
-    def drag_window(window_id: int, selector: str = ".header") -> bool:
-        return rust_setup_drag_region(window_id, selector)
+    def dragdrop_window(window_id: int, selector: str) -> bool:
+        return rust_dragdrop_window(window_id, selector)

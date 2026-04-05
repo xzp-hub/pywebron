@@ -458,12 +458,18 @@ fn handle_ipc_message(
 
             match handle_type.as_str() {
                 "invoke" => {
-                    // 特殊处理：Linux 窗口拖动（直接在 Rust 端处理，不经过 Python）
+                    // 特殊处理：Linux 窗口拖动（通过内部函数，不导出到Python）
+                    #[cfg(any(
+                        target_os = "linux",
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "openbsd"
+                    ))]
                     if handle_id == "__rust_start_drag_window" {
                         let button =
                             payload.get("button").and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-                        let _ = start_drag_window(window_id, button, 0, 0);
-                        // 发送成功响应
+                        let _ = internal_start_drag(window_id, button);
                         let response = serde_json::json!({
                             "window_id": window_id,
                             "handle_id": handle_id,
@@ -867,7 +873,7 @@ pub fn minimize_window(id: u64) -> PyResult<bool> {
     Ok(true)
 }
 
-/// Linux专用：开始窗口拖动（通过GTK原生API）
+/// Linux专用：开始窗口拖动（通过GTK原生API）- 内部函数，不导出到Python
 #[cfg(any(
     target_os = "linux",
     target_os = "dragonfly",
@@ -875,38 +881,21 @@ pub fn minimize_window(id: u64) -> PyResult<bool> {
     target_os = "netbsd",
     target_os = "openbsd"
 ))]
-#[pyfunction(name = "rust_start_drag_window")]
-pub fn start_drag_window(id: u64, button: u32, _x: i32, _y: i32) -> PyResult<bool> {
+fn internal_start_drag(id: u64, button: u32) -> PyResult<bool> {
     use gtk::prelude::GtkWindowExt;
 
     let window = WINDOWS
         .get(&id)
         .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
 
-    // 获取GTK窗口并开始拖动
     let gtk_window = window.gtk_window();
-    // 获取当前时间戳并开始拖动
     let timestamp = gtk::glib::monotonic_time() as u32;
-    // button: 1=左键, 2=中键, 3=右键
     gtk_window.begin_move_drag(button as i32, 0, 0, timestamp);
     Ok(true)
 }
 
-/// 非Linux平台：空实现
-#[cfg(not(any(
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-)))]
-#[pyfunction(name = "rust_start_drag_window")]
-pub fn start_drag_window(_id: u64, _button: u32, _x: i32, _y: i32) -> PyResult<bool> {
-    Ok(true)
-}
-
-#[pyfunction(name = "rust_setup_drag_region")]
-pub fn setup_drag_region(id: u64, selector: &str) -> PyResult<bool> {
+#[pyfunction(name = "rust_dragdrop_window")]
+pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
     let proxy = EVENT_PROXIES
         .get(&id)
         .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
@@ -965,8 +954,11 @@ pub fn setup_drag_region(id: u64, selector: &str) -> PyResult<bool> {
                 if (el) {{
                     el.addEventListener('mousedown', (e) => {{
                         if (e.target.closest('button, input, [onclick], .win-btn')) return;
-                        if (window.pywebron && window.pywebron.startDrag) {{
-                            window.pywebron.startDrag(1);
+                        if (window.pywebron && window.pywebron.invoke) {{
+                            window.pywebron.invoke('__rust_start_drag_window', {{
+                                window_id: window.pywebron.window_id,
+                                button: 1
+                            }});
                         }}
                     }});
                     el.addEventListener('dblclick', (e) => {{

@@ -4,8 +4,6 @@ from ._pywebron_ import (
     rust_run,
     rust_get_windows,
     rust_get_handles,
-    rust_save_file_dialog,
-    rust_start_drag_window,
 )
 from .app.window import Window
 from .app.invoke import Invoke

@@ -291,17 +291,7 @@
             console.log(`[Timing][Frontend] stream() 连接建立耗时: ${(performance.now() - t_start).toFixed(2)}ms | handle=${hid}`);
 
             return obj;
-        },
-
-        startDrag(button = 1) {
-            if (!this.isLinux) return;
-            this.invoke('__rust_start_drag_window', {
-                window_id: this.window_id,
-                button: button
-            }).catch(e => console.warn('[Drag] Failed:', e.message));
-        },
-
-
+        }
     });
 
     console.log('[PyWebron JS] ========== API 初始化完成 ==========');
