@@ -681,6 +681,12 @@
         $('createWindowBtn')?.addEventListener('click', createNewWindow);
         $('diskTab')?.addEventListener('click', () => switchIoType('disk'));
         $('netTab')?.addEventListener('click', () => switchIoType('net'));
+
+        // 隐藏加载动画
+        if (window.pywebron?.hideLoading) {
+            window.pywebron.hideLoading();
+        }
+
         console.log('[Init] ========== init 函数执行完成 ==========');
     }
 

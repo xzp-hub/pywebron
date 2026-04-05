@@ -183,12 +183,25 @@ fn create_window_in_event_loop(
             "resizable": config.resizable,
             "devtools": config.devtools
         });
+        let loading_script = r#"
+(function(){
+    var s=document.createElement('style');
+    s.id='__pywebron_loading_style__';
+    s.textContent='#__pywebron_loading__{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(65,65,117,0.95),rgba(68,58,96,0.98));z-index:999999;transition:opacity 0.3s ease}#__pywebron_loading__ .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00D4FF;border-radius:50%;animation:__pywebron_spin__ 0.8s linear infinite;margin:0 auto 16px}#__pywebron_loading__ .text{color:rgba(255,255,255,0.8);font-size:14px;font-family:"Segoe UI",sans-serif}@keyframes __pywebron_spin__{to{transform:rotate(360deg)}}';
+    (document.head||document.documentElement).appendChild(s);
+    var l=document.createElement('div');
+    l.id='__pywebron_loading__';
+    l.innerHTML='<div style="text-align:center"><div class="spinner"></div><div class="text">加载中...</div></div>';
+    var t=setInterval(function(){if(document.body){clearInterval(t);document.body.insertBefore(l,document.body.firstChild)}},10);
+})();
+"#;
         let builder = WebViewBuilder::new()
             .with_devtools(config.devtools)
             .with_transparent(true)
             .with_background_color((0, 0, 0, 0))
             .with_initialization_script(&format!(
-                "window.pywebron={};{}",
+                "{}window.pywebron={};{}",
+                loading_script,
                 serde_json::to_string(&window_config_json).unwrap_or_default(),
                 load_js_api()
             ))
@@ -297,7 +310,6 @@ fn create_window_in_event_loop(
 
             eprintln!("[Window] HTML base URL: {}", base_url);
 
-            // 在 HTML 中注入 base 标签
             let html_with_base = if html_content.contains("<head>") {
                 html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
             } else if html_content.contains("<html>") {

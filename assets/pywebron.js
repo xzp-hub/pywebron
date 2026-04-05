@@ -24,6 +24,14 @@
     console.log('[PyWebron JS] savedConfig:', savedConfig);
     console.log('[PyWebron JS] isLinux:', isLinux);
 
+    function hideLoading() {
+        const loading = document.getElementById('__pywebron_loading__');
+        if (loading) {
+            loading.style.opacity = '0';
+            setTimeout(() => loading.remove(), 300);
+        }
+    }
+
     window.pywebron = {
         window_id: savedConfig.window_id,
         title: savedConfig.title,
@@ -33,6 +41,7 @@
         resizable: savedConfig.resizable,
         devtools: savedConfig.devtools,
         isLinux: isLinux,
+        hideLoading: hideLoading,
         interceptors: {
             response: {
                 use(fn) {
