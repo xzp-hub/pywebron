@@ -12,9 +12,16 @@ ASSETS_SRC_DIR = f'{PROJECT_ROOT_PATH}/assets/src'
 
 # 流消息发送模式
 class StreamSendModes(StrEnum):
-    UNITYCAST = 'unitycast'  # 单播：发送给单个接收者
-    MULTICAST = 'multicast'  # 组播：发送给指定的多个接收者
-    BROADCAST = 'broadcast'  # 广播：发送给所有接收者
+    UNITYCAST = 'unitycast'
+    MULTICAST = 'multicast'
+    BROADCAST = 'broadcast'
+
+
+class DwmCornerPreference(StrEnum):
+    DEFAULT = 'default'
+    DO_NOT_ROUND = 'do_not_round'
+    ROUND = 'round'
+    ROUND_SMALL = 'round_small'
 
 
 # 调用处理器注册表

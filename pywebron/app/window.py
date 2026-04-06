@@ -1,4 +1,4 @@
-from ..configs import PROJECT_ROOT_PATH
+from ..configs import PROJECT_ROOT_PATH, DwmCornerPreference
 from .._pywebron_ import (
     rust_register_window,
     rust_minimize_window,
@@ -21,6 +21,7 @@ class Window:
         show_title_bar: bool = True,
         enable_resizable: bool = True,
         enable_devtools: bool = True,
+        dwm_corner_preference: DwmCornerPreference = DwmCornerPreference.DEFAULT,
     ) -> bool:
         if all((content_path, content_url)):
             raise "content_path and content_url cannot be used at the same time"
@@ -37,6 +38,7 @@ class Window:
             show_title_bar=show_title_bar,
             enable_resizable=enable_resizable,
             enable_devtools=enable_devtools,
+            dwm_corner_preference=dwm_corner_preference,
         )
 
     @staticmethod
