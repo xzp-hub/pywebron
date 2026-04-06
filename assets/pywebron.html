@@ -7,18 +7,6 @@
     <title>PyWebron 控制面板</title>
 </head>
 <script>
-    console.log('[Script] ========== 脚本开始执行 ==========');
-    console.log('[Script] document.readyState:', document.readyState);
-    console.log('[Script] window.pywebron:', window.pywebron);
-    console.log('[Script] window.pywebron 类型:', typeof window.pywebron);
-    if (window.pywebron) {
-        console.log('[Script] pywebron.invoke:', typeof window.pywebron.invoke);
-        console.log('[Script] pywebron.stream:', typeof window.pywebron.stream);
-        console.log('[Script] pywebron.window_id:', window.pywebron.window_id);
-        console.log('[Script] pywebron.hasSystemTitleBar:', window.pywebron.hasSystemTitleBar);
-        console.log('[Script] pywebron.isLinux:', window.pywebron.isLinux);
-    }
-
     const $ = id => document.getElementById(id);
     let isMaximized = false, gaugeAnims = {}, chatStream, msgIds = new Set();
     const FONTS = {percent: 17, label: 12, stats: 14};
@@ -41,22 +29,13 @@
     };
 
     async function windowAction(type) {
-        console.log('[Window] windowAction 调用, type:', type);
-        console.log('[Window] window.pywebron:', window.pywebron);
         const map = {min: 'minimize_window', max: 'maximize_window', rep: 'reappear_window', shut: 'shutdown_window'};
         const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
-        console.log('[Window] 计算的 action:', action);
         try {
-            if (!window.pywebron?.invoke) {
-                console.error('[Window] pywebron.invoke 不可用');
-                return;
-            }
-            console.log('[Window] 调用 invoke, command:', 'window_controls_invoke', 'params:', {control_type: map[action]});
+            if (!window.pywebron?.invoke) return;
             const res = await window.pywebron.invoke('window_controls_invoke', {control_type: map[action]}, 5000);
-            console.log('[Window] invoke 返回结果:', res);
             if (res?.code === 200) {
                 isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
-                console.log('[Window] isMaximized after=', isMaximized);
             }
             if (['max', 'rep', 'toggle'].includes(type)) {
                 $('maximizeRestoreBtn').title = isMaximized ? '还原' : '最大化';
@@ -65,7 +44,6 @@
                     : '<rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>';
             }
         } catch (e) {
-            console.error('[Window] 错误:', e.message, e.stack);
         }
     }
 
@@ -450,140 +428,79 @@
     }
 
     async function startMonitoring() {
-        console.log('[Monitor] startMonitoring 调用');
-        console.log('[Monitor] window.pywebron:', window.pywebron);
-        console.log('[Monitor] window.pywebron?.stream:', window.pywebron?.stream);
-        if (!window.pywebron?.stream) {
-            console.log('[Monitor] stream API not ready, retrying...');
-            return setTimeout(startMonitoring, 100);
-        }
+        if (!window.pywebron?.stream) return setTimeout(startMonitoring, 100);
         const t0 = performance.now();
         try {
-            console.log('[Monitor] Connecting to stream...');
             const stream = await window.pywebron.stream('system_monitoring_stream');
-            console.log('[Monitor] Connected in', (performance.now() - t0).toFixed(1), 'ms');
-            console.log('[Monitor] stream 对象:', stream);
             let firstData = true;
             stream.recv(data => {
-                console.log('[Monitor] Data received:', JSON.stringify(data));
                 if (firstData) {
                     firstData = false;
-                    console.log('[Monitor] First data after', (performance.now() - t0).toFixed(1), 'ms');
                 }
                 const payload = data.data || data;
                 const time = payload.time;
                 const info = payload.info;
-                console.log('[Monitor] Parsed - time:', time, 'info:', info);
                 MONITORS.forEach(m => {
                     const d = info?.[m.key];
                     if (d?.usage !== undefined) {
-                        console.log('[Monitor] Drawing', m.key, ':', d.usage);
                         drawGauge($(m.canvas), d.usage, m.label, m.color);
                         $(m.header).textContent = d.stats || m.label;
                     }
                 });
                 if (info?.ios) {
-                    console.log('[Monitor] IO data:', info.ios);
                     updateIoData(time, info.ios);
                 }
             }).end(() => {
-                console.log('[Monitor] Stream ended, reconnecting...');
                 setTimeout(startMonitoring, 1000);
             });
         } catch (e) {
-            console.error('[Monitor] Error:', e, e.stack);
             setTimeout(startMonitoring, 1000);
         }
     }
 
     async function startChat() {
-        console.log('[Chat] startChat 调用');
-        console.log('[Chat] window.pywebron:', window.pywebron);
-        console.log('[Chat] window.pywebron?.stream:', window.pywebron?.stream);
-        if (!window.pywebron?.stream) {
-            console.log('[Chat] stream API not ready, retrying...');
-            return setTimeout(startChat, 100);
-        }
+        if (!window.pywebron?.stream) return setTimeout(startChat, 100);
         try {
-            console.log('[Chat] Connecting to chat stream...');
             chatStream = await window.pywebron.stream('chat_room_stream');
-            console.log('[Chat] Connected, chatStream:', chatStream);
             chatStream.recv(displayMsg);
         } catch (e) {
-            console.error('[Chat] Error:', e, e.stack);
         }
     }
 
     async function downloadFile() {
-        console.log('[Download] downloadFile 调用');
         const btn = $('downloadBtn');
-        if (!btn) {
-            console.error('[Download] downloadBtn 不存在');
-            return;
-        }
+        if (!btn) return;
         btn.disabled = true;
         try {
-            console.log('[Download] window.pywebron:', window.pywebron);
-            console.log('[Download] window.pywebron?.invoke:', window.pywebron?.invoke);
-            if (!window.pywebron?.invoke) {
-                console.error('[Download] Error: pywebron API not available');
-                return;
-            }
-            console.log('[Download] 调用 invoke: file_download_invoke');
+            if (!window.pywebron?.invoke) return;
             const res = await window.pywebron.invoke('file_download_invoke');
-            console.log('[Download] Result:', res);
         } catch (e) {
-            console.error('[Download] Error:', e, e.stack);
         } finally {
             btn.disabled = false;
         }
     }
 
     async function runCpuTask() {
-        console.log('[CPUTask] runCpuTask 调用');
         const btn = $('cpuTaskBtn');
-        if (!btn) {
-            console.error('[CPUTask] cpuTaskBtn 不存在');
-            return;
-        }
+        if (!btn) return;
         btn.disabled = true;
         try {
-            console.log('[CPUTask] window.pywebron:', window.pywebron);
-            console.log('[CPUTask] window.pywebron?.invoke:', window.pywebron?.invoke);
-            if (!window.pywebron?.invoke) {
-                console.error('[CPUTask] Error: pywebron API not available');
-                return;
-            }
-            console.log('[CPUTask] 调用 invoke: cpu_intensive_task_invoke_command');
+            if (!window.pywebron?.invoke) return;
             const res = await window.pywebron.invoke('cpu_intensive_task_invoke_command');
-            console.log('[CPUTask] Result:', res);
         } catch (e) {
-            console.error('[CPUTask] Error:', e, e.stack);
         } finally {
             btn.disabled = false;
         }
     }
 
     async function createNewWindow() {
-        console.log('[CreateWindow] createNewWindow 调用');
         const btn = $('createWindowBtn');
-        if (!btn) {
-            console.error('[CreateWindow] createWindowBtn 不存在');
-            return;
-        }
+        if (!btn) return;
         btn.disabled = true;
         try {
-            console.log('[CreateWindow] window.pywebron:', window.pywebron);
-            console.log('[CreateWindow] window.pywebron?.invoke:', window.pywebron?.invoke);
-            if (!window.pywebron?.invoke) {
-                console.error('[CreateWindow] Error: pywebron API not available');
-                return;
-            }
-            console.log('[CreateWindow] 调用 invoke: running_create_window_invoke_handle');
+            if (!window.pywebron?.invoke) return;
             const res = await window.pywebron.invoke('running_create_window_invoke_handle');
-            console.log('[CreateWindow] Result:', res);
         } catch (e) {
-            console.error('[CreateWindow] Error:', e, e.stack);
         } finally {
             btn.disabled = false;
         }
@@ -631,49 +548,26 @@
     }
 
     async function init() {
-        console.log('[Init] ========== init 函数开始执行 ==========');
-        console.log('[Init] window.pywebron:', window.pywebron);
-        console.log('[Init] window.pywebron 类型:', typeof window.pywebron);
-        if (window.pywebron) {
-            console.log('[Init] pywebron.invoke:', typeof window.pywebron.invoke);
-            console.log('[Init] pywebron.stream:', typeof window.pywebron.stream);
-            console.log('[Init] pywebron.window_id:', window.pywebron.window_id);
-            console.log('[Init] pywebron.hasSystemTitleBar:', window.pywebron.hasSystemTitleBar);
-            console.log('[Init] pywebron.isLinux:', window.pywebron.isLinux);
-        } else {
-            console.log('[Init] pywebron 未定义!');
-        }
-
         if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
-            console.log('[Init] 检测到系统标题栏');
             const appRoot = document.getElementById('app');
             if (appRoot) {
                 appRoot.classList.add('has-system-title-bar');
-                console.log('[Init] 已添加 has-system-title-bar 类');
             }
         }
 
-        console.log('[Init] 开始初始化监控仪表盘');
         MONITORS.forEach(m => {
             $(m.header).style.fontSize = FONTS.stats + 'px';
             drawGauge($(m.canvas), 0, '', m.color, false);
         });
-        console.log('[Init] 监控仪表盘初始化完成');
 
-        console.log('[Init] 设置 IO 图表悬停事件');
         setupIoChartHover();
 
-        console.log('[Init] 设置窗口拖动');
         const result = await window.pywebron.invoke('setup_drag_region_invoke', {
             selector: '#windowHeader'
         });
-        console.log('[PyWebron JS] setup_drag_region_invoke result:', result);
 
-        console.log('[Init] 启动监控和聊天服务');
         await Promise.all([startMonitoring(), startChat()]);
-        console.log('[Init] 监控和聊天服务启动完成');
 
-        console.log('[Init] 绑定事件监听器');
         $('chatSendBtn')?.addEventListener('click', sendMsg);
         $('chatInput')?.addEventListener('keypress', e => e.key === 'Enter' && sendMsg());
         $('downloadBtn')?.addEventListener('click', downloadFile);
@@ -688,7 +582,6 @@
         }
     }
 
-    console.log('[Script] 准备调用 init 函数');
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init, {once: true});
     } else {
@@ -874,7 +767,6 @@
         width: 100%;
         height: 100%;
         box-sizing: border-box;
-
     }
 
     html {

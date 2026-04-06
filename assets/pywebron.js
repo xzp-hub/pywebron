@@ -1,8 +1,5 @@
 (function () {
-    console.log('[PyWebron JS] ========== 脚本开始执行 ==========');
-
     if (window.__pywebron_initialized) {
-        console.log('[PyWebron JS] 已经初始化过，跳过');
         return;
     }
     window.__pywebron_initialized = true;
@@ -20,9 +17,6 @@
         navigator.platform.toLowerCase().includes('linux');
 
     const savedConfig = window.pywebron || {};
-
-    console.log('[PyWebron JS] savedConfig:', savedConfig);
-    console.log('[PyWebron JS] isLinux:', isLinux);
 
     function hideLoading() {
         const loading = document.getElementById('__pywebron_loading__');
@@ -87,8 +81,6 @@
                     h.resolve(payload);
                 }
                 pending.delete(request_id);
-                const elapsed = performance.now() - t;
-                if (elapsed > 1) console.log(`[Timing][JS] __pywebron_dispatch(invoke) 处理耗时: ${elapsed.toFixed(2)}ms | handle=${handle_id}`);
             }
         } else if (handle_type === 'stream') {
             const s = streams.get(handle_id);
@@ -96,8 +88,6 @@
                 if (s.onData) {
                     handleStreamMessage(handle_id, payload);
                     s.onData(payload);
-                    const elapsed = performance.now() - t;
-                    console.log(`[Timing][JS] __pywebron_dispatch(stream) 处理耗时: ${elapsed.toFixed(2)}ms | handle=${handle_id}`);
                 }
             }
         }
@@ -219,12 +209,7 @@
 
     function ipcSend(message) {
         if (window.ipc && window.ipc.postMessage) {
-            const t = performance.now();
             window.ipc.postMessage(JSON.stringify(message));
-            const elapsed = performance.now() - t;
-            if (elapsed > 0.5) console.log(`[Timing][JS] ipcSend 耗时: ${elapsed.toFixed(2)}ms | type=${message.handle_type}`);
-        } else {
-            console.error('[PyWebron JS] window.ipc.postMessage 不可用');
         }
     }
 
@@ -236,7 +221,6 @@
         },
 
         async invoke(handle, payload = {}, timeout = 6e4) {
-            console.log('[PyWebron JS] invoke 调用:', handle, 'payload:', payload);
             performance.now();
             const request_id = this.generateRequestId(handle);
 
@@ -255,7 +239,6 @@
 
                 setTimeout(() => {
                     if (pending.delete(request_id)) {
-                        console.log(`[PyWebron JS] invoke 超时：${request_id}`);
                         reject(new Error('Timeout'));
                     }
                 }, timeout);
@@ -263,7 +246,6 @@
         },
 
         async stream(handle, payload = {}) {
-            console.log('[PyWebron JS] stream 调用:', handle, 'payload:', payload);
             const t_start = performance.now();
             const hid = String(handle);
             const request_id = this.generateRequestId(hid);
@@ -297,8 +279,6 @@
                     };
 
                     ipcSend(message);
-                    const elapsed = performance.now() - t;
-                    console.log(`[Timing][JS] stream.send 耗时: ${elapsed.toFixed(2)}ms | handle=${hid}`);
                     return this;
                 }
             };
@@ -314,23 +294,14 @@
             };
 
             ipcSend(startMessage);
-            console.log(`[Timing][Frontend] stream() 连接建立耗时: ${(performance.now() - t_start).toFixed(2)}ms | handle=${hid}`);
 
             return obj;
         }
     });
 
-    console.log('[PyWebron JS] ========== API 初始化完成 ==========');
-    console.log('[PyWebron JS] window.pywebron (after):', window.pywebron);
-    console.log('[PyWebron JS] window.pywebron.invoke:', typeof window.pywebron.invoke);
-    console.log('[PyWebron JS] window.pywebron.stream:', typeof window.pywebron.stream);
-
     // Resize 功能
-    console.log('[Resize JS] ========== resize 脚本开始执行 ==========');
-    console.log('[Resize JS] window.pywebron:', window.pywebron);
 
     if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
-        console.log('[Resize JS] 检测到系统标题栏，隐藏 resize-area');
         const resizeArea = document.getElementById('resize-area');
         if (resizeArea) {
             resizeArea.style.display = 'none';
@@ -341,7 +312,6 @@
             'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17
         };
 
-        console.log('[Resize JS] 设置 resize 事件监听');
         document.querySelectorAll('.resize-edge, .resize-corner').forEach(el => {
             el.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -357,19 +327,15 @@
                 else if (el.classList.contains('bottom-left')) edge = 'bottomleft';
                 else if (el.classList.contains('bottom-right')) edge = 'bottomright';
 
-                console.log('[Resize JS] mousedown on edge:', edge);
                 if (!edge || !window.pywebron?.window_id || !window.pywebron?.invoke) {
-                    console.log('[Resize JS] 条件不满足，跳过');
                     return;
                 }
 
-                console.log('[Resize JS] 调用 __rust_start_resize, window_id:', window.pywebron.window_id, 'hit_test:', HT[edge]);
                 window.pywebron.invoke('__rust_start_resize', {
                     window_id: window.pywebron.window_id,
                     hit_test: HT[edge]
                 });
             });
         });
-        console.log('[Resize JS] ========== resize 脚本执行完毕 ==========');
     }
 })();
