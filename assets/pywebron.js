@@ -13,85 +13,37 @@
 
     const streamMessages = new Map();
 
-    const isLinux = navigator.userAgent.toLowerCase().includes('linux') ||
-        navigator.platform.toLowerCase().includes('linux');
+    const {
+        window_id,
+        title,
+        width,
+        height,
+        show_title_bar,
+        enable_resizable,
+        enable_devtools
+    } = window.pywebron || {};
 
-    const savedConfig = window.pywebron || {};
-
-    function hideLoading() {
-        const loading = document.getElementById('__pywebron_loading__');
-        if (loading) {
-            loading.style.opacity = '0';
-            setTimeout(() => loading.remove(), 300);
-        }
+    function generateRequestId(handleId) {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).slice(2, 8);
+        return `${handleId}_${timestamp}_${random}`;
     }
 
-    function showWindow() {
-        hideLoading();
-        const wid = savedConfig.window_id;
-        if (wid !== undefined && window.ipc && window.ipc.postMessage) {
-            const message = {
-                window_id: wid,
-                handle_id: '__rust_show_window',
-                handle_type: 'invoke',
-                request_id: `__rust_show_window_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                payload: { window_id: wid }
-            };
+    function ipcSend(message) {
+        if (window.ipc && window.ipc.postMessage) {
             window.ipc.postMessage(JSON.stringify(message));
         }
     }
 
-    window.pywebron = {
-        window_id: savedConfig.window_id,
-        title: savedConfig.title,
-        width: savedConfig.width,
-        height: savedConfig.height,
-        hasSystemTitleBar: savedConfig.hasSystemTitleBar,
-        resizable: savedConfig.resizable,
-        devtools: savedConfig.devtools,
-        isLinux: isLinux,
-        hideLoading: hideLoading,
-        showWindow: showWindow,
-        interceptors: {
-            response: {
-                use(fn) {
-                    interceptors.response.push(fn);
-                }
-            },
-            error: {
-                use(fn) {
-                    interceptors.error.push(fn);
-                }
-            }
-        }
-    };
+    function handleResponse(response) {
+        interceptors.response.forEach(fn => fn(response));
+        return response;
+    }
 
-    window.__pywebron_dispatch = function (msg) {
-        const t = performance.now();
-        const { handle_id, handle_type, request_id, payload } = msg;
-
-        if (handle_type === 'invoke') {
-            const h = pending.get(request_id);
-            if (h) {
-                if (payload && payload.error) {
-                    handleError(new Error(payload.error));
-                    h.reject(new Error(payload.error));
-                } else {
-                    handleResponse(payload);
-                    h.resolve(payload);
-                }
-                pending.delete(request_id);
-            }
-        } else if (handle_type === 'stream') {
-            const s = streams.get(handle_id);
-            if (s) {
-                if (s.onData) {
-                    handleStreamMessage(handle_id, payload);
-                    s.onData(payload);
-                }
-            }
-        }
-    };
+    function handleError(error) {
+        interceptors.error.forEach(fn => fn(error));
+        return error;
+    }
 
     function showMessage(mssg, type = 200, streamId = null) {
         if (streamId) {
@@ -183,16 +135,6 @@
         }
     }, 0);
 
-    function handleResponse(response) {
-        interceptors.response.forEach(fn => fn(response));
-        return response;
-    }
-
-    function handleError(error) {
-        interceptors.error.forEach(fn => fn(error));
-        return error;
-    }
-
     interceptors.response.push((response) => {
         if (response && response.code !== undefined && response.mssg) {
             if (response.code >= 400) {
@@ -207,101 +149,123 @@
         }
     }
 
-    function ipcSend(message) {
-        if (window.ipc && window.ipc.postMessage) {
-            window.ipc.postMessage(JSON.stringify(message));
-        }
-    }
+    window.__pywebron_dispatch = function (msg) {
+        const { handle_id, handle_type, request_id, payload } = msg;
 
-    Object.assign(window.pywebron, {
-        generateRequestId(handleId) {
-            const timestamp = Date.now();
-            const random = Math.random().toString(36).slice(2, 8);
-            return `${handleId}_${timestamp}_${random}`;
+        if (handle_type === 'invoke') {
+            const h = pending.get(request_id);
+            if (h) {
+                if (payload && payload.error) {
+                    handleError(new Error(payload.error));
+                    h.reject(new Error(payload.error));
+                } else {
+                    handleResponse(payload);
+                    h.resolve(payload);
+                }
+                pending.delete(request_id);
+            }
+        } else if (handle_type === 'stream') {
+            const s = streams.get(handle_id);
+            if (s) {
+                if (s.onData) {
+                    handleStreamMessage(handle_id, payload);
+                    s.onData(payload);
+                }
+            }
+        }
+    };
+
+    window.pywebron = {
+        attributes: {
+            window_id,
+            title,
+            width,
+            height,
+            show_title_bar,
+            enable_resizable,
+            enable_devtools
         },
 
-        async invoke(handle, payload = {}, timeout = 6e4) {
-            performance.now();
-            const request_id = this.generateRequestId(handle);
+        interfaces: {
+            async invoke(handle, payload = {}, timeout = 6e4) {
+                const pywebron = window.pywebron;
+                const request_id = generateRequestId(handle);
 
-            return new Promise((resolve, reject) => {
-                pending.set(request_id, { resolve, reject });
+                return new Promise((resolve, reject) => {
+                    pending.set(request_id, { resolve, reject });
 
-                const message = {
-                    window_id: this.window_id,
+                    const message = {
+                        window_id: pywebron.attributes.window_id,
+                        handle_id: handle,
+                        handle_type: 'invoke',
+                        request_id: request_id,
+                        payload: payload
+                    };
+
+                    ipcSend(message);
+
+                    setTimeout(() => {
+                        if (pending.delete(request_id)) {
+                            reject(new Error('Timeout'));
+                        }
+                    }, timeout);
+                });
+            },
+
+            async stream(handle, payload = {}) {
+                const pywebron = window.pywebron;
+                const hid = String(handle);
+                const request_id = generateRequestId(hid);
+
+                const obj = {
+                    request_id,
+                    handle: hid,
+                    onData: null,
+                    onEnd: null,
+
+                    recv(cb) {
+                        this.onData = cb;
+                        return this;
+                    },
+                    end(cb) {
+                        this.onEnd = cb;
+                        return this;
+                    },
+                    close() {
+                        streams.delete(this.handle);
+                    },
+                    send(data) {
+                        const message = {
+                            window_id: pywebron.attributes.window_id,
+                            handle_id: hid,
+                            handle_type: 'stream',
+                            request_id: generateRequestId(hid),
+                            payload: data
+                        };
+
+                        ipcSend(message);
+                        return this;
+                    }
+                };
+
+                streams.set(hid, obj);
+
+                const startMessage = {
+                    window_id: pywebron.attributes.window_id,
                     handle_id: handle,
-                    handle_type: 'invoke',
+                    handle_type: 'stream',
                     request_id: request_id,
                     payload: payload
                 };
 
-                ipcSend(message);
+                ipcSend(startMessage);
 
-                setTimeout(() => {
-                    if (pending.delete(request_id)) {
-                        reject(new Error('Timeout'));
-                    }
-                }, timeout);
-            });
-        },
-
-        async stream(handle, payload = {}) {
-            const t_start = performance.now();
-            const hid = String(handle);
-            const request_id = this.generateRequestId(hid);
-
-            const self = this;
-            const obj = {
-                request_id,
-                handle: hid,
-                onData: null,
-                onEnd: null,
-
-                recv(cb) {
-                    this.onData = cb;
-                    return this;
-                },
-                end(cb) {
-                    this.onEnd = cb;
-                    return this;
-                },
-                close() {
-                    streams.delete(this.handle);
-                },
-                send(data) {
-                    const t = performance.now();
-                    const message = {
-                        window_id: self.window_id,
-                        handle_id: hid,
-                        handle_type: 'stream',
-                        request_id: self.generateRequestId(hid),
-                        payload: data
-                    };
-
-                    ipcSend(message);
-                    return this;
-                }
-            };
-
-            streams.set(hid, obj);
-
-            const startMessage = {
-                window_id: this.window_id,
-                handle_id: handle,
-                handle_type: 'stream',
-                request_id: request_id,
-                payload: payload
-            };
-
-            ipcSend(startMessage);
-
-            return obj;
+                return obj;
+            }
         }
-    });
+    };
 
-    // Resize 功能
-
-    if (window.pywebron && window.pywebron.hasSystemTitleBar === true) {
+    if (window.pywebron && window.pywebron.attributes.show_title_bar === true) {
         const resizeArea = document.getElementById('resize-area');
         if (resizeArea) {
             resizeArea.style.display = 'none';
@@ -327,12 +291,13 @@
                 else if (el.classList.contains('bottom-left')) edge = 'bottomleft';
                 else if (el.classList.contains('bottom-right')) edge = 'bottomright';
 
-                if (!edge || !window.pywebron?.window_id || !window.pywebron?.invoke) {
+                const pywebron = window.pywebron;
+                if (!edge || !pywebron?.attributes?.window_id || !pywebron?.interfaces?.invoke) {
                     return;
                 }
 
-                window.pywebron.invoke('__rust_start_resize', {
-                    window_id: window.pywebron.window_id,
+                pywebron.interfaces.invoke('__rust_start_resize', {
+                    window_id: pywebron.attributes.window_id,
                     hit_test: HT[edge]
                 });
             });

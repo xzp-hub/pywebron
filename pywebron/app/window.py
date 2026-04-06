@@ -34,9 +34,9 @@ class Window:
             height=height,
             content=content_path or content_url or pather("pywebron.html"),
             icon_path=icon_path or pather("pywebron.png"),
-            decorations=show_title_bar,
-            resizable=enable_resizable,
-            devtools=enable_devtools,
+            show_title_bar=show_title_bar,
+            enable_resizable=enable_resizable,
+            enable_devtools=enable_devtools,
         )
 
     @staticmethod

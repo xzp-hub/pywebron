@@ -103,15 +103,15 @@ fn create_window_in_event_loop(
         .with_title(&config.title)
         .with_inner_size(LogicalSize::new(config.width, config.height))
         .with_window_icon(generate_win_icon(config.icon_path.clone()))
-        .with_decorations(config.decorations)
-        .with_resizable(config.resizable)
+        .with_decorations(config.show_title_bar)
+        .with_resizable(config.enable_resizable)
         .with_min_inner_size(LogicalSize::new(400u32, 300u32))
         .with_transparent(true)
         .with_undecorated_shadow(false);
 
     eprintln!(
-        "[Window] 创建窗口：{} | decorations={} | size={}x{}",
-        config.title, config.decorations, config.width, config.height
+        "[Window] 创建窗口：{} | show_title_bar={} | size={}x{}",
+        config.title, config.show_title_bar, config.width, config.height
     );
 
     #[cfg(not(target_os = "windows"))]
@@ -119,8 +119,8 @@ fn create_window_in_event_loop(
         .with_title(&config.title)
         .with_inner_size(PhysicalSize::new(config.width, config.height))
         .with_window_icon(generate_win_icon(config.icon_path.clone()))
-        .with_decorations(config.decorations)
-        .with_resizable(config.resizable)
+        .with_decorations(config.show_title_bar)
+        .with_resizable(config.enable_resizable)
         .with_min_inner_size(PhysicalSize::new(400u32, 300u32))
         .with_transparent(true);
 
@@ -149,7 +149,7 @@ fn create_window_in_event_loop(
             let _ = SetClassLongPtrW(win_hwnd, GCLP_HBRBACKGROUND, hbrush.0 as isize);
 
             // 如果窗口可调整大小，确保有 WS_THICKFRAME 样式
-            if config.resizable {
+            if config.enable_resizable {
                 use windows::Win32::UI::WindowsAndMessaging::{
                     GetWindowLongPtrW, SetWindowLongPtrW, GWL_STYLE, WS_THICKFRAME,
                 };
@@ -179,12 +179,12 @@ fn create_window_in_event_loop(
             "title": config.title,
             "width": config.width,
             "height": config.height,
-            "hasSystemTitleBar": config.decorations,
-            "resizable": config.resizable,
-            "devtools": config.devtools
+            "show_title_bar": config.show_title_bar,
+            "enable_resizable": config.enable_resizable,
+            "enable_devtools": config.enable_devtools
         });
         let builder = WebViewBuilder::new()
-            .with_devtools(config.devtools)
+            .with_devtools(config.enable_devtools)
             .with_transparent(true)
             .with_background_color((0, 0, 0, 0))
             .with_initialization_script(&format!(
@@ -295,38 +295,21 @@ fn create_window_in_event_loop(
             #[cfg(not(target_os = "windows"))]
             let base_url = format!("file://{}/", base_dir.display());
 
-            eprintln!("[Window] HTML base URL: {}", base_url);
-
-            let loading_css = r#"<style id="__pywebron_loading_style__">#__pywebron_loading__{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(65,65,117,0.95),rgba(68,58,96,0.98));z-index:999999;transition:opacity 0.3s ease}#__pywebron_loading__ .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00D4FF;border-radius:50%;animation:__pywebron_spin__ 0.8s linear infinite;margin:0 auto 16px}#__pywebron_loading__ .text{color:rgba(255,255,255,0.8);font-size:14px;font-family:"Segoe UI",sans-serif}@keyframes __pywebron_spin__{to{transform:rotate(360deg)}}</style>"#;
-            let loading_html = r#"<div id="__pywebron_loading__"><div style="text-align:center"><div class="spinner"></div><div class="text">加载中...</div></div></div>"#;
-
             let html_with_base = if html_content.contains("<head>") {
-                html_content.replace(
-                    "<head>",
-                    &format!("<head>{}<base href=\"{}\">", loading_css, base_url),
-                )
+                html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
             } else if html_content.contains("<html>") {
                 html_content.replace(
                     "<html>",
-                    &format!(
-                        "<html><head>{}<base href=\"{}\"></head>",
-                        loading_css, base_url
-                    ),
+                    &format!("<html><head><base href=\"{}\"></head>", base_url),
                 )
             } else {
                 format!(
-                    "<html><head>{}<base href=\"{}\"></head><body>{}{}</body></html>",
-                    loading_css, base_url, loading_html, html_content
+                    "<html><head><base href=\"{}\"></head><body>{}</body></html>",
+                    base_url, html_content
                 )
             };
 
-            let html_with_loading = if html_with_base.contains("<body>") {
-                html_with_base.replace("<body>", &format!("<body>{}", loading_html))
-            } else {
-                html_with_base
-            };
-
-            builder.with_html(&html_with_loading).build(&window)
+            builder.with_html(&html_with_base).build(&window)
         } else {
             builder.with_html(&config.content).build(&window)
         };
@@ -342,18 +325,18 @@ fn create_window_in_event_loop(
 
     #[cfg(target_os = "windows")]
     if !hwnd.is_null() {
-        if config.resizable && !config.decorations {
+        if config.enable_resizable && !config.show_title_bar {
             eprintln!(
-                "[Window] 调用 make_window_frameless_but_resizable | resizable={} | decorations={}",
-                config.resizable, config.decorations
+                "[Window] 调用 make_window_frameless_but_resizable | enable_resizable={} | show_title_bar={}",
+                config.enable_resizable, config.show_title_bar
             );
             crate::utils::make_window_frameless_but_resizable(windows::Win32::Foundation::HWND(
                 hwnd,
             ));
         } else {
             eprintln!(
-                "[Window] 跳过 make_window_frameless_but_resizable | resizable={} | decorations={}",
-                config.resizable, config.decorations
+                "[Window] 跳过 make_window_frameless_but_resizable | enable_resizable={} | show_title_bar={}",
+                config.enable_resizable, config.show_title_bar
             );
         }
     }
@@ -400,9 +383,9 @@ pub struct WindowConfig {
     pub height: u32,
     pub content: String,
     pub icon_path: String,
-    pub decorations: bool,
-    pub resizable: bool,
-    pub devtools: bool,
+    pub show_title_bar: bool,
+    pub enable_resizable: bool,
+    pub enable_devtools: bool,
 }
 
 fn create_window(config: WindowConfig) -> PyResult<u64> {
@@ -479,29 +462,6 @@ fn handle_ipc_message(
 
             match handle_type.as_str() {
                 "invoke" => {
-                    // 特殊处理：显示窗口（前端准备好后调用）
-                    if handle_id == "__rust_show_window" {
-                        if let Some(window) = WINDOWS.get(&window_id) {
-                            window.set_visible(true);
-                        }
-                        let response = serde_json::json!({
-                            "window_id": window_id,
-                            "handle_id": handle_id,
-                            "handle_type": "invoke",
-                            "request_id": request_id,
-                            "payload": {"code": 200, "mssg": "ok", "data": null}
-                        });
-                        let js_code = format!(
-                            "window.__pywebron_dispatch({})",
-                            serde_json::to_string(&response).unwrap_or_default()
-                        );
-                        let _ = proxy.send_event(UserEvent::EvaluateScript {
-                            window_id,
-                            script: js_code,
-                        });
-                        return;
-                    }
-
                     // 特殊处理：Linux 窗口拖动（通过内部函数，不导出到Python）
                     #[cfg(any(
                         target_os = "linux",
@@ -737,16 +697,16 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, content, icon_path, decorations, resizable, devtools))]
+#[pyo3(signature = (title, width, height, content, icon_path, show_title_bar, enable_resizable, enable_devtools))]
 pub fn register_window(
     title: String,
     width: u32,
     height: u32,
     content: String,
     icon_path: String,
-    decorations: bool,
-    resizable: bool,
-    devtools: bool,
+    show_title_bar: bool,
+    enable_resizable: bool,
+    enable_devtools: bool,
 ) -> PyResult<bool> {
     let config = WindowConfig {
         title,
@@ -754,9 +714,9 @@ pub fn register_window(
         height,
         content,
         icon_path,
-        decorations,
-        resizable,
-        devtools,
+        show_title_bar,
+        enable_resizable,
+        enable_devtools,
     };
 
     // 直接创建窗口
@@ -1064,9 +1024,9 @@ pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
             window_dict.set_item("window_height", config.height)?;
             window_dict.set_item("window_content_path", &config.content)?;
             window_dict.set_item("window_icon_path", &config.icon_path)?;
-            window_dict.set_item("window_is_decorations", config.decorations)?;
-            window_dict.set_item("window_is_resizable", config.resizable)?;
-            window_dict.set_item("window_is_devtools", config.devtools)?;
+            window_dict.set_item("window_show_title_bar", config.show_title_bar)?;
+            window_dict.set_item("window_enable_resizable", config.enable_resizable)?;
+            window_dict.set_item("window_enable_devtools", config.enable_devtools)?;
 
             result_dict.set_item(*window_id, window_dict)?;
         }
