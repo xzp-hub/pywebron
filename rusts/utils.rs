@@ -14,9 +14,9 @@ use windows::Win32::{
         DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWM_WINDOW_CORNER_PREFERENCE,
     },
     UI::WindowsAndMessaging::{
-        CallWindowProcW, DefWindowProcW, GetPropW, GetWindowLongPtrW, SetPropW, SetWindowLongPtrW,
-        SetWindowPos, GWLP_WNDPROC, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
-        SWP_SHOWWINDOW, WM_NCCALCSIZE, WNDPROC, SetProcessDPIAware,
+        CallWindowProcW, DefWindowProcW, GetPropW, GetWindowLongPtrW, SetProcessDPIAware, SetPropW,
+        SetWindowLongPtrW, SetWindowPos, GWLP_WNDPROC, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE,
+        SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE, WNDPROC,
     },
 };
 
@@ -56,9 +56,17 @@ pub fn make_window_frameless_but_resizable(hwnd: HWND) {
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         let _ = SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_THICKFRAME.0 as isize);
 
-        let orig_proc = SetWindowLongPtrW(hwnd, GWLP_WNDPROC, frameless_proc as *const () as usize as isize);
+        let orig_proc = SetWindowLongPtrW(
+            hwnd,
+            GWLP_WNDPROC,
+            frameless_proc as *const () as usize as isize,
+        );
         if orig_proc != 0 {
-            let _ = SetPropW(hwnd, prop_name, windows::Win32::Foundation::HANDLE(orig_proc as *mut std::ffi::c_void).into());
+            let _ = SetPropW(
+                hwnd,
+                prop_name,
+                windows::Win32::Foundation::HANDLE(orig_proc as *mut std::ffi::c_void).into(),
+            );
         }
 
         let _ = SetWindowPos(
