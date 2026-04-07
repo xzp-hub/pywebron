@@ -152,8 +152,8 @@ if __name__ == "__main__":
         height=1200,
         show_title_bar=False,
         enable_resizable=True,
-        dwm_corner=DwmCorners.NORMAL_ROUND,
+        # dwm_corner=DwmCorners.NORMAL_ROUND,
         # content_url= 'http://localhost:5173/'
-        content_path=r"E:\works\pywebron\tests\pywebron.html"
+        content_path=r"D:\works\pywebron\tests\pywebron.html",
     )
     app.run()

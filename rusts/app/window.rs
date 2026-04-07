@@ -348,14 +348,18 @@ fn create_window_in_event_loop(
             );
         }
 
-        let corner_pref = match config.dwm_corner {
-            1 => crate::configs::WindowCorners::DoNotRound,
-            2 => crate::configs::WindowCorners::Round,
-            3 => crate::configs::WindowCorners::RoundSmall,
-            _ => crate::configs::WindowCorners::Default,
-        };
-        let _ =
-            crate::utils::set_window_corner(windows::Win32::Foundation::HWND(hwnd), corner_pref);
+        if config.show_title_bar {
+            let corner_pref = match config.dwm_corner {
+                1 => crate::configs::WindowCorners::DoNotRound,
+                2 => crate::configs::WindowCorners::Round,
+                3 => crate::configs::WindowCorners::RoundSmall,
+                _ => crate::configs::WindowCorners::Default,
+            };
+            let _ = crate::utils::set_window_corner(
+                windows::Win32::Foundation::HWND(hwnd),
+                corner_pref,
+            );
+        }
     }
 
     WINDOWS.insert(id_clone, window);

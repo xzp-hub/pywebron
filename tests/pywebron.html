@@ -35,12 +35,13 @@
             width: 100%;
             height: 30px;
             border-radius: 5px;
-            border: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .15));
+            border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
             box-sizing: border-box;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: light-dark(#ffffff, #1a1b1d)
+            background: light-dark(#ffffff, #1a1b1d);
+            box-shadow: 0 1px 3px light-dark(rgba(0, 0, 0, .1), rgba(0, 0, 0, .3))
         }
 
         .h-left {
@@ -64,12 +65,13 @@
 
         .h-ctrls {
             display: flex;
-            gap: 0
+            gap: 0;
+            align-items: stretch;
+            height: 100%
         }
 
         .win-btn {
             width: 30px;
-            height: 30px;
             background: transparent;
             color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, .8));
             border-radius: 0;
@@ -88,7 +90,9 @@
         .win-btn.close {
             border-top-right-radius: 4px;
             border-bottom-right-radius: 4px;
-            margin-right: -1px
+            margin-top: 1px;
+            margin-bottom: 1px;
+            height: calc(100% - 2px)
         }
 
         .win-btn.close:hover {
@@ -101,7 +105,9 @@
             display: flex;
             gap: 5px;
             box-sizing: border-box;
-            background: light-dark(#ffffff, #1a1b1d)
+            background: light-dark(#ffffff, #1a1b1d);
+            border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
+            box-shadow: inset 0 1px 3px light-dark(rgba(0, 0, 0, .06), rgba(0, 0, 0, .2))
         }
 
         .content iframe {
@@ -135,8 +141,9 @@
                 if (appRoot) appRoot.classList.add('has-system-title-bar');
             } else {
                 const html = document.documentElement, body = document.body;
+                const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                 if (html) html.style.border = '1px solid transparent';
-                if (body) body.style.border = '1px solid rgba(255,255,255,0.3)';
+                if (body) body.style.border = isDark ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(0,0,0,0.35)';
             }
             try { await window.pywebron.interfaces.invoke('setup_drag_region_invoke', { selector: '#windowHeader' }); } catch (e) { console.error(e); }
         }
