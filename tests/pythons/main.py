@@ -153,6 +153,6 @@ if __name__ == "__main__":
         show_title_bar=True,
         enable_resizable=True,
         dwm_corner=DwmCorners.NORMAL_ROUND,
-        # content_url= 'http://localhost:5173/'
+        content_url= 'http://localhost:5173/'
     )
     app.run()
