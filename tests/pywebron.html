@@ -8,6 +8,7 @@
     <style>
         html,
         body {
+            color-scheme: light dark;
             border-radius: 5px;
             overflow: hidden;
             background: transparent;
@@ -27,19 +28,19 @@
             display: flex;
             flex-direction: column;
             border-radius: 5px;
-            background: #1a1b1d
+            background: light-dark(#e9eaee, #3c3c3c)
         }
 
         .header {
             width: 100%;
             height: 30px;
             border-radius: 5px;
-            border: 1px solid rgba(255, 255, 255, .25);
+            border: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .15));
             box-sizing: border-box;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(255, 255, 255, 0.08)
+            background: light-dark(#ffffff, #1a1b1d)
         }
 
         .h-left {
@@ -57,7 +58,7 @@
 
         .h-title {
             font-size: 12px;
-            color: #fff;
+            color: light-dark(#000000, #ffffff);
             line-height: 16px
         }
 
@@ -70,7 +71,7 @@
             width: 30px;
             height: 30px;
             background: transparent;
-            color: rgba(255, 255, 255, .7);
+            color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, .8));
             border-radius: 0;
             display: flex;
             align-items: center;
@@ -80,8 +81,8 @@
         }
 
         .win-btn:hover {
-            background: rgba(255, 255, 255, .15);
-            color: #fff
+            background: light-dark(rgba(0, 0, 0, .1), rgba(255, 255, 255, .15));
+            color: light-dark(#000000, #ffffff)
         }
 
         .win-btn.close {
@@ -99,7 +100,8 @@
             flex: 1;
             display: flex;
             gap: 5px;
-            box-sizing: border-box
+            box-sizing: border-box;
+            background: light-dark(#ffffff, #1a1b1d)
         }
 
         .content iframe {

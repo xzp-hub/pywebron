@@ -24,10 +24,12 @@ class Window:
         dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
     ) -> bool:
         if all((content_path, content_url)):
-            raise "content_path and content_url cannot be used at the same time"
-            
+            raise ValueError(
+                "content_path and content_url cannot be used at the same time"
+            )
+
         if content_url is not None and not show_title_bar:
-            raise "when using content_url, show_title_bar must be True"
+            raise ValueError("when using content_url, show_title_bar must be True")
 
         def pather(file_name):
             return f"{PROJECT_ROOT_PATH}/assets/{file_name}"
