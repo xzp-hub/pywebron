@@ -152,7 +152,7 @@ if __name__ == "__main__":
         height=1200,
         show_title_bar=True,
         enable_resizable=True,
-        dwm_corner=DwmCorners.ZEROES_ROUND,
+        dwm_corner=DwmCorners.NORMAL_ROUND,
         # content_url= 'http://localhost:5173/'
     )
     app.run()
