@@ -265,21 +265,124 @@
         }
     };
 
-    function setupWindowResizeHandles() {
+    function ensureResizeLayer() {
         if (window.pywebron && window.pywebron.attributes.show_title_bar === true) {
-            const resizeArea = document.getElementById('resize-area');
-            if (resizeArea) {
-                resizeArea.style.display = 'none';
-            }
-            return;
+            const existing = document.getElementById('resize-area');
+            if (existing) existing.style.display = 'none';
+            return null;
         }
+
+        if (!document.body) return null;
+
+        if (!document.getElementById('pywebron-resize-style')) {
+            const style = document.createElement('style');
+            style.id = 'pywebron-resize-style';
+            style.textContent = `
+                .resize-area {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    pointer-events: none;
+                    z-index: 9999;
+                }
+                .resize-corner,
+                .resize-edge {
+                    position: absolute;
+                    pointer-events: auto;
+                }
+                .resize-corner.top-left {
+                    top: 0;
+                    left: 0;
+                    width: 10px;
+                    height: 10px;
+                    cursor: nw-resize;
+                }
+                .resize-corner.top-right {
+                    top: 0;
+                    right: 0;
+                    width: 10px;
+                    height: 10px;
+                    cursor: ne-resize;
+                }
+                .resize-corner.bottom-left {
+                    bottom: 0;
+                    left: 0;
+                    width: 10px;
+                    height: 10px;
+                    cursor: sw-resize;
+                }
+                .resize-corner.bottom-right {
+                    bottom: 0;
+                    right: 0;
+                    width: 10px;
+                    height: 10px;
+                    cursor: se-resize;
+                }
+                .resize-edge.top {
+                    top: 0;
+                    left: 10px;
+                    right: 10px;
+                    height: 5px;
+                    cursor: n-resize;
+                }
+                .resize-edge.bottom {
+                    bottom: 0;
+                    left: 10px;
+                    right: 10px;
+                    height: 5px;
+                    cursor: s-resize;
+                }
+                .resize-edge.left {
+                    top: 10px;
+                    bottom: 10px;
+                    left: 0;
+                    width: 5px;
+                    cursor: w-resize;
+                }
+                .resize-edge.right {
+                    top: 10px;
+                    bottom: 10px;
+                    right: 0;
+                    width: 5px;
+                    cursor: e-resize;
+                }
+            `;
+            document.head?.appendChild(style);
+        }
+
+        let area = document.getElementById('resize-area');
+        if (!area) {
+            area = document.createElement('div');
+            area.id = 'resize-area';
+            area.className = 'resize-area';
+            area.innerHTML = `
+                <div class="resize-corner top-left"></div>
+                <div class="resize-corner top-right"></div>
+                <div class="resize-corner bottom-left"></div>
+                <div class="resize-corner bottom-right"></div>
+                <div class="resize-edge top"></div>
+                <div class="resize-edge bottom"></div>
+                <div class="resize-edge left"></div>
+                <div class="resize-edge right"></div>
+            `;
+            document.body.appendChild(area);
+        }
+
+        return area;
+    }
+
+    function setupWindowResizeHandles() {
+        const area = ensureResizeLayer();
+        if (!area) return;
 
         const HT = {
             'top': 12, 'bottom': 15, 'left': 10, 'right': 11,
             'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17
         };
 
-        document.querySelectorAll('.resize-edge, .resize-corner').forEach(el => {
+        area.querySelectorAll('.resize-edge, .resize-corner').forEach(el => {
             el.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();

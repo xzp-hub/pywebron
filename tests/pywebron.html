@@ -108,87 +108,6 @@
             border: none;
             border-radius: 5px
         }
-
-        /* 与 assets/pywebron.html 一致：全屏固定层 + 仅边缘可点，避免被 iframe 抢走事件 */
-        .resize-area {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            z-index: 9999;
-        }
-
-        .resize-corner,
-        .resize-edge {
-            position: absolute;
-            pointer-events: auto;
-        }
-
-        .resize-corner.top-left {
-            top: 0;
-            left: 0;
-            width: 10px;
-            height: 10px;
-            cursor: nw-resize;
-        }
-
-        .resize-corner.top-right {
-            top: 0;
-            right: 0;
-            width: 10px;
-            height: 10px;
-            cursor: ne-resize;
-        }
-
-        .resize-corner.bottom-left {
-            bottom: 0;
-            left: 0;
-            width: 10px;
-            height: 10px;
-            cursor: sw-resize;
-        }
-
-        .resize-corner.bottom-right {
-            bottom: 0;
-            right: 0;
-            width: 10px;
-            height: 10px;
-            cursor: se-resize;
-        }
-
-        .resize-edge.top {
-            top: 0;
-            left: 10px;
-            right: 10px;
-            height: 5px;
-            cursor: n-resize;
-        }
-
-        .resize-edge.bottom {
-            bottom: 0;
-            left: 10px;
-            right: 10px;
-            height: 5px;
-            cursor: s-resize;
-        }
-
-        .resize-edge.left {
-            top: 10px;
-            bottom: 10px;
-            left: 0;
-            width: 5px;
-            cursor: w-resize;
-        }
-
-        .resize-edge.right {
-            top: 10px;
-            bottom: 10px;
-            right: 0;
-            width: 5px;
-            cursor: e-resize;
-        }
     </style>
     <script>
         const $ = id => document.getElementById(id);
@@ -257,16 +176,6 @@
         <div class="content">
             <iframe src="http://localhost:5173/" frameborder="0"></iframe>
         </div>
-    </div>
-    <div id="resize-area" class="resize-area">
-        <div class="resize-corner top-left"></div>
-        <div class="resize-corner top-right"></div>
-        <div class="resize-corner bottom-left"></div>
-        <div class="resize-corner bottom-right"></div>
-        <div class="resize-edge top"></div>
-        <div class="resize-edge bottom"></div>
-        <div class="resize-edge left"></div>
-        <div class="resize-edge right"></div>
     </div>
 </body>
 
