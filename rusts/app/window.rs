@@ -43,6 +43,8 @@ use wry::WebViewBuilder;
     target_os = "openbsd"
 ))]
 use wry::WebViewBuilderExtUnix;
+#[cfg(target_os = "windows")]
+use wry::WebViewBuilderExtWindows;
 
 static WEBVIEW_CREATE_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 static WINDOWS: Lazy<DashMap<u64, tao::window::Window>> = Lazy::new(DashMap::new);
@@ -165,8 +167,8 @@ fn create_window_in_event_loop(
     let webview = {
         let _webview_lock = WEBVIEW_CREATE_LOCK.lock().unwrap();
 
-        let is_url =
-            config.content.starts_with("http://") || config.content.starts_with("https://");
+        let is_url = config.content.starts_with("http://")
+            || config.content.starts_with("https://");
         let is_file_path = !is_url
             && (config.content.ends_with(".html")
                 || config.content.ends_with(".htm")
@@ -195,6 +197,11 @@ fn create_window_in_event_loop(
             .with_ipc_handler(move |request| {
                 handle_ipc_message(request, window_id_for_ipc, &proxy_for_handler);
             });
+
+        #[cfg(target_os = "windows")]
+        let builder = builder.with_additional_browser_args(
+            "--disable-features=IsolateOrigins,site-per-process,ThirdPartyStoragePartitioning,ThirdPartyCookiesBlocking --allow-file-access-from-files",
+        );
 
         #[cfg(any(
             target_os = "linux",
@@ -275,7 +282,8 @@ fn create_window_in_event_loop(
                 }
             };
 
-            // 关键：使用 data URL 而不是直接 with_html，这样可以提供 base URL
+            // 保持 with_html 路径，规避 WebView2 在 file:// + IPC 下的 URI 解析 panic。
+            // 同时注入 base URL 以保证相对资源路径可用。
             let file_path = std::path::Path::new(&config.content);
             let absolute_path = if file_path.is_absolute() {
                 file_path.to_path_buf()

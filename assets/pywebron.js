@@ -265,12 +265,15 @@
         }
     };
 
-    if (window.pywebron && window.pywebron.attributes.show_title_bar === true) {
-        const resizeArea = document.getElementById('resize-area');
-        if (resizeArea) {
-            resizeArea.style.display = 'none';
+    function setupWindowResizeHandles() {
+        if (window.pywebron && window.pywebron.attributes.show_title_bar === true) {
+            const resizeArea = document.getElementById('resize-area');
+            if (resizeArea) {
+                resizeArea.style.display = 'none';
+            }
+            return;
         }
-    } else {
+
         const HT = {
             'top': 12, 'bottom': 15, 'left': 10, 'right': 11,
             'topleft': 13, 'topright': 14, 'bottomleft': 16, 'bottomright': 17
@@ -302,5 +305,11 @@
                 });
             });
         });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupWindowResizeHandles, { once: true });
+    } else {
+        setupWindowResizeHandles();
     }
 })();
