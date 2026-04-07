@@ -340,11 +340,11 @@ fn create_window_in_event_loop(
             );
         }
 
-        let corner_pref = match config.dwm_corner_preference.as_str() {
-            "do_not_round" => crate::configs::WindowCornerPreference::DoNotRound,
-            "round" => crate::configs::WindowCornerPreference::Round,
-            "round_small" => crate::configs::WindowCornerPreference::RoundSmall,
-            _ => crate::configs::WindowCornerPreference::Default,
+        let corner_pref = match config.dwm_corner {
+            1 => crate::configs::WindowCorners::DoNotRound,
+            2 => crate::configs::WindowCorners::Round,
+            3 => crate::configs::WindowCorners::RoundSmall,
+            _ => crate::configs::WindowCorners::Default,
         };
         let _ =
             crate::utils::set_window_corner(windows::Win32::Foundation::HWND(hwnd), corner_pref);
@@ -395,7 +395,7 @@ pub struct WindowConfig {
     pub show_title_bar: bool,
     pub enable_resizable: bool,
     pub enable_devtools: bool,
-    pub dwm_corner_preference: String,
+    pub dwm_corner: u32,
 }
 
 fn create_window(config: WindowConfig) -> PyResult<u64> {
@@ -707,7 +707,7 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, content, icon_path, show_title_bar, enable_resizable, enable_devtools, dwm_corner_preference="default".to_string()))]
+#[pyo3(signature = (title, width, height, content, icon_path, show_title_bar, enable_resizable, enable_devtools, dwm_corner=0))]
 pub fn register_window(
     title: String,
     width: u32,
@@ -717,7 +717,7 @@ pub fn register_window(
     show_title_bar: bool,
     enable_resizable: bool,
     enable_devtools: bool,
-    dwm_corner_preference: String,
+    dwm_corner: u32,
 ) -> PyResult<bool> {
     let config = WindowConfig {
         title,
@@ -728,7 +728,7 @@ pub fn register_window(
         show_title_bar,
         enable_resizable,
         enable_devtools,
-        dwm_corner_preference,
+        dwm_corner,
     };
 
     // 直接创建窗口

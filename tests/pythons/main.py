@@ -2,7 +2,7 @@ from asyncio import sleep as asyncio_sleep, gather
 from tools import SystemMonitoring, cpu_task
 from pywebron.utils import save_file_dialog
 from pywebron import App, StreamSendModes
-from pywebron.configs import PROJECT_ROOT_PATH, DwmCornerPreference
+from pywebron.configs import PROJECT_ROOT_PATH, DwmCorners
 from traceback import format_exc
 from pathlib import Path
 from time import time
@@ -152,7 +152,7 @@ if __name__ == "__main__":
         height=1200,
         show_title_bar=True,
         enable_resizable=True,
-        dwm_corner_preference=DwmCornerPreference.DO_NOT_ROUND,  # noqa: F821
+        dwm_corner=DwmCorners.ZEROES_ROUND,
         # content_url= 'http://localhost:5173/'
     )
     app.run()

@@ -1,5 +1,5 @@
 #[cfg(target_os = "windows")]
-use crate::configs::WindowCornerPreference;
+use crate::configs::WindowCorners;
 use image::open;
 use std::{
     path::Path,
@@ -103,7 +103,7 @@ pub fn generate_win_icon(path: String) -> Option<Icon> {
 
 #[cfg(target_os = "windows")]
 #[allow(dead_code)]
-pub fn set_window_corner(hwnd: HWND, pref: WindowCornerPreference) -> Result<(), String> {
+pub fn set_window_corner(hwnd: HWND, pref: WindowCorners) -> Result<(), String> {
     unsafe {
         let val = pref.to_dwm();
         DwmSetWindowAttribute(
@@ -129,7 +129,7 @@ pub fn set_window_corner(hwnd: HWND, pref: WindowCornerPreference) -> Result<(),
 
 #[cfg(target_os = "windows")]
 #[allow(dead_code)]
-pub fn set_window_corner_with_retry(hwnd: HWND, pref: WindowCornerPreference, retries: u32) {
+pub fn set_window_corner_with_retry(hwnd: HWND, pref: WindowCorners, retries: u32) {
     for _ in 0..retries {
         if set_window_corner(hwnd, pref).is_ok() {
             break;

@@ -18,7 +18,7 @@ pub enum UserEvent {
 #[cfg(target_os = "windows")]
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-pub enum WindowCornerPreference {
+pub enum WindowCorners {
     Default,
     DoNotRound,
     Round,
@@ -26,14 +26,14 @@ pub enum WindowCornerPreference {
 }
 
 #[cfg(target_os = "windows")]
-impl WindowCornerPreference {
+impl WindowCorners {
     #[allow(dead_code)]
     pub fn from_u32(v: u32) -> Self {
         match v {
-            1 => WindowCornerPreference::DoNotRound,
-            2 => WindowCornerPreference::Round,
-            3 => WindowCornerPreference::RoundSmall,
-            _ => WindowCornerPreference::Default,
+            1 => WindowCorners::DoNotRound,
+            2 => WindowCorners::Round,
+            3 => WindowCorners::RoundSmall,
+            _ => WindowCorners::Default,
         }
     }
 
@@ -42,10 +42,10 @@ impl WindowCornerPreference {
     pub fn to_dwm(&self) -> windows::Win32::Graphics::Dwm::DWM_WINDOW_CORNER_PREFERENCE {
         use windows::Win32::Graphics::Dwm::DWM_WINDOW_CORNER_PREFERENCE;
         DWM_WINDOW_CORNER_PREFERENCE(match self {
-            WindowCornerPreference::Default => 0,
-            WindowCornerPreference::DoNotRound => 1,
-            WindowCornerPreference::Round => 2,
-            WindowCornerPreference::RoundSmall => 3,
+            WindowCorners::Default => 0,
+            WindowCorners::DoNotRound => 1,
+            WindowCorners::Round => 2,
+            WindowCorners::RoundSmall => 3,
         })
     }
 }
