@@ -159,7 +159,7 @@ if __name__ == "__main__":
         title="PyWebron 控制面板 1",
         width=1200,
         height=1200,
-        show_title_bar=True,
+        show_title_bar=False,
         enable_resizable=True,
         # dwm_corner=DwmCorners.NORMAL_ROUND,
         # content_url= 'http://localhost:5173/'

@@ -70,12 +70,45 @@ static WEBVIEWS: Lazy<DashMap<u64, SendSyncWebView>> = Lazy::new(DashMap::new);
 // HTML 文件缓存：避免重复读取文件
 static HTML_CACHE: Lazy<DashMap<String, String>> = Lazy::new(DashMap::new);
 
+// 资源文件缓存：用于自定义协议处理器
+static RESOURCE_CACHE: Lazy<DashMap<String, Vec<u8>>> = Lazy::new(DashMap::new);
+
 fn cleanup_window(window_id: u64) {
     WINDOWS.remove(&window_id);
     WINDOW_PROXIES.remove(&window_id);
     WINDOW_READY.remove(&window_id);
     EVENT_PROXIES.remove(&window_id);
     WEBVIEWS.remove(&window_id);
+}
+
+/// 获取文件的 MIME 类型
+fn get_mime_type(path: &std::path::Path) -> &'static str {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some("js") => "application/javascript",
+        Some("css") => "text/css",
+        Some("html") => "text/html",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("svg") => "image/svg+xml",
+        Some("ico") => "image/x-icon",
+        Some("woff") => "font/woff",
+        Some("woff2") => "font/woff2",
+        Some("json") => "application/json",
+        Some("wasm") => "application/wasm",
+        Some("txt") => "text/plain",
+        Some("xml") => "application/xml",
+        Some("pdf") => "application/pdf",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("mp4") => "video/mp4",
+        Some("webm") => "video/webm",
+        Some("mp3") => "audio/mpeg",
+        Some("wav") => "audio/wav",
+        Some("ttf") => "font/ttf",
+        Some("otf") => "font/otf",
+        Some("eot") => "application/vnd.ms-fontobject",
+        _ => "application/octet-stream",
+    }
 }
 
 /// 向指定窗口发送 JavaScript 消息（通过事件循环）
@@ -234,6 +267,7 @@ fn create_window_in_event_loop(
                 handle_ipc_message(request, window_id_for_ipc, &proxy_for_handler);
             })
             .with_custom_protocol("app".to_string(), move |_id, request| {
+                let t_protocol_start = std::time::Instant::now();
                 let uri = request.uri().to_string();
                 
                 // Windows: http://app.<path>, 其他平台: app://<path>
@@ -246,30 +280,50 @@ fn create_window_in_event_loop(
                     .to_string();
                 
                 let full_path = dist_path_for_protocol.join(&file_path);
+                let cache_key = full_path.to_string_lossy().to_string();
                 
-                let mime_type = match full_path.extension().and_then(|e| e.to_str()) {
-                    Some("js") => "application/javascript",
-                    Some("css") => "text/css",
-                    Some("html") => "text/html",
-                    Some("png") => "image/png",
-                    Some("jpg") | Some("jpeg") => "image/jpeg",
-                    Some("svg") => "image/svg+xml",
-                    Some("ico") => "image/x-icon",
-                    Some("woff") => "font/woff",
-                    Some("woff2") => "font/woff2",
-                    Some("json") => "application/json",
-                    _ => "application/octet-stream",
-                };
-                
-                match std::fs::read(&full_path) {
-                    Ok(data) => http::Response::builder()
+                // 先检查缓存
+                if let Some(cached_data) = RESOURCE_CACHE.get(&cache_key) {
+                    // 缓存命中 - 静默处理，不打印日志（性能最优）
+                    let mime_type = get_mime_type(&full_path);
+                    return http::Response::builder()
                         .header("Content-Type", mime_type)
-                        .body(std::borrow::Cow::Owned(data))
-                        .unwrap(),
-                    Err(_) => http::Response::builder()
-                        .status(404)
-                        .body(std::borrow::Cow::Owned(b"Not Found".to_vec()))
-                        .unwrap(),
+                        .header("Cache-Control", "public, max-age=31536000")
+                        .body(std::borrow::Cow::Owned(cached_data.clone()))
+                        .unwrap();
+                }
+                
+                // 缓存未命中，读取文件
+                match std::fs::read(&full_path) {
+                    Ok(data) => {
+                        // 存入缓存
+                        RESOURCE_CACHE.insert(cache_key.clone(), data.clone());
+                        
+                        let mime_type = get_mime_type(&full_path);
+                        let total_time = t_protocol_start.elapsed();
+                        
+                        // 只在开发模式下打印详细日志（可选）
+                        #[cfg(debug_assertions)]
+                        if total_time.as_millis() > 5 {
+                            eprintln!(
+                                "[Cache] 加载资源: {} | 耗时: {:?} | 大小: {:.2} KB",
+                                file_path, total_time, data.len() as f64 / 1024.0
+                            );
+                        }
+                        
+                        http::Response::builder()
+                            .header("Content-Type", mime_type)
+                            .header("Cache-Control", "public, max-age=31536000")
+                            .body(std::borrow::Cow::Owned(data))
+                            .unwrap()
+                    },
+                    Err(e) => {
+                        eprintln!("[Error][Cache] 文件读取失败: {} | 错误: {}", file_path, e);
+                        http::Response::builder()
+                            .status(404)
+                            .body(std::borrow::Cow::Owned(b"Not Found".to_vec()))
+                            .unwrap()
+                    }
                 }
             });
         eprintln!("[Performance][Rust] 构建 WebViewBuilder 耗时: {:?}", t_builder.elapsed());
