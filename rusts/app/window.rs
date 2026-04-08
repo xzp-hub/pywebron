@@ -389,7 +389,32 @@ fn create_window_in_event_loop(
                         }
                     }
                 };
-                builder.with_html(&html_content).build_gtk(vbox)
+
+                let file_path = std::path::Path::new(&resolved_content);
+                let absolute_path = if file_path.is_absolute() {
+                    file_path.to_path_buf()
+                } else {
+                    std::env::current_dir().unwrap_or_default().join(file_path)
+                };
+
+                let base_dir = absolute_path.parent().unwrap_or(std::path::Path::new(""));
+                let base_url = format!("file://{}/", base_dir.display());
+
+                let html_with_base = if html_content.contains("<head>") {
+                    html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
+                } else if html_content.contains("<html>") {
+                    html_content.replace(
+                        "<html>",
+                        &format!("<html><head><base href=\"{}\"></head>", base_url),
+                    )
+                } else {
+                    format!(
+                        "<html><head><base href=\"{}\"></head><body>{}</body></html>",
+                        base_url, html_content
+                    )
+                };
+
+                builder.with_html(&html_with_base).build_gtk(vbox)
             } else if is_dist {
                 let dist_path = std::path::Path::new(&resolved_content);
                 let index_html = dist_path.join("index.html");
@@ -441,7 +466,21 @@ fn create_window_in_event_loop(
                 builder.with_url(&resolved_content).build(&window)
             } else if is_file_path {
                 eprintln!("[Performance][Rust] 使用文件路径模式加载内容");
-                // 直接使用 with_url 加载文件，让浏览器处理资源路径
+                let html_content = if let Some(cached) = HTML_CACHE.get(&resolved_content) {
+                    cached.clone()
+                } else {
+                    match std::fs::read_to_string(&resolved_content) {
+                        Ok(html) => {
+                            HTML_CACHE.insert(resolved_content.clone(), html.clone());
+                            html
+                        }
+                        Err(e) => {
+                            eprintln!("[Error] 读取 HTML 文件失败：{}", e);
+                            return;
+                        }
+                    }
+                };
+
                 let file_path = std::path::Path::new(&resolved_content);
                 let absolute_path = if file_path.is_absolute() {
                     file_path.to_path_buf()
@@ -449,18 +488,34 @@ fn create_window_in_event_loop(
                     std::env::current_dir().unwrap_or_default().join(file_path)
                 };
 
+                let base_dir = absolute_path.parent().unwrap_or(std::path::Path::new(""));
+
                 #[cfg(target_os = "windows")]
-                let file_url = format!(
-                    "file:///{}",
-                    absolute_path.display().to_string().replace("\\", "/")
+                let base_url = format!(
+                    "file:///{}/",
+                    base_dir.display().to_string().replace("\\", "/")
                 );
 
                 #[cfg(not(target_os = "windows"))]
-                let file_url = format!("file://{}", absolute_path.display());
+                let base_url = format!("file://{}/", base_dir.display());
 
-                eprintln!("[Window] 使用 with_url 加载文件 | url={}", file_url);
+                let html_with_base = if html_content.contains("<head>") {
+                    html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
+                } else if html_content.contains("<html>") {
+                    html_content.replace(
+                        "<html>",
+                        &format!("<html><head><base href=\"{}\"></head>", base_url),
+                    )
+                } else {
+                    format!(
+                        "<html><head><base href=\"{}\"></head><body>{}</body></html>",
+                        base_url, html_content
+                    )
+                };
 
-                builder.with_url(&file_url).build(&window)
+                eprintln!("[Window] 使用 with_html 加载文件 | base_url={}", base_url);
+
+                builder.with_html(&html_with_base).build(&window)
             } else if is_dist {
                 eprintln!("[Performance][Rust] 使用 dist 目录模式加载内容");
                 let dist_path = std::path::Path::new(&resolved_content);
