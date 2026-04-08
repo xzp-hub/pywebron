@@ -5,9 +5,15 @@ from pywebron import App, StreamSendModes
 from pywebron.configs import PROJECT_ROOT_PATH, DwmCorners
 from traceback import format_exc
 from pathlib import Path
-from time import time
+from time import time, perf_counter
+
+print(f"[Performance] ========== 应用启动开始 ==========")
+t_app_start = perf_counter()
 
 app = App(prewarm_webview=False)
+
+t_app_init_done = perf_counter()
+print(f"[Performance] App 初始化完成，耗时: {(t_app_init_done - t_app_start) * 1000:.2f}ms")
 
 
 class WindowControlsStruct(app.invoke.struct):
@@ -146,6 +152,9 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
 
 
 if __name__ == "__main__":
+    t_register_start = perf_counter()
+    print(f"[Performance] 开始注册窗口")
+    
     app.window.register_window(
         title="PyWebron 控制面板 1",
         width=1200,
@@ -157,4 +166,12 @@ if __name__ == "__main__":
         # content_path=r"E:\works\pywebron\tests\pywebron.html",
         content_dist=r"E:\works\pywebron\tests\dist",
     )
+    
+    t_register_done = perf_counter()
+    print(f"[Performance] 窗口注册完成，耗时: {(t_register_done - t_register_start) * 1000:.2f}ms")
+    print(f"[Performance] 从应用启动到窗口注册完成，总耗时: {(t_register_done - t_app_start) * 1000:.2f}ms")
+    print(f"[Performance] 准备启动事件循环")
+    
     app.run()
+    
+    print(f"[Performance] ========== 应用已退出 ==========")
