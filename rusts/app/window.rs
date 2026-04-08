@@ -80,7 +80,7 @@ fn cleanup_window(window_id: u64) {
 
 /// 向指定窗口发送 JavaScript 消息（通过事件循环）
 pub fn send_script_to_window(window_id: u64, script: String) -> bool {
-    let _t = std::time::Instant::now();
+    let t_start = std::time::Instant::now();
     let result = if let Some(proxy) = EVENT_PROXIES.get(&window_id) {
         proxy
             .send_event(UserEvent::EvaluateScript { window_id, script })
@@ -88,6 +88,10 @@ pub fn send_script_to_window(window_id: u64, script: String) -> bool {
     } else {
         false
     };
+    let elapsed = t_start.elapsed();
+    if elapsed.as_micros() > 100 {
+        eprintln!("[Timing][send_script_to_window] 耗时: {:?}", elapsed);
+    }
     result
 }
 
@@ -98,6 +102,7 @@ fn create_window_in_event_loop(
     proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
     event_loop: &tao::event_loop::EventLoopWindowTarget<UserEvent>,
 ) {
+    let t_total = std::time::Instant::now();
     let id_clone = window_id;
 
     #[cfg(target_os = "windows")]
@@ -115,6 +120,7 @@ fn create_window_in_event_loop(
         "[Window] 创建窗口：{} | show_title_bar={} | size={}x{}",
         config.title, config.show_title_bar, config.width, config.height
     );
+    eprintln!("[Performance][Rust] create_window_in_event_loop 开始: {}", config.title);
 
     #[cfg(not(target_os = "windows"))]
     let window_builder = WindowBuilder::new()
@@ -126,6 +132,7 @@ fn create_window_in_event_loop(
         .with_min_inner_size(PhysicalSize::new(400u32, 300u32))
         .with_transparent(true);
 
+    let t_window_build = std::time::Instant::now();
     let window = match window_builder.build(event_loop) {
         Ok(w) => w,
         Err(_) => {
@@ -133,6 +140,8 @@ fn create_window_in_event_loop(
             return;
         }
     };
+    eprintln!("[Timing][create_window] 窗口构建耗时: {:?}", t_window_build.elapsed());
+    eprintln!("[Performance][Rust] 窗口构建耗时: {:?}", t_window_build.elapsed());
 
     #[cfg(target_os = "windows")]
     let hwnd = {
@@ -164,8 +173,12 @@ fn create_window_in_event_loop(
     };
 
     // 创建 webview
+    let t_webview_start = std::time::Instant::now();
+    eprintln!("[Performance][Rust] 开始创建 WebView");
     let webview = {
+        let t_lock = std::time::Instant::now();
         let _webview_lock = WEBVIEW_CREATE_LOCK.lock().unwrap();
+        eprintln!("[Performance][Rust] 获取 WEBVIEW_CREATE_LOCK 耗时: {:?}", t_lock.elapsed());
 
         let content_path = config.content_path.clone();
         let content_url = config.content_url.clone();
@@ -187,6 +200,7 @@ fn create_window_in_event_loop(
 
         let proxy_for_handler = proxy.clone();
         let window_id_for_ipc = id_clone;
+        let t_config_json = std::time::Instant::now();
         let window_config_json = serde_json::json!({
             "window_id": id_clone,
             "title": config.title,
@@ -196,6 +210,9 @@ fn create_window_in_event_loop(
             "enable_resizable": config.enable_resizable,
             "enable_devtools": config.enable_devtools
         });
+        eprintln!("[Performance][Rust] 构建配置 JSON 耗时: {:?}", t_config_json.elapsed());
+        
+        let t_builder = std::time::Instant::now();
         let builder = WebViewBuilder::new()
             .with_devtools(config.enable_devtools)
             .with_transparent(false)
@@ -208,6 +225,7 @@ fn create_window_in_event_loop(
             .with_ipc_handler(move |request| {
                 handle_ipc_message(request, window_id_for_ipc, &proxy_for_handler);
             });
+        eprintln!("[Performance][Rust] 构建 WebViewBuilder 耗时: {:?}", t_builder.elapsed());
 
         #[cfg(target_os = "windows")]
         let builder = builder.with_additional_browser_args(
@@ -287,64 +305,73 @@ fn create_window_in_event_loop(
             target_os = "netbsd",
             target_os = "openbsd"
         )))]
-        let result = if is_url {
-            builder.with_url(&resolved_content).build(&window)
-        } else if is_file_path {
-            // 直接使用 with_url 加载文件，让浏览器处理资源路径
-            let file_path = std::path::Path::new(&resolved_content);
-            let absolute_path = if file_path.is_absolute() {
-                file_path.to_path_buf()
+        let result = {
+            let t_build = std::time::Instant::now();
+            let res = if is_url {
+                eprintln!("[Performance][Rust] 使用 URL 模式加载内容");
+                builder.with_url(&resolved_content).build(&window)
+            } else if is_file_path {
+                eprintln!("[Performance][Rust] 使用文件路径模式加载内容");
+                // 直接使用 with_url 加载文件，让浏览器处理资源路径
+                let file_path = std::path::Path::new(&resolved_content);
+                let absolute_path = if file_path.is_absolute() {
+                    file_path.to_path_buf()
+                } else {
+                    std::env::current_dir().unwrap_or_default().join(file_path)
+                };
+
+                #[cfg(target_os = "windows")]
+                let file_url = format!(
+                    "file:///{}",
+                    absolute_path.display().to_string().replace("\\", "/")
+                );
+
+                #[cfg(not(target_os = "windows"))]
+                let file_url = format!("file://{}", absolute_path.display());
+
+                eprintln!("[Window] 使用 with_url 加载文件 | url={}", file_url);
+
+                builder.with_url(&file_url).build(&window)
+            } else if is_dist {
+                eprintln!("[Performance][Rust] 使用 dist 目录模式加载内容");
+                let dist_path = std::path::Path::new(&resolved_content);
+                let index_html = dist_path.join("index.html");
+                if !index_html.exists() {
+                    eprintln!("[Error] dist 目录中不存在 index.html：{}", resolved_content);
+                    return;
+                }
+                
+                // 获取 index.html 的绝对路径
+                let absolute_index_path = if index_html.is_absolute() {
+                    index_html.clone()
+                } else {
+                    std::env::current_dir().unwrap_or_default().join(&index_html)
+                };
+                
+                // 构建 file:// URL
+                #[cfg(target_os = "windows")]
+                let file_url = {
+                    let path_str = absolute_index_path.display().to_string();
+                    let normalized = path_str.replace("\\", "/");
+                    format!("file:///{}", normalized)
+                };
+                
+                #[cfg(not(target_os = "windows"))]
+                let file_url = format!("file://{}", absolute_index_path.display());
+                
+                eprintln!("[Window] 加载 dist 目录：{}", file_url);
+                builder.with_url(&file_url).build(&window)
             } else {
-                std::env::current_dir().unwrap_or_default().join(file_path)
+                builder.with_html("<html><body>No content specified</body></html>").build(&window)
             };
-
-            #[cfg(target_os = "windows")]
-            let file_url = format!(
-                "file:///{}",
-                absolute_path.display().to_string().replace("\\", "/")
-            );
-
-            #[cfg(not(target_os = "windows"))]
-            let file_url = format!("file://{}", absolute_path.display());
-
-            eprintln!("[Window] 使用 with_url 加载文件 | url={}", file_url);
-
-            builder.with_url(&file_url).build(&window)
-        } else if is_dist {
-            let dist_path = std::path::Path::new(&resolved_content);
-            let index_html = dist_path.join("index.html");
-            if !index_html.exists() {
-                eprintln!("[Error] dist 目录中不存在 index.html：{}", resolved_content);
-                return;
-            }
-            
-            // 获取 index.html 的绝对路径
-            let absolute_index_path = if index_html.is_absolute() {
-                index_html.clone()
-            } else {
-                std::env::current_dir().unwrap_or_default().join(&index_html)
-            };
-            
-            // 构建 file:// URL
-            #[cfg(target_os = "windows")]
-            let file_url = {
-                let path_str = absolute_index_path.display().to_string();
-                let normalized = path_str.replace("\\", "/");
-                format!("file:///{}", normalized)
-            };
-            
-            #[cfg(not(target_os = "windows"))]
-            let file_url = format!("file://{}", absolute_index_path.display());
-            
-            eprintln!("[Window] 加载 dist 目录：{}", file_url);
-            builder.with_url(&file_url).build(&window)
-        } else {
-            builder.with_html("<html><body>No content specified</body></html>").build(&window)
+            eprintln!("[Performance][Rust] WebView.build() 耗时: {:?}", t_build.elapsed());
+            res
         };
 
         match result {
             Ok(wv) => {
                 eprintln!("[Window] WebView 创建成功！window_id={}", id_clone);
+                eprintln!("[Performance][Rust] WebView 创建总耗时: {:?}", t_webview_start.elapsed());
                 SendSyncWebView(std::sync::Arc::new(Mutex::new(Some(wv))))
             },
             Err(e) => {
@@ -353,6 +380,7 @@ fn create_window_in_event_loop(
             }
         }
     };
+    eprintln!("[Timing][create_window] WebView 创建耗时: {:?}", t_webview_start.elapsed());
 
     #[cfg(target_os = "windows")]
     if !hwnd.is_null() {
@@ -385,6 +413,7 @@ fn create_window_in_event_loop(
         }
     }
 
+    let t_storage = std::time::Instant::now();
     WINDOWS.insert(id_clone, window);
     WINDOW_PROXIES.insert(
         id_clone,
@@ -398,6 +427,8 @@ fn create_window_in_event_loop(
     WEBVIEWS.insert(id_clone, webview);
 
     WINDOW_READY.insert(id_clone, true);
+    eprintln!("[Performance][Rust] 存储窗口数据耗时: {:?}", t_storage.elapsed());
+    eprintln!("[Performance][Rust] create_window_in_event_loop 完成，总耗时: {:?}", t_total.elapsed());
 }
 
 /// 获取所有窗口 ID 列表
@@ -436,23 +467,27 @@ pub struct WindowConfig {
 }
 
 fn create_window(config: WindowConfig) -> PyResult<u64> {
+    let t_start = std::time::Instant::now();
     let window_id = generate_window_id();
 
     eprintln!(
-        "[Window] 准备创建新窗口：{} | id={}",
+        "[Performance][Rust] create_window 开始：{} | id={}",
         config.title, window_id
     );
 
     // 存储配置，让主事件循环可以创建窗口
+    let t_pending = std::time::Instant::now();
     if let Ok(mut configs) = PENDING_WINDOWS.lock() {
         configs.insert(window_id, config);
         eprintln!("[Window] 窗口配置已添加到 PENDING_WINDOWS");
     }
+    eprintln!("[Performance][Rust] 添加到 PENDING_WINDOWS 耗时: {:?}", t_pending.elapsed());
 
     WINDOW_READY.insert(window_id, false);
 
     // 唤醒事件循环，让它立即处理待创建的窗口
     // 这样可以确保运行时创建的窗口能够立即显示
+    let t_wakeup = std::time::Instant::now();
     if let Ok(pending_configs) = PENDING_WINDOWS.lock() {
         if !pending_configs.is_empty() {
             drop(pending_configs);
@@ -468,6 +503,8 @@ fn create_window(config: WindowConfig) -> PyResult<u64> {
             }
         }
     }
+    eprintln!("[Performance][Rust] 唤醒事件循环耗时: {:?}", t_wakeup.elapsed());
+    eprintln!("[Performance][Rust] create_window 完成，总耗时: {:?}", t_start.elapsed());
 
     Ok(window_id)
 }
@@ -700,14 +737,20 @@ fn handle_ipc_message(
 #[pyfunction(name = "rust_init")]
 #[pyo3(signature = (prewarm_webview=false))]
 pub fn init(prewarm_webview: bool) -> PyResult<()> {
+    let t_start = std::time::Instant::now();
+    eprintln!("[Performance][Rust] rust_init 开始");
+    
     #[cfg(target_os = "windows")]
     std::env::set_var("WEBVIEW2_DEFAULT_BACKGROUND_COLOR", "00000000");
 
     #[cfg(target_os = "windows")]
     if prewarm_webview {
+        let t_prewarm = std::time::Instant::now();
         prewarm_webview2();
+        eprintln!("[Performance][Rust] prewarm_webview2 耗时: {:?}", t_prewarm.elapsed());
     }
 
+    eprintln!("[Performance][Rust] rust_init 完成，总耗时: {:?}", t_start.elapsed());
     Ok(())
 }
 
@@ -758,8 +801,11 @@ pub fn register_window(
     enable_devtools: bool,
     dwm_corner: u32,
 ) -> PyResult<bool> {
+    let t_start = std::time::Instant::now();
+    eprintln!("[Performance][Rust] rust_register_window 开始: {}", title);
+    
     let config = WindowConfig {
-        title,
+        title: title.clone(),
         width,
         height,
         content_path,
@@ -773,13 +819,16 @@ pub fn register_window(
     };
 
     // 直接创建窗口
+    let t_create = std::time::Instant::now();
     let window_id = create_window(config.clone())?;
+    eprintln!("[Performance][Rust] create_window 耗时: {:?}", t_create.elapsed());
 
     // 存储配置供 get_windows() 查询
     if let Ok(mut configs) = WINDOW_CONFIGS.write() {
         configs.insert(window_id, config);
     }
 
+    eprintln!("[Performance][Rust] rust_register_window 完成: {}, 总耗时: {:?}", title, t_start.elapsed());
     Ok(true)
 }
 
@@ -792,7 +841,11 @@ static WINDOW_CONFIGS: Lazy<RwLock<HashMap<u64, WindowConfig>>> =
 /// 运行主循环（在 Python 主线程运行 TAO 事件循环）
 #[pyfunction(name = "rust_run")]
 pub fn run(_py: Python<'_>) -> PyResult<()> {
+    let t_start = std::time::Instant::now();
+    eprintln!("[Performance][Rust] rust_run 开始");
+    
     // 创建全局事件循环（必须在主线程）
+    let t_event_loop = std::time::Instant::now();
     #[cfg(target_os = "windows")]
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event()
         .with_any_thread(true)
@@ -811,6 +864,8 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
 
     #[cfg(target_os = "macos")]
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
+    
+    eprintln!("[Performance][Rust] 事件循环创建耗时: {:?}", t_event_loop.elapsed());
 
     let proxy = event_loop.create_proxy();
 
@@ -820,6 +875,7 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
     }
 
     eprintln!("[Window] 启动事件循环（主线程）");
+    eprintln!("[Performance][Rust] rust_run 初始化完成，耗时: {:?}", t_start.elapsed());
 
     // 关键：释放 GIL，允许其他线程（invoke/stream 线程池）访问 Python
     // event_loop.run() 是阻塞调用，如果不释放 GIL，其他线程的 Python::attach() 会死锁
@@ -832,6 +888,7 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
         // 处理窗口关闭事件
         match &event {
             Event::UserEvent(UserEvent::WakeUp) => {
+                let t_wakeup = std::time::Instant::now();
                 eprintln!("[Window][Event] 收到 WakeUp 事件，准备处理待创建的窗口");
                 // 唤醒事件，立即处理待创建的窗口
                 if let Ok(mut pending) = PENDING_WINDOWS.lock() {
@@ -846,14 +903,16 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
                                 "[Window][Event] 开始创建窗口：{} | id={}",
                                 config.title, window_id
                             );
+                            let t_create = std::time::Instant::now();
                             create_window_in_event_loop(&config, window_id, &proxy, event_loop);
                             eprintln!(
-                                "[Window][Event] 窗口创建完成：{} | id={}",
-                                config.title, window_id
+                                "[Performance][Rust] 窗口创建完成：{} | id={} | 耗时: {:?}",
+                                config.title, window_id, t_create.elapsed()
                             );
                         }
                     }
                 }
+                eprintln!("[Performance][Rust] WakeUp 事件处理完成，耗时: {:?}", t_wakeup.elapsed());
             }
             Event::NewEvents(_) => {
                 // NewEvents 时也检查待创建窗口（处理事件循环自然唤醒的情况）

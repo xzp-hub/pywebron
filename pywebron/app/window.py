@@ -7,6 +7,7 @@ from .._pywebron_ import (
     rust_shutdown_window,
     rust_dragdrop_window,
 )
+from time import perf_counter
 
 
 class Window:
@@ -24,6 +25,9 @@ class Window:
         enable_devtools: bool = True,
         dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
     ) -> bool:
+        t_start = perf_counter()
+        print(f"[Performance] Window.register_window 开始: {title}")
+        
         if sum(bool(x) for x in (content_path, content_url, content_dist)) > 1:
             raise ValueError(
                 "content_path, content_url, and content_dist cannot be used at the same time"
@@ -35,7 +39,7 @@ class Window:
         def pather(file_name):
             return f"{PROJECT_ROOT_PATH}/assets/{file_name}"
 
-        return rust_register_window(
+        result = rust_register_window(
             title=title,
             width=width,
             height=height,
@@ -48,6 +52,10 @@ class Window:
             enable_devtools=enable_devtools,
             dwm_corner=dwm_corner,
         )
+        
+        t_end = perf_counter()
+        print(f"[Performance] Window.register_window 完成: {title}, 耗时: {(t_end - t_start) * 1000:.2f}ms")
+        return result
 
     @staticmethod
     def minimize_window(window_id: int) -> bool:
