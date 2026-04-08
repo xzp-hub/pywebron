@@ -167,12 +167,23 @@ fn create_window_in_event_loop(
     let webview = {
         let _webview_lock = WEBVIEW_CREATE_LOCK.lock().unwrap();
 
-        let is_url = config.content.starts_with("http://")
-            || config.content.starts_with("https://");
-        let is_file_path = !is_url
-            && (config.content.ends_with(".html")
-                || config.content.ends_with(".htm")
-                || std::path::Path::new(&config.content).exists());
+        let content_path = config.content_path.clone();
+        let content_url = config.content_url.clone();
+        let content_dist = config.content_dist.clone();
+
+        let is_url = content_url.is_some();
+        let is_file_path = content_path.is_some();
+        let is_dist = content_dist.is_some();
+
+        let resolved_content = if let Some(ref url) = content_url {
+            url.clone()
+        } else if let Some(ref path) = content_path {
+            path.clone()
+        } else if let Some(ref dist) = content_dist {
+            dist.clone()
+        } else {
+            String::new()
+        };
 
         let proxy_for_handler = proxy.clone();
         let window_id_for_ipc = id_clone;
@@ -187,8 +198,8 @@ fn create_window_in_event_loop(
         });
         let builder = WebViewBuilder::new()
             .with_devtools(config.enable_devtools)
-            .with_transparent(true)
-            .with_background_color((0, 0, 0, 0))
+            .with_transparent(false)
+            .with_background_color((255, 255, 255, 255))
             .with_initialization_script(&format!(
                 "window.pywebron={};{}",
                 serde_json::to_string(&window_config_json).unwrap_or_default(),
@@ -200,7 +211,7 @@ fn create_window_in_event_loop(
 
         #[cfg(target_os = "windows")]
         let builder = builder.with_additional_browser_args(
-            "--disable-features=IsolateOrigins,site-per-process,ThirdPartyStoragePartitioning,ThirdPartyCookiesBlocking --allow-file-access-from-files",
+            "--disable-features=IsolateOrigins,site-per-process,ThirdPartyStoragePartitioning,ThirdPartyCookiesBlocking --allow-file-access-from-files --disable-web-security",
         );
 
         #[cfg(any(
@@ -211,48 +222,61 @@ fn create_window_in_event_loop(
             target_os = "openbsd"
         ))]
         let result = {
-            // Linux: 使用 build_gtk() 同时支持 X11 和 Wayland
-            // 使用 default_vbox 作为容器，避免与 tao 默认布局冲突
+            use gtk::prelude::*;
             let vbox = window
                 .default_vbox()
                 .expect("tao window should have default vbox");
 
-            // 设置 GTK 容器背景透明（关键：解决 Linux 下 WebView 背景白色问题）
-            // 参考：https://docs.rs/wry/latest/wry/struct.WebViewBuilder.html#method.with_transparent
-            use gtk::prelude::*;
             vbox.set_app_paintable(true);
 
-            // 获取带 alpha 通道的 visual
             if let Some(visual) = vbox.screen().and_then(|s| s.rgba_visual()) {
                 vbox.set_visual(Some(&visual));
             }
 
-            // 强制设置 GTK 窗口的缩放因子为 1.0，避免 DPI 缩放问题
             use tao::platform::unix::WindowExtUnix;
             let gtk_window = window.gtk_window();
-            // 显式设置窗口大小，确保使用物理像素
             gtk_window.set_default_size(config.width as i32, config.height as i32);
 
             if is_url {
-                builder.with_url(&config.content).build_gtk(vbox)
+                builder.with_url(&resolved_content).build_gtk(vbox)
             } else if is_file_path {
-                let html_content = if let Some(cached) = HTML_CACHE.get(&config.content) {
+                let html_content = if let Some(cached) = HTML_CACHE.get(&resolved_content) {
                     cached.clone()
                 } else {
-                    match std::fs::read_to_string(&config.content) {
+                    match std::fs::read_to_string(&resolved_content) {
                         Ok(html) => {
-                            HTML_CACHE.insert(config.content.clone(), html.clone());
+                            HTML_CACHE.insert(resolved_content.clone(), html.clone());
                             html
                         }
                         Err(_) => {
-                            eprintln!("[Error] 读取 HTML 文件失败：{}", config.content);
+                            eprintln!("[Error] 读取 HTML 文件失败：{}", resolved_content);
                             return;
                         }
                     }
                 };
                 builder.with_html(&html_content).build_gtk(vbox)
+            } else if is_dist {
+                let dist_path = std::path::Path::new(&resolved_content);
+                let index_html = dist_path.join("index.html");
+                
+                if !index_html.exists() {
+                    eprintln!("[Error] dist 目录中不存在 index.html：{}", resolved_content);
+                    return;
+                }
+                
+                // 获取 index.html 的绝对路径
+                let absolute_index_path = if index_html.is_absolute() {
+                    index_html.clone()
+                } else {
+                    std::env::current_dir().unwrap_or_default().join(&index_html)
+                };
+                
+                let file_url = format!("file://{}", absolute_index_path.display());
+                eprintln!("[Window][Dist][Linux] file_url: {}", file_url);
+                
+                builder.with_url(&file_url).build_gtk(vbox)
             } else {
-                builder.with_html(&config.content).build_gtk(vbox)
+                builder.with_html("<html><body>No content specified</body></html>").build_gtk(vbox)
             }
         };
 
@@ -264,66 +288,65 @@ fn create_window_in_event_loop(
             target_os = "openbsd"
         )))]
         let result = if is_url {
-            builder.with_url(&config.content).build(&window)
+            builder.with_url(&resolved_content).build(&window)
         } else if is_file_path {
-            // 使用缓存避免重复读取文件
-            let html_content = if let Some(cached) = HTML_CACHE.get(&config.content) {
-                cached.clone()
-            } else {
-                match std::fs::read_to_string(&config.content) {
-                    Ok(html) => {
-                        HTML_CACHE.insert(config.content.clone(), html.clone());
-                        html
-                    }
-                    Err(_) => {
-                        eprintln!("[Error] 读取 HTML 文件失败：{}", config.content);
-                        return;
-                    }
-                }
-            };
-
-            // 保持 with_html 路径，规避 WebView2 在 file:// + IPC 下的 URI 解析 panic。
-            // 同时注入 base URL 以保证相对资源路径可用。
-            let file_path = std::path::Path::new(&config.content);
+            // 直接使用 with_url 加载文件，让浏览器处理资源路径
+            let file_path = std::path::Path::new(&resolved_content);
             let absolute_path = if file_path.is_absolute() {
                 file_path.to_path_buf()
             } else {
                 std::env::current_dir().unwrap_or_default().join(file_path)
             };
 
-            // 获取文件所在目录作为 base URL
-            let base_dir = absolute_path.parent().unwrap_or(std::path::Path::new(""));
-
             #[cfg(target_os = "windows")]
-            let base_url = format!(
-                "file:///{}/",
-                base_dir.display().to_string().replace("\\", "/")
+            let file_url = format!(
+                "file:///{}",
+                absolute_path.display().to_string().replace("\\", "/")
             );
 
             #[cfg(not(target_os = "windows"))]
-            let base_url = format!("file://{}/", base_dir.display());
+            let file_url = format!("file://{}", absolute_path.display());
 
-            let html_with_base = if html_content.contains("<head>") {
-                html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
-            } else if html_content.contains("<html>") {
-                html_content.replace(
-                    "<html>",
-                    &format!("<html><head><base href=\"{}\"></head>", base_url),
-                )
+            eprintln!("[Window] 使用 with_url 加载文件 | url={}", file_url);
+
+            builder.with_url(&file_url).build(&window)
+        } else if is_dist {
+            let dist_path = std::path::Path::new(&resolved_content);
+            let index_html = dist_path.join("index.html");
+            if !index_html.exists() {
+                eprintln!("[Error] dist 目录中不存在 index.html：{}", resolved_content);
+                return;
+            }
+            
+            // 获取 index.html 的绝对路径
+            let absolute_index_path = if index_html.is_absolute() {
+                index_html.clone()
             } else {
-                format!(
-                    "<html><head><base href=\"{}\"></head><body>{}</body></html>",
-                    base_url, html_content
-                )
+                std::env::current_dir().unwrap_or_default().join(&index_html)
             };
-
-            builder.with_html(&html_with_base).build(&window)
+            
+            // 构建 file:// URL
+            #[cfg(target_os = "windows")]
+            let file_url = {
+                let path_str = absolute_index_path.display().to_string();
+                let normalized = path_str.replace("\\", "/");
+                format!("file:///{}", normalized)
+            };
+            
+            #[cfg(not(target_os = "windows"))]
+            let file_url = format!("file://{}", absolute_index_path.display());
+            
+            eprintln!("[Window] 加载 dist 目录：{}", file_url);
+            builder.with_url(&file_url).build(&window)
         } else {
-            builder.with_html(&config.content).build(&window)
+            builder.with_html("<html><body>No content specified</body></html>").build(&window)
         };
 
         match result {
-            Ok(wv) => SendSyncWebView(std::sync::Arc::new(Mutex::new(Some(wv)))),
+            Ok(wv) => {
+                eprintln!("[Window] WebView 创建成功！window_id={}", id_clone);
+                SendSyncWebView(std::sync::Arc::new(Mutex::new(Some(wv))))
+            },
             Err(e) => {
                 eprintln!("[Error] WebView 创建失败：{}", e);
                 return;
@@ -402,7 +425,9 @@ pub struct WindowConfig {
     pub title: String,
     pub width: u32,
     pub height: u32,
-    pub content: String,
+    pub content_path: Option<String>,
+    pub content_url: Option<String>,
+    pub content_dist: Option<String>,
     pub icon_path: String,
     pub show_title_bar: bool,
     pub enable_resizable: bool,
@@ -719,12 +744,14 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, content, icon_path, show_title_bar, enable_resizable, enable_devtools, dwm_corner=0))]
+#[pyo3(signature = (title, width, height, content_path, content_url, content_dist, icon_path, show_title_bar, enable_resizable, enable_devtools, dwm_corner=0))]
 pub fn register_window(
     title: String,
     width: u32,
     height: u32,
-    content: String,
+    content_path: Option<String>,
+    content_url: Option<String>,
+    content_dist: Option<String>,
     icon_path: String,
     show_title_bar: bool,
     enable_resizable: bool,
@@ -735,7 +762,9 @@ pub fn register_window(
         title,
         width,
         height,
-        content,
+        content_path,
+        content_url,
+        content_dist,
         icon_path,
         show_title_bar,
         enable_resizable,
@@ -1046,7 +1075,9 @@ pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
             window_dict.set_item("window_title", &config.title)?;
             window_dict.set_item("window_width", config.width)?;
             window_dict.set_item("window_height", config.height)?;
-            window_dict.set_item("window_content_path", &config.content)?;
+            window_dict.set_item("window_content_path", &config.content_path)?;
+            window_dict.set_item("window_content_url", &config.content_url)?;
+            window_dict.set_item("window_content_dist", &config.content_dist)?;
             window_dict.set_item("window_icon_path", &config.icon_path)?;
             window_dict.set_item("window_show_title_bar", config.show_title_bar)?;
             window_dict.set_item("window_enable_resizable", config.enable_resizable)?;

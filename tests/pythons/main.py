@@ -150,10 +150,11 @@ if __name__ == "__main__":
         title="PyWebron 控制面板 1",
         width=1200,
         height=1200,
-        show_title_bar=False,
+        show_title_bar=True,
         enable_resizable=True,
         # dwm_corner=DwmCorners.NORMAL_ROUND,
         # content_url= 'http://localhost:5173/'
-        content_path=r"E:\works\pywebron\tests\pywebron.html",
+        # content_path=r"E:\works\pywebron\tests\pywebron.html",
+        content_dist=r"E:\works\pywebron\tests\dist",
     )
     app.run()

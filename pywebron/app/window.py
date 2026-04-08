@@ -15,6 +15,7 @@ class Window:
         title: str = "PyWebron App",
         content_path: str = None,
         content_url: str = None,
+        content_dist: str = None,
         width: int = 1200,
         height: int = 900,
         icon_path: str = None,
@@ -23,9 +24,9 @@ class Window:
         enable_devtools: bool = True,
         dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
     ) -> bool:
-        if all((content_path, content_url)):
+        if sum(bool(x) for x in (content_path, content_url, content_dist)) > 1:
             raise ValueError(
-                "content_path and content_url cannot be used at the same time"
+                "content_path, content_url, and content_dist cannot be used at the same time"
             )
 
         if content_url is not None and not show_title_bar:
@@ -38,7 +39,9 @@ class Window:
             title=title,
             width=width,
             height=height,
-            content=content_path or content_url or pather("pywebron.html"),
+            content_path=content_path,
+            content_url=content_url,
+            content_dist=content_dist,
             icon_path=icon_path or pather("pywebron.png"),
             show_title_bar=show_title_bar,
             enable_resizable=enable_resizable,
