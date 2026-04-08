@@ -196,6 +196,19 @@ fn create_window_in_event_loop(
             "enable_resizable": config.enable_resizable,
             "enable_devtools": config.enable_devtools
         });
+        
+        // 存储 dist 路径用于自定义协议处理
+        let dist_path_for_protocol = if config.content_dist.is_some() {
+            let dist_path = std::path::Path::new(config.content_dist.as_ref().unwrap());
+            if dist_path.is_absolute() {
+                dist_path.to_path_buf()
+            } else {
+                std::env::current_dir().unwrap_or_default().join(dist_path)
+            }
+        } else {
+            std::path::PathBuf::new()
+        };
+        
         let builder = WebViewBuilder::new()
             .with_devtools(config.enable_devtools)
             .with_transparent(false)
@@ -207,6 +220,45 @@ fn create_window_in_event_loop(
             ))
             .with_ipc_handler(move |request| {
                 handle_ipc_message(request, window_id_for_ipc, &proxy_for_handler);
+            })
+            .with_custom_protocol("app".to_string(), move |_id, request| {
+                let uri = request.uri().to_string();
+                
+                // Windows: http://app.<path>, 其他平台: app://<path>
+                let file_path = uri
+                    .strip_prefix("http://app.")
+                    .or_else(|| uri.strip_prefix("https://app."))
+                    .or_else(|| uri.strip_prefix("app://"))
+                    .unwrap_or("")
+                    .trim_end_matches('/')
+                    .to_string();
+                
+                let full_path = dist_path_for_protocol.join(&file_path);
+                
+                let mime_type = match full_path.extension().and_then(|e| e.to_str()) {
+                    Some("js") => "application/javascript",
+                    Some("css") => "text/css",
+                    Some("html") => "text/html",
+                    Some("png") => "image/png",
+                    Some("jpg") | Some("jpeg") => "image/jpeg",
+                    Some("svg") => "image/svg+xml",
+                    Some("ico") => "image/x-icon",
+                    Some("woff") => "font/woff",
+                    Some("woff2") => "font/woff2",
+                    Some("json") => "application/json",
+                    _ => "application/octet-stream",
+                };
+                
+                match std::fs::read(&full_path) {
+                    Ok(data) => http::Response::builder()
+                        .header("Content-Type", mime_type)
+                        .body(std::borrow::Cow::Owned(data))
+                        .unwrap(),
+                    Err(_) => http::Response::builder()
+                        .status(404)
+                        .body(std::borrow::Cow::Owned(b"Not Found".to_vec()))
+                        .unwrap(),
+                }
             });
 
         #[cfg(target_os = "windows")]
@@ -264,17 +316,27 @@ fn create_window_in_event_loop(
                     return;
                 }
                 
-                // 获取 index.html 的绝对路径
-                let absolute_index_path = if index_html.is_absolute() {
-                    index_html.clone()
-                } else {
-                    std::env::current_dir().unwrap_or_default().join(&index_html)
+                // 读取 HTML 并将所有路径改为 app:// 协议
+                let html_content = match std::fs::read_to_string(&index_html) {
+                    Ok(html) => {
+                        eprintln!("[Window] 加载 dist 目录：{}", resolved_content);
+                        
+                        // 将所有 href="/ 和 src="/ 改为 href="app:// 和 src="app://
+                        let mut converted = html.replace("href=\"/", "href=\"app://");
+                        converted = converted.replace("src=\"/", "src=\"app://");
+                        converted = converted.replace("href='/", "href='app://");
+                        converted = converted.replace("src='/", "src='app://");
+                        
+                        eprintln!("[Window] 转换后使用 app:// 协议");
+                        converted
+                    },
+                    Err(e) => {
+                        eprintln!("[Error] 读取 dist/index.html 失败：{}", e);
+                        return;
+                    }
                 };
                 
-                let file_url = format!("file://{}", absolute_index_path.display());
-                eprintln!("[Window][Dist][Linux] file_url: {}", file_url);
-                
-                builder.with_url(&file_url).build_gtk(vbox)
+                builder.with_html(&html_content).build_gtk(vbox)
             } else {
                 builder.with_html("<html><body>No content specified</body></html>").build_gtk(vbox)
             }
@@ -318,26 +380,36 @@ fn create_window_in_event_loop(
                 return;
             }
             
-            // 获取 index.html 的绝对路径
-            let absolute_index_path = if index_html.is_absolute() {
-                index_html.clone()
-            } else {
-                std::env::current_dir().unwrap_or_default().join(&index_html)
+            // 读取 HTML 并将所有路径改为 app:// 协议
+            let html_content = match std::fs::read_to_string(&index_html) {
+                Ok(html) => {
+                    eprintln!("[Window] 加载 dist 目录：{}", resolved_content);
+                    
+                    #[cfg(target_os = "windows")]
+                    let converted = {
+                        html.replace("href=\"/", "href=\"http://app.")
+                            .replace("src=\"/", "src=\"http://app.")
+                            .replace("href='/", "href='http://app.")
+                            .replace("src='/", "src='http://app.")
+                    };
+                    
+                    #[cfg(not(target_os = "windows"))]
+                    let converted = {
+                        html.replace("href=\"/", "href=\"app://")
+                            .replace("src=\"/", "src=\"app://")
+                            .replace("href='/", "href='app://")
+                            .replace("src='/", "src='app://")
+                    };
+                    
+                    converted
+                },
+                Err(e) => {
+                    eprintln!("[Error] 读取 dist/index.html 失败：{}", e);
+                    return;
+                }
             };
             
-            // 构建 file:// URL
-            #[cfg(target_os = "windows")]
-            let file_url = {
-                let path_str = absolute_index_path.display().to_string();
-                let normalized = path_str.replace("\\", "/");
-                format!("file:///{}", normalized)
-            };
-            
-            #[cfg(not(target_os = "windows"))]
-            let file_url = format!("file://{}", absolute_index_path.display());
-            
-            eprintln!("[Window] 加载 dist 目录：{}", file_url);
-            builder.with_url(&file_url).build(&window)
+            builder.with_html(&html_content).build(&window)
         } else {
             builder.with_html("<html><body>No content specified</body></html>").build(&window)
         };
