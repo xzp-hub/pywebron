@@ -164,9 +164,9 @@ if __name__ == "__main__":
         show_title_bar=False,
         enable_resizable=True,
         # dwm_corner=DwmCorners.NORMAL_ROUND,
-        # content_url= 'http://localhost:5173/'
-        # content_path=r"D:\works\pywebron\tests\pywebron.html",
-        content_dist=r"D:\works\pywebron\tests\dist",
+        link_content="http://localhost:5173/",
+        # html_content=r"D:\works\pywebron\tests\pywebron.html",
+        # dist_content=r"D:\works\pywebron\tests\dist",
     )
 
     t_register_done = perf_counter()

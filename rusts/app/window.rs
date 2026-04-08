@@ -217,19 +217,19 @@ fn create_window_in_event_loop(
             t_lock.elapsed()
         );
 
-        let content_path = config.content_path.clone();
-        let content_url = config.content_url.clone();
-        let content_dist = config.content_dist.clone();
+        let html_content = config.html_content.clone();
+        let link_content = config.link_content.clone();
+        let dist_content = config.dist_content.clone();
 
-        let is_url = content_url.is_some();
-        let is_file_path = content_path.is_some();
-        let is_dist = content_dist.is_some();
+        let is_url = link_content.is_some();
+        let is_file_path = html_content.is_some();
+        let is_dist = dist_content.is_some();
 
-        let resolved_content = if let Some(ref url) = content_url {
-            url.clone()
-        } else if let Some(ref path) = content_path {
+        let resolved_content = if let Some(ref link) = link_content {
+            link.clone()
+        } else if let Some(ref path) = html_content {
             path.clone()
-        } else if let Some(ref dist) = content_dist {
+        } else if let Some(ref dist) = dist_content {
             dist.clone()
         } else {
             String::new()
@@ -253,8 +253,8 @@ fn create_window_in_event_loop(
         );
 
         // 存储 dist 路径用于自定义协议处理
-        let dist_path_for_protocol = if config.content_dist.is_some() {
-            let dist_path = std::path::Path::new(config.content_dist.as_ref().unwrap());
+        let dist_path_for_protocol = if config.dist_content.is_some() {
+            let dist_path = std::path::Path::new(config.dist_content.as_ref().unwrap());
             if dist_path.is_absolute() {
                 dist_path.to_path_buf()
             } else {
@@ -676,9 +676,9 @@ pub struct WindowConfig {
     pub title: String,
     pub width: u32,
     pub height: u32,
-    pub content_path: Option<String>,
-    pub content_url: Option<String>,
-    pub content_dist: Option<String>,
+    pub html_content: Option<String>,
+    pub link_content: Option<String>,
+    pub dist_content: Option<String>,
     pub icon_path: String,
     pub show_title_bar: bool,
     pub enable_resizable: bool,
@@ -1022,14 +1022,14 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, content_path, content_url, content_dist, icon_path, show_title_bar, enable_resizable, enable_devtools, dwm_corner=0))]
+#[pyo3(signature = (title, width, height, html_content, link_content, dist_content, icon_path, show_title_bar, enable_resizable, enable_devtools, dwm_corner=0))]
 pub fn register_window(
     title: String,
     width: u32,
     height: u32,
-    content_path: Option<String>,
-    content_url: Option<String>,
-    content_dist: Option<String>,
+    html_content: Option<String>,
+    link_content: Option<String>,
+    dist_content: Option<String>,
     icon_path: String,
     show_title_bar: bool,
     enable_resizable: bool,
@@ -1043,9 +1043,9 @@ pub fn register_window(
         title: title.clone(),
         width,
         height,
-        content_path,
-        content_url,
-        content_dist,
+        html_content,
+        link_content,
+        dist_content,
         icon_path,
         show_title_bar,
         enable_resizable,
@@ -1387,9 +1387,9 @@ pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
             window_dict.set_item("window_title", &config.title)?;
             window_dict.set_item("window_width", config.width)?;
             window_dict.set_item("window_height", config.height)?;
-            window_dict.set_item("window_content_path", &config.content_path)?;
-            window_dict.set_item("window_content_url", &config.content_url)?;
-            window_dict.set_item("window_content_dist", &config.content_dist)?;
+            window_dict.set_item("window_html_content", &config.html_content)?;
+            window_dict.set_item("window_link_content", &config.link_content)?;
+            window_dict.set_item("window_dist_content", &config.dist_content)?;
             window_dict.set_item("window_icon_path", &config.icon_path)?;
             window_dict.set_item("window_show_title_bar", config.show_title_bar)?;
             window_dict.set_item("window_enable_resizable", config.enable_resizable)?;
