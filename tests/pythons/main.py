@@ -155,8 +155,6 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
 
 if __name__ == "__main__":
     t_register_start = perf_counter()
-    print(f"[Performance] 开始注册窗口")
-
     app.window.register_window(
         title="PyWebron 控制面板 1",
         width=1200,
@@ -166,7 +164,7 @@ if __name__ == "__main__":
         # dwm_corner=DwmCorners.NORMAL_ROUND,
         link_content="http://localhost:5173/",
         # html_content=r"D:\works\pywebron\tests\pywebron.html",
-        # dist_content=r"D:\works\pywebron\tests\dist",
+        # dist_content=f"{PROJECT_ROOT_PATH}/tests/dist",
     )
 
     t_register_done = perf_counter()
@@ -176,8 +174,4 @@ if __name__ == "__main__":
     print(
         f"[Performance] 从应用启动到窗口注册完成，总耗时: {(t_register_done - t_app_start) * 1000:.2f}ms"
     )
-    print(f"[Performance] 准备启动事件循环")
-
     app.run()
-
-    print(f"[Performance] ========== 应用已退出 ==========")
