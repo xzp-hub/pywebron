@@ -368,6 +368,13 @@
             return null;
         }
 
+        // enable_resizable 为 false 时不创建调整大小层，避免出现调整大小指针
+        if (enable_resizable === false) {
+            const existing = document.getElementById('resize-area');
+            if (existing) existing.style.display = 'none';
+            return null;
+        }
+
         if (!document.body) return null;
 
         if (!document.getElementById('pywebron-resize-style')) {
