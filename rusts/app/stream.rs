@@ -28,20 +28,6 @@ pub fn is_handler_active(handle_id: &str) -> bool {
     active.read().contains(handle_id)
 }
 
-/// 标记 handler 为活跃状态
-#[allow(dead_code)]
-fn mark_handler_active(handle_id: &str) {
-    let active = get_active_handlers();
-    active.write().insert(handle_id.to_string());
-}
-
-/// 标记 handler 为非活跃状态（handler 结束时调用）
-#[allow(dead_code)]
-fn mark_handler_inactive(handle_id: &str) {
-    let active = get_active_handlers();
-    active.write().remove(handle_id);
-}
-
 #[inline]
 fn get_recv_queues() -> &'static Arc<RwLock<RecvQueues>> {
     RECV_QUEUES.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
@@ -49,98 +35,6 @@ fn get_recv_queues() -> &'static Arc<RwLock<RecvQueues>> {
 
 // 每个 handle_id 最多缓存 100 条消息
 const RECV_QUEUE_LIMIT: usize = 100;
-
-// === 启动 Stream handle（同步版本，由调用方在线程中调用） ===
-#[allow(dead_code)]
-pub(crate) fn start_stream_handle(
-    handle_id: String,
-    window_id: u64,
-    request_id: Option<String>,
-    payload: Value,
-) {
-    let start = std::time::Instant::now();
-
-    // 注册订阅关系
-    register_stream_subscription(handle_id.clone(), window_id);
-
-    // 创建 recv 队列
-    {
-        let queue_key = format!("{}:{}", handle_id, window_id);
-        let queues = get_recv_queues();
-        let mut queues_guard = queues.write();
-        queues_guard
-            .entry(queue_key)
-            .or_insert_with(|| crossbeam::queue::ArrayQueue::new(RECV_QUEUE_LIMIT));
-    }
-
-    // 标记 handler 为活跃状态
-    mark_handler_active(&handle_id);
-
-    let handle_id_for_cleanup = handle_id.clone();
-    let t_gil = std::time::Instant::now();
-    let result = Python::attach(|py| -> PyResult<()> {
-        let gil_elapsed = t_gil.elapsed();
-        if gil_elapsed.as_micros() > 100 {
-            eprintln!("[Timing][Rust] 获取 GIL 耗时: {:?}", gil_elapsed);
-        }
-        let t_import = std::time::Instant::now();
-        let configs = py.import("pywebron.configs")?;
-        let stream_handles = configs.getattr("STREAM_HANDLES")?;
-        let import_elapsed = t_import.elapsed();
-        if import_elapsed.as_micros() > 100 {
-            eprintln!(
-                "[Timing][Rust] 导入 configs + 获取 STREAM_HANDLES 耗时: {:?}",
-                import_elapsed
-            );
-        }
-
-        if let Ok(handler) = stream_handles.get_item(&handle_id) {
-            let t_build = std::time::Instant::now();
-            let request_obj = serde_json::json!({
-                "window_id": window_id,
-                "handle_id": &handle_id,
-                "request_id": &request_id,
-                "payload": payload
-            });
-            let py_request = pythonize::pythonize(py, &request_obj)?;
-            let coroutine = handler.call1((py_request,))?;
-            let build_elapsed = t_build.elapsed();
-            if build_elapsed.as_micros() > 100 {
-                eprintln!(
-                    "[Timing][Rust] 构建 request + 创建协程耗时: {:?}",
-                    build_elapsed
-                );
-            }
-
-            let t_run = std::time::Instant::now();
-            let asyncio = py.import("asyncio")?;
-            asyncio.call_method1("run", (coroutine,))?;
-            let run_elapsed = t_run.elapsed();
-            if run_elapsed.as_millis() > 10 {
-                eprintln!(
-                    "[Timing][Rust] asyncio.run() 总耗时: {:?} (含 Python handler 全部执行)",
-                    run_elapsed
-                );
-            }
-        }
-        Ok(())
-    });
-
-    // handler 结束，清理活跃状态
-    mark_handler_inactive(&handle_id_for_cleanup);
-
-    if let Err(e) = result {
-        eprintln!(
-            "[Stream] handler 执行错误: {:?} | handle={}",
-            e, handle_id_for_cleanup
-        );
-    }
-
-    let total = start.elapsed();
-    if total.as_millis() > 10 {
-        eprintln!("[Timing][Rust] start_stream_handle 总耗时: {:?}", total);
-    }
-}
 
 // === Stream 接收数据（从任意订阅窗口的队列取消息） ===
 #[pyfunction(name = "rust_stream_recv")]
@@ -295,23 +189,6 @@ pub(crate) fn get_stream_subscriptions(handle_id: &str) -> Vec<u64> {
     let subscriptions = get_stream_subscriptions_storage();
     let subs = subscriptions.read();
     subs.get(handle_id).cloned().unwrap_or_default()
-}
-
-/// 清理指定窗口的所有 stream 订阅
-#[allow(dead_code)]
-fn cleanup_window_streams(window_id: u64) {
-    let subscriptions = get_stream_subscriptions_storage();
-    let mut subs = subscriptions.write();
-
-    for (_, window_ids) in subs.iter_mut() {
-        window_ids.retain(|&id| id != window_id);
-    }
-
-    subs.retain(|_, window_ids| !window_ids.is_empty());
-
-    let queues = get_recv_queues();
-    let mut queues_guard = queues.write();
-    queues_guard.retain(|key: &String, _| !key.ends_with(&format!(":{}", window_id)));
 }
 
 // === Stream 发送数据到前端（异步版本，支持 Python await） ===

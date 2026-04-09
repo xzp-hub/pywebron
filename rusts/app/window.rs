@@ -1227,10 +1227,6 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
                     }
                 }
             }
-            #[cfg(target_os = "windows")]
-            Event::UserEvent(UserEvent::SetCorner { .. }) => {
-                // 已禁用圆角功能
-            }
             _ => {}
         }
     });
