@@ -7,37 +7,33 @@ from .._pywebron_ import (
     rust_shutdown_window,
     rust_dragdrop_window,
 )
-from time import perf_counter
 
 
 class Window:
     @staticmethod
     def register_window(
-        title: str = "PyWebron App",
-        html_content: str = None,
-        link_content: str = None,
-        dist_content: str = None,
-        width: int = 1200,
-        height: int = 900,
-        icon_path: str = None,
-        show_title_bar: bool = True,
-        window_radius: int = 5,
-        enable_resizable: bool = True,
-        enable_devtools: bool = True,
-        dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
+            title: str = "PyWebron App",
+            html_content: str = None,
+            link_content: str = None,
+            dist_content: str = None,
+            width: int = 1200,
+            height: int = 900,
+            icon_path: str = None,
+            show_title_bar: bool = True,
+            window_radius: int = 5,
+            enable_resizable: bool = True,
+            enable_devtools: bool = True,
+            dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
     ) -> bool:
-        t_start = perf_counter()
-        print(f"[Performance] Window.register_window 开始: {title}")
+        pather = lambda name: f"{PROJECT_ROOT_PATH}/assets/{name}"
 
-        if sum(bool(x) for x in (html_content, link_content, dist_content)) > 1:
-            raise ValueError(
-                "html_content, link_content, and dist_content cannot be used at the same time"
-            )
+        if sum(map(bool, (html_content, link_content, dist_content))) > 1:
+            raise ValueError("html_content, link_content, and dist_content cannot be used at the same time")
 
-        def pather(file_name):
-            return f"{PROJECT_ROOT_PATH}/assets/{file_name}"
+        if not tuple(filter(None, (html_content, link_content, dist_content))):
+            html_content = pather("pywebron.html")
 
-        result = rust_register_window(
+        return rust_register_window(
             title=title,
             width=width,
             height=height,
@@ -51,12 +47,6 @@ class Window:
             enable_devtools=enable_devtools,
             dwm_corner=dwm_corner,
         )
-
-        t_end = perf_counter()
-        print(
-            f"[Performance] Window.register_window 完成: {title}, 耗时: {(t_end - t_start) * 1000:.2f}ms"
-        )
-        return result
 
     @staticmethod
     def minimize_window(window_id: int) -> bool:

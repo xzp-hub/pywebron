@@ -1,9 +1,4 @@
+x = tuple(filter(None, (None, None, None)))
+print(not x)
 
-
-
-
-
-x = all((None,  None,  None))
-print(
-     x
-)
+print(all((None, None, None)))
