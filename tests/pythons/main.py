@@ -1,11 +1,12 @@
 from asyncio import sleep as asyncio_sleep, gather
-from tools import SystemMonitoring, cpu_task
-from pywebron.utils import save_file_dialog
-from pywebron import App, StreamSendModes
-from pywebron.configs import PROJECT_ROOT_PATH, DwmCorners
-from traceback import format_exc
 from pathlib import Path
 from time import time, perf_counter
+from traceback import format_exc
+
+from pywebron import App, StreamSendModes
+from pywebron.configs import PROJECT_ROOT_PATH, DwmCorners
+from pywebron.utils import save_file_dialog
+from tools import SystemMonitoring, cpu_task
 
 print(f"[Performance] ========== 应用启动开始 ==========")
 t_app_start = perf_counter()
@@ -159,12 +160,13 @@ if __name__ == "__main__":
         title="PyWebron 控制面板 1",
         width=1200,
         height=1200,
-        show_title_bar=False,
+        show_title_bar=True,
         enable_resizable=True,
-        # dwm_corner=DwmCorners.NORMAL_ROUND,
+        window_radius=20,
+        dwm_corner=DwmCorners.LITTLE_ROUND,
         link_content="http://localhost:5173/",
-        # html_content=r"D:\works\pywebron\tests\pywebron.html",
-        # dist_content=f"{PROJECT_ROOT_PATH}/tests/dist",
+        # html_content=f"{PROJECT_ROOT_PATH}/tests/uis/pywebron.html",
+        # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
     )
 
     t_register_done = perf_counter()

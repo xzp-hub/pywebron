@@ -6,19 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>PyWebron 控制面板</title>
     <style>
-        html,
-        body {
-            color-scheme: light dark;
-            border-radius: 5px;
-            overflow: hidden;
-            background: transparent;
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            box-sizing: border-box
-        }
-
         .app {
             box-sizing: border-box;
             width: 100%;
@@ -27,7 +14,6 @@
             gap: 5px;
             display: flex;
             flex-direction: column;
-            border-radius: 5px;
             background: light-dark(#e9eaee, #3c3c3c)
         }
 
@@ -117,21 +103,31 @@
     <script>
         const $ = id => document.getElementById(id);
         let isMaximized = false;
+
         async function windowAction(type) {
-            const map = { min: 'minimize_window', max: 'maximize_window', rep: 'reappear_window', shut: 'shutdown_window' };
+            const map = {
+                min: 'minimize_window',
+                max: 'maximize_window',
+                rep: 'reappear_window',
+                shut: 'shutdown_window'
+            };
             const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
             try {
                 if (!window.pywebron?.interfaces?.invoke) return;
-                const res = await window.pywebron.interfaces.invoke('window_controls_invoke', { control_type: map[action] }, 5000);
-                if (res?.code === 200) { isMaximized = action === 'max' || (type === 'toggle' && !isMaximized); }
+                const res = await window.pywebron.interfaces.invoke('window_controls_invoke', {control_type: map[action]}, 5000);
+                if (res?.code === 200) {
+                    isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
+                }
                 if (['max', 'rep', 'toggle'].includes(type)) {
                     $('maximizeRestoreBtn').title = isMaximized ? '还原' : '最大化';
                     $('maximizeRestoreBtn').querySelector('svg').innerHTML = isMaximized
                         ? '<rect x="4" y="8" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="4" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>'
                         : '<rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>';
                 }
-            } catch (e) { }
+            } catch (e) {
+            }
         }
+
         async function init() {
             if (window.pywebron && window.pywebron.attributes.show_title_bar === true) {
                 const appRoot = document.getElementById('app');
@@ -142,47 +138,52 @@
                 if (html) html.style.border = '1px solid transparent';
                 if (body) body.style.border = isDark ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(0,0,0,0.35)';
             }
-            try { await window.pywebron.interfaces.invoke('setup_drag_region_invoke', { selector: '#windowHeader' }); } catch (e) { console.error(e); }
+            try {
+                await window.pywebron.interfaces.invoke('setup_drag_region_invoke', {selector: '#windowHeader'});
+            } catch (e) {
+                console.error(e);
+            }
         }
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
+
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once: true}); else init();
     </script>
 </head>
 
 <body>
-    <div class="app">
-        <div class="header" id="windowHeader">
-            <div class="h-left">
-                <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                    <polyline points="2 17 12 22 22 17" />
-                    <polyline points="2 12 12 17 22 12" />
-                </svg>
-                <span class="h-title">PyWebron 控制面板</span>
-            </div>
-            <div class="h-ctrls">
-                <div class="win-btn" onclick="windowAction('min')" title="最小化">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="4" y1="12" x2="20" y2="12" />
-                    </svg>
-                </div>
-                <div id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="1.5">
-                        <rect x="4" y="4" width="16" height="16" rx="1" />
-                    </svg>
-                </div>
-                <div class="win-btn close" onclick="windowAction('shut')" title="关闭">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                </div>
-            </div>
+<div class="app">
+    <div class="header" id="windowHeader">
+        <div class="h-left">
+            <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+            </svg>
+            <span class="h-title">PyWebron 控制面板</span>
         </div>
-        <div class="content">
-            <iframe src="http://localhost:5173/" frameborder="0"></iframe>
+        <div class="h-ctrls">
+            <div class="win-btn" onclick="windowAction('min')" title="最小化">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                </svg>
+            </div>
+            <div id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.5">
+                    <rect x="4" y="4" width="16" height="16" rx="1"/>
+                </svg>
+            </div>
+            <div class="win-btn close" onclick="windowAction('shut')" title="关闭">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </div>
         </div>
     </div>
+    <div class="content">
+        <iframe src="http://localhost:5173/" frameborder="0"></iframe>
+    </div>
+</div>
 </body>
 
 </html>

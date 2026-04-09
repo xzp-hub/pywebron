@@ -13,10 +13,12 @@ use windows::Win32::{
     Graphics::Dwm::{
         DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWM_WINDOW_CORNER_PREFERENCE,
     },
+    Graphics::Gdi::{CreateRoundRectRgn, SetWindowRgn},
     UI::WindowsAndMessaging::{
-        CallWindowProcW, DefWindowProcW, GetPropW, GetWindowLongPtrW, SetProcessDPIAware, SetPropW,
-        SetWindowLongPtrW, SetWindowPos, GWLP_WNDPROC, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE,
-        SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE, WNDPROC,
+        CallWindowProcW, DefWindowProcW, GetClientRect, GetPropW, GetWindowLongPtrW,
+        SetProcessDPIAware, SetPropW, SetWindowLongPtrW, SetWindowPos, GWLP_WNDPROC,
+        SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE,
+        WNDPROC,
     },
 };
 
@@ -135,6 +137,37 @@ pub fn set_window_corner_with_retry(hwnd: HWND, pref: WindowCorners, retries: u3
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+}
+
+/// 设置窗口圆角区域（通过裁剪窗口区域实现真正的圆角）
+#[cfg(target_os = "windows")]
+pub fn set_window_rounded_region(hwnd: HWND, radius: u32) -> Result<(), String> {
+    unsafe {
+        let mut rect = windows::Win32::Foundation::RECT::default();
+        if GetClientRect(hwnd, &mut rect).is_err() {
+            return Err("Failed to get client rect".to_string());
+        }
+
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+
+        // 创建圆角矩形区域
+        let hrgn = CreateRoundRectRgn(0, 0, width, height, radius as i32, radius as i32);
+        
+        if hrgn.is_invalid() {
+            return Err("Failed to create rounded region".to_string());
+        }
+
+        // 设置窗口区域（第二个参数需要 Option<HRGN>，第三个参数 true 表示重绘窗口）
+        let result = SetWindowRgn(hwnd, Some(hrgn), true);
+        
+        if result == 0 {
+            return Err("Failed to set window region".to_string());
+        }
+
+        eprintln!("[Window] 窗口圆角区域设置成功: radius={}px, size={}x{}", radius, width, height);
+        Ok(())
     }
 }
 

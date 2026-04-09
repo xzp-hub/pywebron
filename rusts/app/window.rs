@@ -244,9 +244,17 @@ fn create_window_in_event_loop(
             "width": config.width,
             "height": config.height,
             "show_title_bar": config.show_title_bar,
+            "window_radius": config.window_radius,
             "enable_resizable": config.enable_resizable,
             "enable_devtools": config.enable_devtools
         });
+
+        let initialization_script = format!(
+            "window.pywebron={};{}",
+            serde_json::to_string(&window_config_json).unwrap_or_default(),
+            load_js_api()
+        );
+
         eprintln!(
             "[Performance][Rust] 构建配置 JSON 耗时: {:?}",
             t_config_json.elapsed()
@@ -269,11 +277,7 @@ fn create_window_in_event_loop(
             .with_devtools(config.enable_devtools)
             .with_transparent(true)
             .with_background_color((255, 255, 255, 255))
-            .with_initialization_script(&format!(
-                "window.pywebron={};{}",
-                serde_json::to_string(&window_config_json).unwrap_or_default(),
-                load_js_api()
-            ))
+            .with_initialization_script(&initialization_script)
             .with_ipc_handler(move |request| {
                 handle_ipc_message(request, window_id_for_ipc, &proxy_for_handler);
             })
@@ -616,14 +620,19 @@ fn create_window_in_event_loop(
                 Err(e) => eprintln!("[Window] DWM 圆角设置失败: {}", e),
             }
         } else {
-            eprintln!("[Window] 禁用 DWM 圆角 (DoNotRound)");
+            // 无标题栏时，禁用 DWM 圆角
+            // 不使用 SetWindowRgn（会产生锯齿），而是依赖 CSS border-radius + 透明窗口
+            eprintln!("[Window] 禁用 DWM 圆角，使用 CSS border-radius (window_radius={})", config.window_radius);
             match crate::utils::set_window_corner(
                 windows::Win32::Foundation::HWND(hwnd),
                 crate::configs::WindowCorners::DoNotRound,
             ) {
-                Ok(_) => eprintln!("[Window] DWM 圆角禁用成功"),
+                Ok(_) => eprintln!("[Window] DWM 圆角禁用成功，CSS 圆角将生效"),
                 Err(e) => eprintln!("[Window] DWM 圆角禁用失败: {}", e),
             }
+            
+            // 注意：不再使用 set_window_rounded_region，因为它会产生锯齿
+            // 圆角效果完全由 CSS 实现
         }
     }
 
@@ -681,6 +690,7 @@ pub struct WindowConfig {
     pub dist_content: Option<String>,
     pub icon_path: String,
     pub show_title_bar: bool,
+    pub window_radius: u32,
     pub enable_resizable: bool,
     pub enable_devtools: bool,
     pub dwm_corner: u32,
@@ -1022,7 +1032,7 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, html_content, link_content, dist_content, icon_path, show_title_bar, enable_resizable, enable_devtools, dwm_corner=0))]
+#[pyo3(signature = (title, width, height, html_content, link_content, dist_content, icon_path, show_title_bar, window_radius, enable_resizable, enable_devtools, dwm_corner=0))]
 pub fn register_window(
     title: String,
     width: u32,
@@ -1032,6 +1042,7 @@ pub fn register_window(
     dist_content: Option<String>,
     icon_path: String,
     show_title_bar: bool,
+    window_radius: u32,
     enable_resizable: bool,
     enable_devtools: bool,
     dwm_corner: u32,
@@ -1048,6 +1059,7 @@ pub fn register_window(
         dist_content,
         icon_path,
         show_title_bar,
+        window_radius,
         enable_resizable,
         enable_devtools,
         dwm_corner,

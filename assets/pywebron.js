@@ -19,9 +19,105 @@
         width,
         height,
         show_title_bar,
+        window_radius,
         enable_resizable,
         enable_devtools
     } = window.pywebron || {};
+
+    // 调试信息
+    console.log('[PyWebron] 配置信息:', {
+        show_title_bar,
+        window_radius,
+        shouldInject: !show_title_bar && window_radius && window_radius > 0
+    });
+
+    // 注入圆角 CSS（当 show_title_bar 为 false 且 window_radius > 0 时）
+    if (!show_title_bar && window_radius && window_radius > 0) {
+        console.log('[PyWebron] 条件满足，准备注入圆角样式');
+
+        const injectRadiusStyle = () => {
+            console.log('[PyWebron] injectRadiusStyle 被调用');
+
+            if (document.getElementById('__pywebron_radius_style__')) {
+                console.log('[PyWebron] 样式已存在，跳过');
+                return true; // 已存在
+            }
+
+            if (!document.head) {
+                console.log('[PyWebron] document.head 不存在，稍后重试');
+                return false; // head 还不存在
+            }
+
+            console.log('[PyWebron] 开始创建样式元素');
+            const style = document.createElement('style');
+            style.id = '__pywebron_radius_style__';
+            style.textContent = `
+                html, body {
+                    border-radius: ${window_radius}px !important;
+                    color-scheme: light dark !important;
+                    overflow: hidden !important;
+                    background: transparent !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                #app {
+                    border-radius: ${window_radius}px !important;
+                }
+            `;
+
+            // 插入到最前面，确保优先级
+            document.head.insertBefore(style, document.head.firstChild);
+            console.log('[PyWebron] 圆角样式注入成功:', window_radius + 'px');
+            return true;
+        };
+
+        console.log('[PyWebron] 立即尝试注入');
+        // 立即尝试注入
+        if (!injectRadiusStyle()) {
+            console.log('[PyWebron] 首次注入失败，设置重试机制');
+            // 如果失败，等待 DOM 加载
+            if (document.readyState === 'loading') {
+                console.log('[PyWebron] DOM 正在加载，监听 DOMContentLoaded');
+                document.addEventListener('DOMContentLoaded', injectRadiusStyle, { once: true });
+            } else {
+                console.log('[PyWebron] DOM 已加载，使用定时器重试');
+                // DOM 已加载，但 head 不存在？重试几次
+                let retries = 0;
+                const retry = setInterval(() => {
+                    if (injectRadiusStyle() || retries++ > 10) {
+                        clearInterval(retry);
+                    }
+                }, 50);
+            }
+        }
+
+        // 监听 head 的变化，防止样式被移除
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(() => {
+                injectRadiusStyle();
+            });
+
+            // 等待 head 存在后开始监听
+            const startObserving = () => {
+                if (document.head) {
+                    observer.observe(document.head, { childList: true });
+                } else {
+                    setTimeout(startObserving, 50);
+                }
+            };
+            startObserving();
+        }
+    } else {
+        console.log('[PyWebron] 条件不满足，不注入圆角样式', {
+            show_title_bar,
+            window_radius,
+            condition1: !show_title_bar,
+            condition2: window_radius && window_radius > 0
+        });
+    }
 
     function generateRequestId(handleId) {
         const timestamp = Date.now();
