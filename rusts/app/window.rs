@@ -246,7 +246,8 @@ fn create_window_in_event_loop(
             "show_title_bar": config.show_title_bar,
             "window_radius": config.window_radius,
             "enable_resizable": config.enable_resizable,
-            "enable_devtools": config.enable_devtools
+            "enable_devtools": config.enable_devtools,
+            "icon_path": config.icon_path
         });
 
         let initialization_script = format!(
@@ -261,6 +262,7 @@ fn create_window_in_event_loop(
         );
 
         // 存储 dist 路径用于自定义协议处理
+        // dist 模式：指向 dist 目录；html 模式：指向 html 文件所在目录；其他：空
         let dist_path_for_protocol = if config.dist_content.is_some() {
             let dist_path = std::path::Path::new(config.dist_content.as_ref().unwrap());
             if dist_path.is_absolute() {
@@ -268,10 +270,20 @@ fn create_window_in_event_loop(
             } else {
                 std::env::current_dir().unwrap_or_default().join(dist_path)
             }
+        } else if config.html_content.is_some() {
+            let html_path = std::path::Path::new(config.html_content.as_ref().unwrap());
+            let absolute_path = if html_path.is_absolute() {
+                html_path.to_path_buf()
+            } else {
+                std::env::current_dir().unwrap_or_default().join(html_path)
+            };
+            absolute_path.parent().unwrap_or(std::path::Path::new("")).to_path_buf()
         } else {
             std::path::PathBuf::new()
         };
 
+        // clone 一份供后续 RESOURCE_CACHE 使用（原值会被 move 进闭包）
+        let dist_path_for_cache = dist_path_for_protocol.clone();
         let t_builder = std::time::Instant::now();
         let builder = WebViewBuilder::new()
             .with_devtools(config.enable_devtools)
@@ -394,31 +406,19 @@ fn create_window_in_event_loop(
                     }
                 };
 
-                let file_path = std::path::Path::new(&resolved_content);
-                let absolute_path = if file_path.is_absolute() {
-                    file_path.to_path_buf()
-                } else {
-                    std::env::current_dir().unwrap_or_default().join(file_path)
-                };
+                // 将路径改为 app:// 协议，与 dist 模式一致
+                let converted = html_content.replace("href=\"/", "href=\"app://")
+                    .replace("src=\"/", "src=\"app://")
+                    .replace("href='/", "href='app://")
+                    .replace("src='/", "src='app://");
 
-                let base_dir = absolute_path.parent().unwrap_or(std::path::Path::new(""));
-                let base_url = format!("file://{}/", base_dir.display());
+                eprintln!("[Window] HTML 文件模式使用 app:// 协议");
 
-                let html_with_base = if html_content.contains("<head>") {
-                    html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
-                } else if html_content.contains("<html>") {
-                    html_content.replace(
-                        "<html>",
-                        &format!("<html><head><base href=\"{}\"></head>", base_url),
-                    )
-                } else {
-                    format!(
-                        "<html><head><base href=\"{}\"></head><body>{}</body></html>",
-                        base_url, html_content
-                    )
-                };
+                // 将 HTML 内容存入缓存，通过自定义协议提供
+                let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
+                RESOURCE_CACHE.insert(cache_key, converted.as_bytes().to_vec());
 
-                builder.with_html(&html_with_base).build_gtk(vbox)
+                builder.with_url("app://index.html").build_gtk(vbox)
             } else if is_dist {
                 let dist_path = std::path::Path::new(&resolved_content);
                 let index_html = dist_path.join("index.html");
@@ -469,7 +469,7 @@ fn create_window_in_event_loop(
                 eprintln!("[Performance][Rust] 使用 URL 模式加载内容");
                 builder.with_url(&resolved_content).build(&window)
             } else if is_file_path {
-                eprintln!("[Performance][Rust] 使用文件路径模式加载内容");
+                eprintln!("[Performance][Rust] 使用文件路径模式加载内容（app:// 协议）");
                 let html_content = if let Some(cached) = HTML_CACHE.get(&resolved_content) {
                     cached.clone()
                 } else {
@@ -485,41 +485,30 @@ fn create_window_in_event_loop(
                     }
                 };
 
-                let file_path = std::path::Path::new(&resolved_content);
-                let absolute_path = if file_path.is_absolute() {
-                    file_path.to_path_buf()
-                } else {
-                    std::env::current_dir().unwrap_or_default().join(file_path)
-                };
-
-                let base_dir = absolute_path.parent().unwrap_or(std::path::Path::new(""));
-
+                // 将路径改为 app:// 协议，与 dist 模式一致
                 #[cfg(target_os = "windows")]
-                let base_url = format!(
-                    "file:///{}/",
-                    base_dir.display().to_string().replace("\\", "/")
-                );
+                let converted = {
+                    html_content.replace("href=\"/", "href=\"http://app.")
+                        .replace("src=\"/", "src=\"http://app.")
+                        .replace("href='/", "href='http://app.")
+                        .replace("src='/", "src='http://app.")
+                };
 
                 #[cfg(not(target_os = "windows"))]
-                let base_url = format!("file://{}/", base_dir.display());
-
-                let html_with_base = if html_content.contains("<head>") {
-                    html_content.replace("<head>", &format!("<head><base href=\"{}\">", base_url))
-                } else if html_content.contains("<html>") {
-                    html_content.replace(
-                        "<html>",
-                        &format!("<html><head><base href=\"{}\"></head>", base_url),
-                    )
-                } else {
-                    format!(
-                        "<html><head><base href=\"{}\"></head><body>{}</body></html>",
-                        base_url, html_content
-                    )
+                let converted = {
+                    html_content.replace("href=\"/", "href=\"app://")
+                        .replace("src=\"/", "src=\"app://")
+                        .replace("href='/", "href='app://")
+                        .replace("src='/", "src='app://")
                 };
 
-                eprintln!("[Window] 使用 with_html 加载文件 | base_url={}", base_url);
+                eprintln!("[Window] HTML 文件模式使用 app:// 协议");
 
-                builder.with_html(&html_with_base).build(&window)
+                // 将 HTML 内容存入缓存，通过自定义协议提供
+                let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
+                RESOURCE_CACHE.insert(cache_key, converted.as_bytes().to_vec());
+
+                builder.with_url("http://app.index.html").build(&window)
             } else if is_dist {
                 eprintln!("[Performance][Rust] 使用 dist 目录模式加载内容");
                 let dist_path = std::path::Path::new(&resolved_content);

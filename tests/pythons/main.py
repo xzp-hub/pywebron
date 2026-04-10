@@ -116,7 +116,7 @@ async def running_create_window(invoke: app.invoke):
 @app.invoke.handle("file_download_invoke")
 async def file_download(invoke: app.invoke):
     try:
-        source_path = str(Path(PROJECT_ROOT_PATH) / "assets" / "src" / "index.html")
+        source_path = f'{PROJECT_ROOT_PATH}/assets/pywebron.html'
         new_path = await save_file_dialog(str(source_path))
         return await invoke.json_response(200, "文件保存成功", new_path)
     except Exception:
@@ -127,12 +127,12 @@ async def file_download(invoke: app.invoke):
 async def system_monitoring(stream: app.stream):
     try:
         res = await SystemMonitoring.run(fast_mode=True)
-        await stream.send(200, "监控数据获取成功", res)
+        await stream.send(200, "监控数据获取成功", res, send_mode=StreamSendModes.BROADCAST)
         await asyncio_sleep(1)
         while True:
             try:
                 res = await SystemMonitoring.run()
-                await stream.send(200, "监控数据获取成功", res)
+                await stream.send(200, "监控数据获取成功", res, send_mode=StreamSendModes.BROADCAST)
                 await asyncio_sleep(3)
             except Exception:
                 await stream.send(500, "监控数据获取失败", format_exc())
@@ -194,7 +194,7 @@ async def terminal_log(stream: app.stream):
         if history:
             _terminal_capturing.active = True  # 防止推送期间的 print 被二次捕获入队
             try:
-                await stream.send(200, "历史日志", {"logs": history})
+                await stream.send(200, "历史日志", {"logs": history}, send_mode=StreamSendModes.BROADCAST)
             finally:
                 _terminal_capturing.active = False
         # 持续推送新日志
@@ -207,7 +207,7 @@ async def terminal_log(stream: app.stream):
                 sent_count = len(current)
                 _terminal_capturing.active = True  # 防止推送期间循环入队
                 try:
-                    await stream.send(200, "终端日志", {"logs": new_logs})
+                    await stream.send(200, "终端日志", {"logs": new_logs}, send_mode=StreamSendModes.BROADCAST)
                 finally:
                     _terminal_capturing.active = False
             await asyncio_sleep(0.3)
@@ -218,7 +218,7 @@ async def terminal_log(stream: app.stream):
 if __name__ == "__main__":
     t_register_start = perf_counter()
     app.window.register_window(
-        title="PyWebron 控制面板 1",
+        title="PYWEBRON测试面板",
         width=1200,
         height=1200,
         show_title_bar=False,

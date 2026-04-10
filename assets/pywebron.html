@@ -15,6 +15,16 @@
     window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', e => { _isDark = e.matches; });
     function isDarkTheme() { return _isDark; }
 
+    // 预加载聊天头像
+    const _avatarCache = {};
+    function _preloadAvatar(name, url) {
+        const img = new Image();
+        img.src = url;
+        _avatarCache[name] = url;
+    }
+    _preloadAvatar('user', 'https://api.dicebear.com/7.x/avataaars/svg?seed=user');
+    _preloadAvatar('bot', 'https://api.dicebear.com/7.x/bottts/svg?seed=backend');
+
     const MONITORS = [
         {key: 'cpu', canvas: 'cpuCanvas', header: 'cpuHeader', label: 'CPU 使用率', color: '#00D4FF'},
         {key: 'ram', canvas: 'memoryCanvas', header: 'ramHeader', label: '内存使用率', color: '#00FF88'},
@@ -553,7 +563,7 @@
         if (type === 'system') {
             div.innerHTML = `<div class="chat_msg_content">${escapeHtml(msg)}</div>`;
         } else {
-            const av = isLocal ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=user' : 'https://api.dicebear.com/7.x/bottts/svg?seed=backend';
+            const av = isLocal ? _avatarCache['user'] : _avatarCache['bot'];
             const content = `<div class="chat_msg_content">${escapeHtml(msg)}</div>`;
             const avatar = `<img class="chat_avatar" src="${av}">`;
             div.innerHTML = `<div class="chat_msg_row ${isLocal ? 'self' : 'other'}">${isLocal ? content + avatar : avatar + content}</div>`;
@@ -579,6 +589,19 @@
             const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (html) html.style.border = '1px solid transparent';
             if (body) body.style.border = isDark ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(0,0,0,0.35)';
+        }
+
+        // 加载窗口图标（通过 app:// 协议加载，与 dist 模式一致）
+        const hIcon = $('app')?.querySelector('.h-icon');
+        if (hIcon && window.pywebron?.attributes?.icon_path) {
+            const iconPath = window.pywebron.attributes.icon_path.replace(/\\/g, '/');
+            const fileName = iconPath.split('/').pop();
+            if (fileName) hIcon.src = 'http://app.' + fileName;
+        }
+        // 动态设置标题
+        const hTitle = $('app')?.querySelector('.h-title');
+        if (hTitle && window.pywebron?.attributes?.title) {
+            hTitle.textContent = window.pywebron.attributes.title;
         }
 
         MONITORS.forEach(m => {
@@ -615,15 +638,11 @@
 </script>
 
 <body>
-<div class='app'>
+<div class='app' id='app'>
     <div class="header" id="windowHeader">
         <div class="h-left">
-            <svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-                <polyline points="2 17 12 22 22 17"/>
-                <polyline points="2 12 12 17 22 12"/>
-            </svg>
-            <span class="h-title">PyWebron 控制面板</span>
+            <img class="h-icon" src="" alt="">
+            <span class="h-title"></span>
         </div>
         <div class="h-ctrls">
             <div class="win-btn" onclick="windowAction('min')" title="最小化">
@@ -741,28 +760,28 @@
         <div class="right">
             <div class="card invoke-cards">
                 <div class="card-b">
-                    <button id="downloadBtn" class="dl-btn">
+                    <div id="downloadBtn" class="dl-btn dl-btn-dl">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="7 10 12 15 17 10"/>
                             <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
                         <span>下载文件</span>
-                    </button>
-                    <button id="cpuTaskBtn" class="dl-btn">
+                    </div>
+                    <div id="cpuTaskBtn" class="dl-btn dl-btn-cpu">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                         </svg>
                         <span>执行 CPU 密集任务</span>
-                    </button>
-                    <button id="createWindowBtn" class="dl-btn">
+                    </div>
+                    <div id="createWindowBtn" class="dl-btn dl-btn-win">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                             <line x1="12" y1="8" x2="12" y2="16"/>
                             <line x1="8" y1="12" x2="16" y2="12"/>
                         </svg>
                         <span>创建新窗口</span>
-                    </button>
+                    </div>
                 </div>
             </div>
             <div class="card terminal">
@@ -827,8 +846,10 @@
     .h-icon {
         width: 16px;
         height: 16px;
-        color: #FFD700;
-        margin-right: 10px
+        margin-right: 10px;
+        border-radius: 2px;
+        object-fit: contain;
+        flex-shrink: 0;
     }
 
     .h-title {
@@ -858,6 +879,8 @@
 
     .win-btn:hover {
         background: light-dark(rgba(0, 0, 0, .1), rgba(255, 255, 255, .15));
+
+
         color: light-dark(#000000, #ffffff)
     }
 
@@ -903,10 +926,10 @@
     }
 
     .invoke-cards .card-b {
-        padding: 10px;
+        padding: 0;
         display: flex;
-        flex-direction: column;
-        gap: 10px;
+        flex-direction: row;
+        overflow: hidden;
     }
 
     .terminal {
@@ -1100,13 +1123,13 @@
     }
 
     .io-tab.active {
-        background: rgba(0, 212, 255, .2);
-        border-color: rgba(0, 212, 255, .5);
-        color: #00D4FF;
+        background: #722ED1;
+        border-color: #722ED1;
+        color: #fff;
     }
 
     .io-tab.active + .io-tab {
-        border-left-color: rgba(0, 212, 255, .5);
+        border-left-color: #722ED1;
     }
 
     .io-stats {
@@ -1297,7 +1320,7 @@
     .chat-msgs {
         flex: 1;
         overflow-y: auto;
-        padding: 0 10px;
+        padding: 0;
         display: flex;
         flex-direction: column;
         gap: 5px;
@@ -1340,10 +1363,9 @@
         width: 30px;
         height: 30px;
         border: none;
-        border-left: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
         border-radius: 0;
-        background: transparent;
-        color: light-dark(rgba(0, 0, 0, .5), rgba(255, 255, 255, .5));
+        background: #165DFF;
+        color: #fff;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -1357,8 +1379,7 @@
     }
 
     .chat-send:hover {
-        color: #0099FF;
-        background: light-dark(rgba(0, 153, 255, .08), rgba(0, 153, 255, .15));
+        background: #4080FF;
     }
 
     .chat_msg {
@@ -1397,6 +1418,7 @@
         display: flex;
         align-items: center;
         gap: 5px;
+        padding: 0 5px;
     }
 
     .chat_msg_row.self {
@@ -1407,8 +1429,9 @@
         width: 30px;
         height: 30px;
         border-radius: 5px;
-        background: rgba(255, 255, 255, .1);
-        border: 1px solid rgba(255, 255, 255, .25);
+        background: light-dark(#f0f0f0, rgba(255, 255, 255, .1));
+        border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
+        flex-shrink: 0;
     }
 
     .chat_msg_content {
@@ -1427,42 +1450,48 @@
     }
 
     .chat_msg_row.other .chat_msg_content {
-        background: linear-gradient(135deg, rgba(0, 212, 255, .12), rgba(0, 150, 255, .08));
-        border: 1px solid rgba(0, 212, 255, .2);
-        color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, 0.8));
+        background: #e5e6eb;
+        border: none;
+        color: rgba(0, 0, 0, .75);
     }
 
     .chat_msg_row.self .chat_msg_content {
-        background: linear-gradient(135deg, rgba(0, 180, 100, .12), rgba(0, 150, 80, .08));
-        border: 1px solid rgba(0, 200, 136, .2);
-        color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, 0.8));
+        background: #7BE188;
+        border: none;
+        color: rgba(0, 0, 0, .75);
     }
 
     .dl-btn {
-        width: 100%;
+        flex: 1;
         padding: 10px;
         border: none;
-        border-radius: 6px;
-        background: linear-gradient(135deg, #00D4FF, #0099FF);
+        border-right: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25));
         color: #fff;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 5px;
-        transition: .3s;
+        transition: opacity .2s;
     }
 
+    .dl-btn:last-child {
+        border-right: none;
+    }
+
+    .dl-btn-dl { background: #165DFF; }
+    .dl-btn-cpu { background: #7BE188; }
+    .dl-btn-win { background: #722ED1; }
+
     .dl-btn:hover {
-        transform: scale(1.02);
+        opacity: .85;
     }
 
     .dl-btn:disabled {
-        opacity: .6;
+        opacity: .5;
         cursor: not-allowed;
-        transform: none;
     }
 
     .dl-btn svg {
