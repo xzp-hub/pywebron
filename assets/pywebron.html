@@ -11,6 +11,11 @@
     const $ = id => document.getElementById(id);
     let isMaximized = false, gaugeAnims = {}, chatStream, msgIds = new Set();
     const FONTS = { percent: 17, label: 12, stats: 14 };
+
+    function isDarkTheme() {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
     const MONITORS = [
         { key: 'cpu', canvas: 'cpuCanvas', header: 'cpuHeader', label: 'CPU 使用率', color: '#00D4FF' },
         { key: 'ram', canvas: 'memoryCanvas', header: 'ramHeader', label: '内存使用率', color: '#00FF88' },
@@ -29,11 +34,16 @@
     };
 
     async function windowAction(type) {
-        const map = { min: 'minimize_window', max: 'maximize_window', rep: 'reappear_window', shut: 'shutdown_window' };
+        const map = {
+            min: 'minimize_window',
+            max: 'maximize_window',
+            rep: 'reappear_window',
+            shut: 'shutdown_window'
+        };
         const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
         try {
             if (!window.pywebron?.interfaces?.invoke) return;
-            const res = await window.pywebron.interfaces.invoke('window_controls_invoke', { control_type: map[action] }, 5000);
+            const res = await window.pywebron.interfaces.invoke('window_controls_invoke', {control_type: map[action]}, 5000);
             if (res?.code === 200) {
                 isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
             }
@@ -43,7 +53,8 @@
                     ? '<rect x="4" y="8" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="4" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>'
                     : '<rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>';
             }
-        } catch (e) { }
+        } catch (e) {
+        }
     }
 
     function drawGauge(canvas, val, label, color, anim = true) {
@@ -60,7 +71,7 @@
             ctx.clearRect(0, 0, rect.width, rect.height);
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.strokeStyle = isDarkTheme() ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)';
             ctx.lineWidth = lw;
             ctx.stroke();
             ctx.beginPath();
@@ -68,13 +79,13 @@
             ctx.strokeStyle = color;
             ctx.lineCap = 'butt';
             ctx.stroke();
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = isDarkTheme() ? '#fff' : '#222';
             ctx.font = `bold ${FONTS.percent}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(v.toFixed(2) + '%', cx, cy - 3);
             ctx.font = `${FONTS.label}px Arial`;
-            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.fillStyle = isDarkTheme() ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
             ctx.fillText(label, cx, cy + 15);
         };
 
@@ -113,6 +124,7 @@
         const colors = IO_COLORS[ioType];
         const keys = ioType === 'disk' ? ['read', 'write'] : ['upload', 'download'];
         const labels = ioType === 'disk' ? ['读取', '写入'] : ['上行', '下行'];
+        const dark = isDarkTheme();
 
         let yMax = 100;
         if (yTicks) {
@@ -149,13 +161,13 @@
             ioDataPoints.push(pointData);
         }
 
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
         ctx.beginPath();
         ctx.moveTo(pad.l, pad.t);
         ctx.lineTo(pad.l, h - pad.b);
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillStyle = dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
         ctx.font = '13px Arial';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
@@ -165,20 +177,21 @@
 
         for (let i = 0; i < tickCount; i++) {
             const y = pad.t + ch * i / (tickCount - 1);
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.strokeStyle = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)';
             ctx.beginPath();
             ctx.moveTo(pad.l, y);
             ctx.lineTo(w - pad.r, y);
             ctx.stroke();
             ctx.fillText(ticks[i].toFixed(0), pad.l - 8, y);
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.strokeStyle = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
             ctx.beginPath();
             ctx.moveTo(pad.l - 5, y);
             ctx.lineTo(pad.l, y);
             ctx.stroke();
         }
 
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
+        ctx.beginPath();
         ctx.beginPath();
         ctx.moveTo(pad.l, h - pad.b);
         ctx.lineTo(w - pad.r, h - pad.b);
@@ -226,10 +239,10 @@
         });
 
         if (dataLen > 0) {
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.fillStyle = dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.55)';
             ctx.font = '13px Arial';
             const labelY = h - pad.b + 18;
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.strokeStyle = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
             ctx.textBaseline = 'top';
 
             const displayCount = Math.min(dataLen, maxPoints);
@@ -443,12 +456,47 @@
     }
 
     async function startChat() {
-        if (!window.pywebron?.method?.stream) {
+        if (!window.pywebron?.interfaces?.stream) {
             return setTimeout(startChat, 100);
         }
         try {
             chatStream = await window.pywebron.interfaces.stream('chat_room_stream');
             chatStream.recv(displayMsg);
+        } catch (e) { }
+    }
+
+    async function startTerminalLog() {
+        if (!window.pywebron?.interfaces?.stream) {
+            return setTimeout(startTerminalLog, 100);
+        }
+        try {
+            const stream = await window.pywebron.interfaces.stream('terminal_log_stream');
+            stream.recv(data => {
+                const container = $('terminalLogs');
+                if (!container) return;
+                const logs = data.data?.logs || data.logs || [];
+                logs.forEach(log => {
+                    const line = document.createElement('div');
+                    let text = typeof log === 'string' ? log : JSON.stringify(log);
+                    const isDark = isDarkTheme();
+                    const color = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.75)';
+                    const errorColor = isDark ? '#ff6b6b' : '#d63031';
+                    if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
+                        line.style.color = errorColor;
+                    } else if (text.includes('[Performance]')) {
+                        line.style.color = isDark ? '#00D4FF' : '#0099cc';
+                    } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
+                        line.style.color = isDark ? '#00FF88' : '#009955';
+                    } else if (text.includes('[Warning]') || text.includes('警告')) {
+                        line.style.color = isDark ? '#F7BA1E' : '#cc8800';
+                    } else {
+                        line.style.color = color;
+                    }
+                    line.textContent = text;
+                    container.appendChild(line);
+                });
+                container.scrollTop = container.scrollHeight;
+            });
         } catch (e) { }
     }
 
@@ -535,18 +583,12 @@
     async function init() {
         if (window.pywebron && window.pywebron.attributes.show_title_bar === true) {
             const appRoot = document.getElementById('app');
-            if (appRoot) {
-                appRoot.classList.add('has-system-title-bar');
-            }
+            if (appRoot) appRoot.classList.add('has-system-title-bar');
         } else {
-            const html = document.documentElement;
-            const body = document.body;
-            if (html) {
-                html.style.border = '1px solid transparent';
-            }
-            if (body) {
-                body.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-            }
+            const html = document.documentElement, body = document.body;
+            const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (html) html.style.border = '1px solid transparent';
+            if (body) body.style.border = isDark ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(0,0,0,0.35)';
         }
 
         MONITORS.forEach(m => {
@@ -557,13 +599,14 @@
         setupIoChartHover();
 
         try {
-            await window.pywebron.interfaces.invoke('setup_drag_region_invoke', {
-                selector: '#windowHeader'
-            });
-        } catch (e) { }
+            await window.pywebron.interfaces.invoke('setup_drag_region_invoke', {selector: '#windowHeader'});
+        } catch (e) {
+            console.error(e);
+        }
 
         startMonitoring();
         startChat();
+        startTerminalLog();
 
         $('chatSendBtn')?.addEventListener('click', sendMsg);
         $('chatInput')?.addEventListener('keypress', e => e.key === 'Enter' && sendMsg());
@@ -769,80 +812,90 @@
         gap: 5px;
         display: flex;
         flex-direction: column;
-        background: #1a1b1d;
+        background: light-dark(#e9eaee, #3c3c3c)
     }
 
     .header {
         width: 100%;
         height: 30px;
         border-radius: 5px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
         box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: rgba(255, 255, 255, 0.08);
+        background: light-dark(#ffffff, #1a1b1d);
     }
 
     .h-left {
         display: flex;
         align-items: center;
-        padding-left: 5px;
+        padding-left: 5px
     }
 
     .h-icon {
         width: 16px;
         height: 16px;
         color: #FFD700;
-        margin-right: 10px;
+        margin-right: 10px
     }
 
     .h-title {
         font-size: 12px;
-        color: #fff;
-        line-height: 16px;
+        color: light-dark(#000000, #ffffff);
+        line-height: 16px
     }
 
     .h-ctrls {
         display: flex;
         gap: 0;
         align-items: stretch;
-        height: 100%;
+        height: 100%
     }
 
     .win-btn {
         width: 30px;
         background: transparent;
-        color: rgba(255, 255, 255, .7);
+        color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, .8));
         border-radius: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        transition: .2s;
+        transition: .2s
     }
 
     .win-btn:hover {
-        background: rgba(255, 255, 255, .15);
-        color: #fff;
+        background: light-dark(rgba(0, 0, 0, .1), rgba(255, 255, 255, .15));
+        color: light-dark(#000000, #ffffff)
     }
 
     .win-btn.close {
         border-top-right-radius: 4px;
         border-bottom-right-radius: 4px;
         margin: 0;
-        height: 100%;
+        height: 100%
     }
 
     .win-btn.close:hover {
-        background: rgba(239, 68, 68, .8);
+        background: rgba(239, 68, 68, .8)
     }
 
     .content {
+        border-radius: 5px;
         flex: 1;
         display: flex;
         gap: 5px;
         box-sizing: border-box;
+        background: light-dark(#ffffff, #1a1b1d);
+        border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
+    }
+
+    .content iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 5px
     }
 
     .left {
@@ -861,9 +914,9 @@
 
     .invoke-cards {
         flex: 0 0 auto;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
         border-radius: 5px;
-        background: rgba(184, 183, 183, .08);
+        background: light-dark(#ffffff, rgba(184, 183, 183, .08));
         box-sizing: border-box;
     }
 
@@ -877,9 +930,9 @@
     .terminal {
         flex: 1;
         min-height: 0;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
         border-radius: 5px;
-        background: rgba(184, 183, 183, .08);
+        background: light-dark(#ffffff, rgba(184, 183, 183, .08));
         box-sizing: border-box;
     }
 
@@ -889,8 +942,8 @@
         font-family: 'Consolas', 'Monaco', monospace;
         font-size: 12px;
         line-height: 1.5;
-        color: rgba(255, 255, 255, 0.8);
-        background: rgba(0, 0, 0, 0.2);
+        color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, 0.8));
+        background: light-dark(#f5f5f5, rgba(0, 0, 0, 0.2));
     }
 
     .terminal-body::-webkit-scrollbar {
@@ -904,11 +957,11 @@
 
     .card {
         border-radius: 5px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        background: rgba(184, 183, 183, .08);
+        background: light-dark(#ffffff, rgba(184, 183, 183, .08));
         box-sizing: border-box;
     }
 
@@ -917,9 +970,9 @@
         display: flex;
         align-items: center;
         gap: 5px;
-        background: rgba(184, 183, 183, .1);
+        background: light-dark(#f8f9fa, rgba(184, 183, 183, .1));
         backdrop-filter: blur(6px);
-        border-bottom: 1px solid rgba(255, 255, 255, .25);
+        border-bottom: 1px solid light-dark(rgba(0, 0, 0, .08), rgba(255, 255, 255, .25));
         border-radius: 5px 5px 0 0;
         box-sizing: border-box;
     }
@@ -952,7 +1005,7 @@
     .card-h span {
         font-size: 12px;
         font-weight: 600;
-        color: #fff;
+        color: light-dark(#333, #fff);
         letter-spacing: .5px;
         line-height: 1;
     }
@@ -965,7 +1018,7 @@
     .monitor {
         flex: 1;
         min-height: 0;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
     }
 
     .monitor .card-b {
@@ -1004,7 +1057,7 @@
     .m-label {
         height: 18px;
         font-weight: 600;
-        color: rgba(255, 255, 255, .8);
+        color: light-dark(#555, rgba(255, 255, 255, .8));
         text-align: center;
         display: flex;
         align-items: center;
@@ -1037,9 +1090,9 @@
     .io-tab {
         height: 30px;
         padding: 0 10px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25));
         background: transparent;
-        color: rgba(255, 255, 255, .6);
+        color: light-dark(rgba(0, 0, 0, .55), rgba(255, 255, 255, .6));
         cursor: pointer;
         font-size: 14px;
         transition: .2s;
@@ -1055,8 +1108,8 @@
     }
 
     .io-tab:hover {
-        background: rgba(255, 255, 255, .1);
-        color: #fff;
+        background: light-dark(rgba(0, 0, 0, .06), rgba(255, 255, 255, .1));
+        color: light-dark(#000, #fff);
     }
 
     .io-tab.active {
@@ -1073,7 +1126,7 @@
         flex: 1;
         display: flex;
         height: 30px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
         border-radius: 5px;
         overflow: hidden;
     }
@@ -1083,8 +1136,8 @@
         display: flex;
         align-items: center;
         padding-left: 5px;
-        border-right: 1px solid rgba(255, 255, 255, .1);
-        background: rgba(0, 0, 0, .15);
+        border-right: 1px solid light-dark(rgba(0, 0, 0, .08), rgba(255, 255, 255, .1));
+        background: light-dark(#f5f5f5, rgba(0, 0, 0, .15));
     }
 
     .io-stat:last-child {
@@ -1093,7 +1146,7 @@
 
     .io-stat-label {
         font-size: 14px;
-        color: rgba(255, 255, 255, .6);
+        color: light-dark(rgba(0, 0, 0, .55), rgba(255, 255, 255, .6));
     }
 
     .io-stat-label::after {
@@ -1104,14 +1157,14 @@
     .io-stat-val {
         font-size: 14px;
         font-weight: 600;
-        color: #fff;
+        color: light-dark(#222, #fff);
         margin-left: 5px;
     }
 
     .io-legend {
         display: flex;
         height: 30px;
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
         border-radius: 5px;
         overflow: hidden;
     }
@@ -1121,8 +1174,8 @@
         align-items: center;
         gap: 4px;
         padding: 0 8px;
-        background: rgba(0, 0, 0, .15);
-        border-right: 1px solid rgba(255, 255, 255, .1);
+        background: light-dark(#f5f5f5, rgba(0, 0, 0, .15));
+        border-right: 1px solid light-dark(rgba(0, 0, 0, .08), rgba(255, 255, 255, .1));
     }
 
     .io-leg-item:last-child {
@@ -1137,15 +1190,15 @@
 
     .io-leg-item span:last-child {
         font-size: 14px;
-        color: rgba(255, 255, 255, .7);
+        color: light-dark(rgba(0, 0, 0, .65), rgba(255, 255, 255, .7));
     }
 
     .io-chart {
         flex: 1;
         min-height: 0;
-        background: rgba(0, 0, 0, .2);
+        background: light-dark(#f8f9fa, rgba(0, 0, 0, .2));
         border-radius: 4px;
-        border: 1px solid rgba(255, 255, 255, .1);
+        border: 1px solid light-dark(rgba(0, 0, 0, .08), rgba(255, 255, 255, .1));
         position: relative;
     }
 
@@ -1235,21 +1288,21 @@
 
     .chat {
         flex: 1;
-        background: rgba(184, 183, 183, .1);
-        border: 1px solid rgba(255, 255, 255, .25);
+        background: light-dark(#ffffff, rgba(184, 183, 183, .1));
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
     }
 
     .chat-body {
         flex: 1;
         display: flex;
         flex-direction: column;
-        background: rgba(0, 0, 0, .15);
+        background: light-dark(#f9f9f9, rgba(0, 0, 0, .15));
     }
 
     .chat-welcome {
         padding: 8px 10px;
         font-size: 13px;
-        color: rgba(255, 255, 255, .7);
+        color: light-dark(rgba(0, 0, 0, .45), rgba(255, 255, 255, .7));
         text-align: center;
     }
 
@@ -1273,7 +1326,7 @@
 
     .chat-foot {
         padding: 5px;
-        border-top: 1px solid rgba(255, 255, 255, .25);
+        border-top: 1px solid light-dark(rgba(0, 0, 0, .08), rgba(255, 255, 255, .25));
         display: flex;
         gap: 5px;
     }
@@ -1283,9 +1336,9 @@
         height: 30px;
         padding: 5px;
         border-radius: 5px;
-        border: 1px solid rgba(255, 255, 255, .25);
-        background: rgba(0, 0, 0, .3);
-        color: #fff;
+        border: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25));
+        background: light-dark(#ffffff, rgba(0, 0, 0, .3));
+        color: light-dark(#222, #fff);
         font-size: 13px;
         outline: none;
         box-sizing: border-box;
@@ -1373,28 +1426,28 @@
     }
 
     .chat_msg.system .chat_msg_content {
-        color: rgba(255, 255, 255, .7);
+        color: light-dark(rgba(0, 0, 0, .5), rgba(255, 255, 255, .7));
         font-size: 12px;
         font-style: italic;
         text-align: center;
     }
 
     .chat_msg_row.other .chat_msg_content {
-        background: linear-gradient(135deg, rgba(0, 212, 255, .15), rgba(0, 150, 255, .1));
-        border: 1px solid rgba(0, 212, 255, .25);
-        color: #fff;
+        background: linear-gradient(135deg, rgba(0, 212, 255, .12), rgba(0, 150, 255, .08));
+        border: 1px solid rgba(0, 212, 255, .2);
+        color: light-dark(#000, #fff);
     }
 
     .chat_msg_row.self .chat_msg_content {
-        background: linear-gradient(135deg, rgba(0, 255, 136, .15), rgba(0, 200, 100, .1));
-        border: 1px solid rgba(0, 255, 136, .25);
-        color: #fff;
+        background: linear-gradient(135deg, rgba(0, 180, 100, .12), rgba(0, 150, 80, .08));
+        border: 1px solid rgba(0, 200, 136, .2);
+        color: light-dark(#000, #fff);
     }
 
     .download,
     .cpu-task,
     .create-window {
-        border: 1px solid rgba(255, 255, 255, .25);
+        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
     }
 
     .download .card-b,
