@@ -21,8 +21,8 @@ class Stream(Handle):
             mcast_win_ids: list[int] = None,
     ) -> bool:
         payload, window_ids = {"code": code, "mssg": mssg, "data": data}, None
-        if self.handle_id != 'system_monitoring_stream':
-            self._logger_(payload, send_mode)
+        # if self.handle_id != 'system_monitoring_stream':
+        self._logger_(payload, send_mode)
         match send_mode:
             case StreamSendModes.BROADCAST:
                 window_ids = None
