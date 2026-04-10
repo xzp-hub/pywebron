@@ -7,14 +7,13 @@
     <title>PyWebron 控制面板</title>
 </head>
 <script>
-    console.log(window.pywebron);
     const $ = id => document.getElementById(id);
     let isMaximized = false, gaugeAnims = {}, chatStream, msgIds = new Set();
     const FONTS = {percent: 17, label: 12, stats: 14};
 
-    function isDarkTheme() {
-        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
+    let _isDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', e => { _isDark = e.matches; });
+    function isDarkTheme() { return _isDark; }
 
     const MONITORS = [
         {key: 'cpu', canvas: 'cpuCanvas', header: 'cpuHeader', label: 'CPU 使用率', color: '#00D4FF'},
@@ -59,19 +58,20 @@
 
     function drawGauge(canvas, val, label, color, anim = true) {
         const ctx = canvas.getContext('2d'), dpr = devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        ctx.scale(dpr, dpr);
+        const cw = Math.round(rect.width * dpr), ch = Math.round(rect.height * dpr);
+        if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const cx = rect.width / 2, cy = rect.height / 2, r = (Math.min(cx, cy) - 10) * 1.08, lw = 8;
         const id = canvas.id;
         let cur = gaugeAnims[id]?.cur || 0;
-        gaugeAnims[id] = {val, cur};
+        if (gaugeAnims[id]?.raf) cancelAnimationFrame(gaugeAnims[id].raf);
+        gaugeAnims[id] = {val, cur, raf: 0};
 
         const render = v => {
             ctx.clearRect(0, 0, rect.width, rect.height);
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, Math.PI * 2);
-            ctx.strokeStyle = isDarkTheme() ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)';
+            ctx.strokeStyle = _isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)';
             ctx.lineWidth = lw;
             ctx.stroke();
             ctx.beginPath();
@@ -79,13 +79,13 @@
             ctx.strokeStyle = color;
             ctx.lineCap = 'butt';
             ctx.stroke();
-            ctx.fillStyle = isDarkTheme() ? '#fff' : '#222';
+            ctx.fillStyle = _isDark ? '#fff' : '#222';
             ctx.font = `bold ${FONTS.percent}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(v.toFixed(2) + '%', cx, cy - 3);
             ctx.font = `${FONTS.label}px Arial`;
-            ctx.fillStyle = isDarkTheme() ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
+            ctx.fillStyle = _isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
             ctx.fillText(label, cx, cy + 15);
         };
 
@@ -98,25 +98,26 @@
             const diff = gaugeAnims[id].val - gaugeAnims[id].cur;
             if (Math.abs(diff) < 0.1) {
                 render(gaugeAnims[id].val);
+                gaugeAnims[id].raf = 0;
                 return;
             }
             gaugeAnims[id].cur += diff * 0.15;
             render(gaugeAnims[id].cur);
-            requestAnimationFrame(frame);
+            gaugeAnims[id].raf = requestAnimationFrame(frame);
         };
-        frame();
+        gaugeAnims[id].raf = requestAnimationFrame(frame);
     }
 
     function drawIoChart(yTicks) {
         const canvas = $('ioCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d'), dpr = devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        ctx.scale(dpr, dpr);
+        const pw = Math.round(rect.width * dpr), ph = Math.round(rect.height * dpr);
+        if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const w = rect.width, h = rect.height;
         const pad = {t: 20, r: 15, b: 35, l: 55};
-        const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+        const chartW = w - pad.l - pad.r, chartH = h - pad.t - pad.b;
 
         ctx.clearRect(0, 0, w, h);
 
@@ -124,7 +125,7 @@
         const colors = IO_COLORS[ioType];
         const keys = ioType === 'disk' ? ['read', 'write'] : ['upload', 'download'];
         const labels = ioType === 'disk' ? ['读取', '写入'] : ['上行', '下行'];
-        const dark = isDarkTheme();
+        const dark = _isDark;
 
         let yMax = 100;
         if (yTicks) {
@@ -148,14 +149,14 @@
         ioDataPoints = [];
         const maxPoints = 5;
         const effectiveLen = Math.min(dataLen, maxPoints);
-        const getX = (i) => pad.l + cw * i / (maxPoints - 1);
+        const getX = (i) => pad.l + chartW * i / (maxPoints - 1);
 
         for (let i = 0; i < effectiveLen; i++) {
             const x = getX(i);
             const pointData = {x, time: history.times[i], values: {}};
             keys.forEach((key, ki) => {
                 const val = history[key][i];
-                const y = pad.t + ch * (1 - Math.min(val, yMax) / yMax);
+                const y = pad.t + chartH * (1 - Math.min(val, yMax) / yMax);
                 pointData.values[key] = {val, y, label: labels[ki], color: colors[key]};
             });
             ioDataPoints.push(pointData);
@@ -176,7 +177,7 @@
         const tickCount = ticks.length;
 
         for (let i = 0; i < tickCount; i++) {
-            const y = pad.t + ch * i / (tickCount - 1);
+            const y = pad.t + chartH * i / (tickCount - 1);
             ctx.strokeStyle = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)';
             ctx.beginPath();
             ctx.moveTo(pad.l, y);
@@ -192,7 +193,6 @@
 
         ctx.strokeStyle = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
         ctx.beginPath();
-        ctx.beginPath();
         ctx.moveTo(pad.l, h - pad.b);
         ctx.lineTo(w - pad.r, h - pad.b);
         ctx.stroke();
@@ -205,14 +205,14 @@
             arr.forEach((v, i) => {
                 if (i >= maxPoints) return;
                 const x = getX(i);
-                const y = pad.t + ch * (1 - Math.min(v, yMax) / yMax);
+                const y = pad.t + chartH * (1 - Math.min(v, yMax) / yMax);
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
             const lastIdx = Math.min(arr.length, maxPoints) - 1;
-            ctx.lineTo(getX(lastIdx), pad.t + ch);
-            ctx.lineTo(getX(0), pad.t + ch);
+            ctx.lineTo(getX(lastIdx), pad.t + chartH);
+            ctx.lineTo(getX(0), pad.t + chartH);
             ctx.closePath();
-            const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ch);
+            const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + chartH);
             grad.addColorStop(0, colors[key] + '40');
             grad.addColorStop(1, colors[key] + '05');
             ctx.fillStyle = grad;
@@ -222,7 +222,7 @@
             arr.forEach((v, i) => {
                 if (i >= maxPoints) return;
                 const x = getX(i);
-                const y = pad.t + ch * (1 - Math.min(v, yMax) / yMax);
+                const y = pad.t + chartH * (1 - Math.min(v, yMax) / yMax);
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
             ctx.strokeStyle = colors[key];
@@ -232,7 +232,7 @@
             arr.forEach((v, i) => {
                 if (i >= maxPoints) return;
                 const x = getX(i);
-                const y = pad.t + ch * (1 - Math.min(v, yMax) / yMax);
+                const y = pad.t + chartH * (1 - Math.min(v, yMax) / yMax);
                 ctx.fillStyle = colors[key];
                 ctx.fillRect(x - 3, y - 3, 6, 6);
             });
@@ -348,12 +348,6 @@
         tooltip.innerHTML = html;
     }
 
-    function formatKB(kb) {
-        if (kb >= 1024 * 1024) return (kb / 1024 / 1024).toFixed(0) + ' GB/s';
-        if (kb >= 1024) return (kb / 1024).toFixed(0) + ' MB/s';
-        return kb.toFixed(0) + ' KB/s';
-    }
-
     function formatSpeed(val) {
         return val.toFixed(2) + ' KB/S';
     }
@@ -426,14 +420,9 @@
         if (!window.pywebron?.interfaces?.stream) {
             return setTimeout(startMonitoring, 100);
         }
-        const t0 = performance.now();
         try {
             const stream = await window.pywebron.interfaces.stream('system_monitoring_stream');
-            let firstData = true;
             stream.recv(data => {
-                if (firstData) {
-                    firstData = false;
-                }
                 const payload = data.data || data;
                 const time = payload.time;
                 const info = payload.info;
@@ -476,10 +465,11 @@
                 const container = $('terminalLogs');
                 if (!container) return;
                 const logs = data.data?.logs || data.logs || [];
+                const frag = document.createDocumentFragment();
+                const isDark = _isDark;
                 logs.forEach(log => {
                     const line = document.createElement('div');
                     let text = typeof log === 'string' ? log : JSON.stringify(log);
-                    const isDark = isDarkTheme();
                     if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
                         line.style.color = isDark ? '#ff6b6b' : '#c0392b';
                     } else if (text.includes('[Performance]')) {
@@ -492,8 +482,9 @@
                         line.style.color = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.75)';
                     }
                     line.textContent = text;
-                    container.appendChild(line);
+                    frag.appendChild(line);
                 });
+                container.appendChild(frag);
                 container.scrollTop = container.scrollHeight;
             });
         } catch (e) {
@@ -539,10 +530,9 @@
         }
     }
 
+    const _escapeMap = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
     function escapeHtml(t) {
-        const d = document.createElement('div');
-        d.textContent = t;
-        return d.innerHTML;
+        return t.replace(/[&<>"']/g, c => _escapeMap[c]);
     }
 
     function displayMsg(data, isLocal = false) {
@@ -555,8 +545,8 @@
         if (type === 'system' && msg === '欢迎加入聊天室') $('welcomeMessage').style.display = 'none';
 
         const id = type === 'system' ? `sys-${msg}` : `${isLocal ? 'local' : 'remote'}-${data.window_id || 'u'}-${Date.now()}-${msg}`;
-        if (msgIds.has(id)) return;
-        msgIds.add(id);
+        if (id && msgIds.has(id)) return;
+        if (id) { msgIds.add(id); if (msgIds.size > 500) { const iter = msgIds.values(); msgIds.delete(iter.next().value); } }
 
         const div = document.createElement('div');
         div.className = `chat_msg ${type === 'system' ? 'system' : isLocal ? 'self' : 'other'}`;
@@ -892,13 +882,6 @@
         overflow: hidden;
     }
 
-    .content iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-        border-radius: 5px
-    }
-
     .left {
         width: 50%;
         display: flex;
@@ -917,10 +900,6 @@
 
     .invoke-cards {
         flex: 0 0 auto;
-        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
-        border-radius: 5px;
-        background: light-dark(#ffffff, #1e1f21);
-        box-sizing: border-box;
     }
 
     .invoke-cards .card-b {
@@ -934,15 +913,6 @@
         flex: 1;
         min-height: 0;
         overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
-        border-radius: 5px;
-        background: light-dark(#ffffff, #1e1f21);
-        box-sizing: border-box;
-    }
-
-    .terminal .card-b {
         display: flex;
         flex-direction: column;
     }
@@ -1038,13 +1008,9 @@
     .monitor {
         flex: 1;
         min-height: 0;
-        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
-        background: light-dark(#ffffff, #1e1f21);
     }
 
     .monitor .card-b {
-        display: flex;
-        flex-direction: column;
         height: 100%;
     }
 
@@ -1309,8 +1275,6 @@
 
     .chat {
         flex: 1;
-        background: light-dark(#ffffff, #1e1f21);
-        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
     }
 
     .chat-body {
@@ -1468,21 +1432,6 @@
         color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, 0.8));
     }
 
-    .download,
-    .cpu-task,
-    .create-window {
-        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
-    }
-
-    .download .card-b,
-    .cpu-task .card-b,
-    .create-window .card-b {
-        padding: 15px;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-    }
-
     .dl-btn {
         width: 100%;
         padding: 10px;
@@ -1513,17 +1462,6 @@
     .dl-btn svg {
         width: 16px;
         height: 16px;
-    }
-
-    .dl-status {
-        width: 100%;
-        padding: 8px 12px;
-        background: rgba(0, 212, 255, .1);
-        border-radius: 4px;
-        border: 1px solid rgba(0, 212, 255, .15);
-        color: rgba(255, 255, 255, .8);
-        font-size: 13px;
-        text-align: center;
     }
 
     .resize-area {
