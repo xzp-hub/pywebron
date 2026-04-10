@@ -480,18 +480,16 @@
                     const line = document.createElement('div');
                     let text = typeof log === 'string' ? log : JSON.stringify(log);
                     const isDark = isDarkTheme();
-                    const color = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.75)';
-                    const errorColor = isDark ? '#ff6b6b' : '#d63031';
                     if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
-                        line.style.color = errorColor;
+                        line.style.color = isDark ? '#ff6b6b' : '#c0392b';
                     } else if (text.includes('[Performance]')) {
-                        line.style.color = isDark ? '#00D4FF' : '#0099cc';
+                        line.style.color = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)';
                     } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
-                        line.style.color = isDark ? '#00FF88' : '#009955';
+                        line.style.color = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)';
                     } else if (text.includes('[Warning]') || text.includes('警告')) {
-                        line.style.color = isDark ? '#F7BA1E' : '#cc8800';
+                        line.style.color = isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)';
                     } else {
-                        line.style.color = color;
+                        line.style.color = isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.75)';
                     }
                     line.textContent = text;
                     container.appendChild(line);
@@ -815,7 +813,7 @@
         gap: 5px;
         display: flex;
         flex-direction: column;
-        background: light-dark(#e9eaee, #3c3c3c)
+        background: light-dark(#dde0e6, #2d2e30)
     }
 
     .header {
@@ -919,7 +917,7 @@
 
     .invoke-cards {
         flex: 0 0 auto;
-        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
+        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
         border-radius: 5px;
         background: light-dark(#ffffff, #1e1f21);
         box-sizing: border-box;
@@ -938,7 +936,7 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
+        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
         border-radius: 5px;
         background: light-dark(#ffffff, #1e1f21);
         box-sizing: border-box;
@@ -976,7 +974,7 @@
 
     .card {
         border-radius: 5px;
-        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
+        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -991,7 +989,7 @@
         gap: 5px;
         background: light-dark(#ffffff, rgba(184, 183, 183, .15));
         backdrop-filter: blur(6px);
-        border-bottom: 1px solid light-dark(rgba(0, 0, 0, .08), rgba(255, 255, 255, .25));
+        border-bottom: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
         border-radius: 5px 5px 0 0;
         box-sizing: border-box;
     }
@@ -1040,7 +1038,7 @@
     .monitor {
         flex: 1;
         min-height: 0;
-        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
+        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
         background: light-dark(#ffffff, #1e1f21);
     }
 
@@ -1312,7 +1310,7 @@
     .chat {
         flex: 1;
         background: light-dark(#ffffff, #1e1f21);
-        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
+        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
     }
 
     .chat-body {
@@ -1473,7 +1471,7 @@
     .download,
     .cpu-task,
     .create-window {
-        border: 1px solid light-dark(rgba(0, 0, 0, .12), rgba(255, 255, 255, .25));
+        border: 1px solid light-dark(rgba(0, 0, 0, .18), rgba(255, 255, 255, .3));
     }
 
     .download .card-b,
