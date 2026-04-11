@@ -5,38 +5,46 @@ import IoMonitor from '@/components/IoMonitor.vue'
 import ChatRoom from '@/components/ChatRoom.vue'
 import InvokePanel from '@/components/InvokePanel.vue'
 import TerminalLog from '@/components/TerminalLog.vue'
-console.log(window.pywebron)
 </script>
 
 <template>
   <WindowHeader/>
-  <div class="app-main-content">
-    <div class="app-left-column">
-      <SystemMonitor/>
-      <IoMonitor/>
-      <ChatRoom/>
+  <div class="window-content">
+    <div class="window-top-content">
+      <div class="window-left-content">
+        <SystemMonitor/>
+        <IoMonitor/>
+      </div>
+      <div class="window-right-content">
+        <ChatRoom/>
+        <InvokePanel/>
+      </div>
     </div>
-    <div class="app-right-column">
-      <InvokePanel/>
-      <TerminalLog/>
-    </div>
+    <TerminalLog/>
   </div>
 </template>
 
 <style scoped>
-
-
-.app-main-content {
+.window-content {
   border-radius: 5px;
   flex: 1;
   display: flex;
+  flex-direction: column;
   gap: 5px;
   box-sizing: border-box;
   min-height: 0;
   overflow: hidden;
 }
 
-.app-left-column {
+.window-top-content {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  min-height: 0;
+}
+
+.window-left-content {
   width: 50%;
   display: flex;
   flex-direction: column;
@@ -44,11 +52,21 @@ console.log(window.pywebron)
   min-height: 0;
 }
 
-.app-right-column {
+.window-left-content > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.window-right-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  min-height: 0;
+}
+
+.window-right-content > * {
+  flex: 1;
   min-height: 0;
 }
 </style>
