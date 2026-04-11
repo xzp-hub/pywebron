@@ -1,43 +1,12 @@
 from asyncio import sleep as asyncio_sleep, gather
 from pathlib import Path
-import sys
 from time import time, perf_counter
 from traceback import format_exc
-from threading import Lock, local as thread_local
-from collections import deque
 
 from pywebron import App, StreamSendModes
 from pywebron.configs import PROJECT_ROOT_PATH, DwmCorners
 from pywebron.utils import save_file_dialog
-from tools import SystemMonitoring, cpu_task
-
-# --- 终端日志捕获（仅 Python 层） ---
-_terminal_log_queue = deque(maxlen=1000)
-_terminal_log_lock = Lock()
-_terminal_capturing = thread_local()
-_original_stdout = sys.stdout
-_original_stderr = sys.stderr
-
-
-class _TerminalCapture:
-    """捕获 Python 层的 stdout/stderr 输出到日志队列，同时输出到真实控制台"""
-    def __init__(self, original):
-        self.original = original
-
-    def write(self, text):
-        if text and text.strip():
-            if not getattr(_terminal_capturing, 'active', False):
-                with _terminal_log_lock:
-                    _terminal_log_queue.append(text)
-        self.original.write(text)
-
-    def flush(self):
-        self.original.flush()
-
-
-sys.stdout = _TerminalCapture(_original_stdout)
-sys.stderr = _TerminalCapture(_original_stderr)
-
+from tools import SystemMonitoring, cpu_task, TerminalLogger
 
 print(f"[Performance] ========== 应用启动开始 ==========")
 t_app_start = perf_counter()
@@ -147,12 +116,7 @@ class ChatRoomStruct(app.stream.struct):
 @app.stream.handle("chat_room_stream")
 async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStruct):
     try:
-        await stream.send(
-            200,
-            "欢迎加入聊天室",
-            {"type": "system"},
-            send_mode=StreamSendModes.BROADCAST,
-        )
+        await stream.send(200, "欢迎加入聊天室", {"type": "system"})
         while True:
             match res := await stream.recv():
                 case None:
@@ -188,31 +152,18 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
 @app.stream.handle("terminal_log_stream")
 async def terminal_log(stream: app.stream):
     try:
-        # 发送启动前的历史日志
-        with _terminal_log_lock:
-            history = list(_terminal_log_queue)
-        if history:
-            _terminal_capturing.active = True  # 防止推送期间的 print 被二次捕获入队
-            try:
-                await stream.send(200, "历史日志", {"logs": history}, send_mode=StreamSendModes.BROADCAST)
-            finally:
-                _terminal_capturing.active = False
-        # 持续推送新日志
-        sent_count = len(history)
+        with TerminalLogger.pause():
+            await stream.send(200, "历史日志", {"logs": TerminalLogger.get_history_logs()})
         while True:
-            with _terminal_log_lock:
-                current = list(_terminal_log_queue)
-            if len(current) > sent_count:
-                new_logs = current[sent_count:]
-                sent_count = len(current)
-                _terminal_capturing.active = True  # 防止推送期间循环入队
-                try:
-                    await stream.send(200, "终端日志", {"logs": new_logs}, send_mode=StreamSendModes.BROADCAST)
-                finally:
-                    _terminal_capturing.active = False
-            await asyncio_sleep(0.3)
+            try:
+                if new_logs := TerminalLogger.get_current():
+                    with TerminalLogger.pause():
+                        await stream.send(200, "终端日志", {"logs": new_logs}, send_mode=StreamSendModes.UNITYCAST)
+                await asyncio_sleep(0.3)
+            except Exception:
+                await stream.send(500, "终端日志错误", format_exc())
     except Exception:
-        pass
+        await stream.send(500, "终端日志错误", format_exc())
 
 
 if __name__ == "__main__":
@@ -232,9 +183,6 @@ if __name__ == "__main__":
 
     t_register_done = perf_counter()
     print(
-        f"[Performance] 窗口注册完成，耗时: {(t_register_done - t_register_start) * 1000:.2f}ms"
-    )
-    print(
-        f"[Performance] 从应用启动到窗口注册完成，总耗时: {(t_register_done - t_app_start) * 1000:.2f}ms"
-    )
+        f"窗口注册完成，耗时: {(t_register_done - t_register_start) * 1000:.2f}ms" )
+    print( f"从应用启动到窗口注册完成，总耗时: {(t_register_done - t_app_start) * 1000:.2f}ms")
     app.run()

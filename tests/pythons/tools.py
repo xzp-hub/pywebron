@@ -2,6 +2,74 @@ from psutil import virtual_memory, swap_memory, cpu_times, disk_io_counters, net
 from asyncio import sleep as asyncio_sleep, gather
 from datetime import datetime
 import math
+import sys
+from threading import Lock, local as thread_local
+from collections import deque
+
+
+# --- 终端日志捕获（仅 Python 层） ---
+_terminal_log_queue = deque(maxlen=1000)
+_terminal_log_lock = Lock()
+_terminal_capturing = thread_local()
+_original_stdout = sys.stdout
+_original_stderr = sys.stderr
+
+
+class _TerminalCapture:
+    """捕获 Python 层的 stdout/stderr 输出到日志队列，同时输出到真实控制台"""
+    def __init__(self, original):
+        self.original = original
+
+    def write(self, text):
+        if text and text.strip():
+            if not getattr(_terminal_capturing, 'active', False):
+                with _terminal_log_lock:
+                    _terminal_log_queue.append(text)
+        self.original.write(text)
+
+    def flush(self):
+        self.original.flush()
+
+
+sys.stdout = _TerminalCapture(_original_stdout)
+sys.stderr = _TerminalCapture(_original_stderr)
+
+
+class TerminalLogger:
+    _sent_count = 0
+
+    @classmethod
+    def get_history_logs(cls):
+        """获取历史日志（首次调用）"""
+        with _terminal_log_lock:
+            history = list(_terminal_log_queue)
+        cls._sent_count = len(history)
+        return history
+
+    @classmethod
+    def get_current(cls):
+        """获取新增日志"""
+        with _terminal_log_lock:
+            current = list(_terminal_log_queue)
+        if len(current) > cls._sent_count:
+            current_logs = current[cls._sent_count:]
+            cls._sent_count = len(current)
+            return current_logs
+        return None
+
+    @classmethod
+    def pause(cls):
+        """上下文管理器：暂停捕获期间防止循环入队"""
+        return _PauseCapture()
+
+
+class _PauseCapture:
+    def __enter__(self):
+        _terminal_capturing.active = True
+        return self
+
+    def __exit__(self, *args):
+        _terminal_capturing.active = False
 
 
 def cpu_task(n):

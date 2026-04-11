@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { MinusIcon, FullscreenIcon, FullscreenExitIcon, CloseIcon } from 'tdesign-icons-vue-next'
+import {ref, onMounted} from 'vue'
+import {MinusIcon, FullscreenIcon, FullscreenExitIcon, CloseIcon} from 'tdesign-icons-vue-next'
 
 const pw = window.pywebron
 const isMaximized = ref(false)
@@ -16,11 +16,12 @@ const windowAction = async (type) => {
   }
   const action = type === 'toggle' ? (isMaximized.value ? 'rep' : 'max') : type
   try {
-    const res = await invoke('window_controls_invoke', { control_type: map[action] }, 5000)
+    const res = await invoke('window_controls_invoke', {control_type: map[action]}, 5000)
     if (res?.code === 200) {
       isMaximized.value = action === 'max' || (type === 'toggle' && !isMaximized.value)
     }
-  } catch (e) { /* noop */ }
+  } catch (e) { /* noop */
+  }
 }
 
 const iconSrc = ref('')
@@ -36,7 +37,7 @@ onMounted(async () => {
     titleText.value = attributes.title
   }
   try {
-    await invoke('setup_drag_region_invoke', { selector: '#window-header' })
+    await invoke('setup_drag_region_invoke', {selector: '#window-header'})
   } catch (e) {
     console.error(e)
   }
@@ -50,17 +51,24 @@ onMounted(async () => {
       <span class="window-header-app-title">{{ titleText }}</span>
     </div>
     <div class="window-header-control-buttons">
-      <t-button class="window-header-btn window-header-btn-minimize" variant="text" shape="square" title="最小化" @click="windowAction('min')">
-        <template #icon><MinusIcon /></template>
-      </t-button>
-      <t-button class="window-header-btn window-header-btn-maximize" variant="text" shape="square" :title="isMaximized ? '还原' : '最大化'" @click="windowAction('toggle')">
+      <t-button class="window-header-btn window-header-btn-minimize" variant="text" shape="square" title="最小化"
+                @click="windowAction('min')">
         <template #icon>
-          <FullscreenExitIcon v-if="isMaximized" />
-          <FullscreenIcon v-else />
+          <MinusIcon/>
         </template>
       </t-button>
-      <t-button class="window-header-btn window-header-btn-close" variant="text" shape="square" title="关闭" @click="windowAction('shut')">
-        <template #icon><CloseIcon /></template>
+      <t-button class="window-header-btn window-header-btn-maximize" variant="text" shape="square"
+                :title="isMaximized ? '还原' : '最大化'" @click="windowAction('toggle')">
+        <template #icon>
+          <FullscreenExitIcon v-if="isMaximized"/>
+          <FullscreenIcon v-else/>
+        </template>
+      </t-button>
+      <t-button class="window-header-btn window-header-btn-close" variant="text" shape="square" title="关闭"
+                @click="windowAction('shut')">
+        <template #icon>
+          <CloseIcon/>
+        </template>
       </t-button>
     </div>
   </div>
@@ -76,8 +84,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   background: light-dark(#ffffff, #1a1b1d);
-  /* 使用 box-shadow 替代 border 避免 sub-pixel 裁切导致边框在非整数缩放下消失 */
-  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
+  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
 .window-header-info {

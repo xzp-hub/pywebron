@@ -41,7 +41,8 @@ const RECV_QUEUE_LIMIT: usize = 100;
 pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'py, PyAny>> {
     let hid = handle_id.clone();
     let future = pyo3_async_runtimes::tokio::future_into_py(py, async move {
-        let t = std::time::Instant::now();
+        let queues = get_recv_queues();
+        let queues_read = queues.read();
 
         // 获取该 handle 的所有订阅窗口
         let subscriptions = get_stream_subscriptions_storage();
@@ -49,13 +50,8 @@ pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'p
         let window_ids: Vec<u64> = subs.get(&hid).cloned().unwrap_or_default();
 
         if window_ids.is_empty() {
-            eprintln!("[Timing][Stream] recv 没有订阅的窗口 | handle={}", hid);
             return Ok(None);
         }
-
-        let queues = get_recv_queues();
-        let queues_read = queues.read();
-        let t_lock = t.elapsed();
 
         // 轮询所有订阅窗口的队列，从任意窗口取消息
         let mut result_data = None;
@@ -82,17 +78,13 @@ pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'p
                 "payload": payload
             });
 
-            let t_py = std::time::Instant::now();
+
+
             let py_result = Python::attach(|py_inner| {
                 pythonize::pythonize(py_inner, &response).map(|obj| obj.unbind())
             });
-            let total_elapsed = t.elapsed();
-            if total_elapsed.as_micros() > 100 {
-                eprintln!(
-                    "[Timing][Stream] recv 总耗时: {:?} (锁={:?}, py={:?}) | handle={} | from_wid={}",
-                    total_elapsed, t_lock, t_py.elapsed(), hid, source_window_id
-                );
-            }
+
+
             if let Ok(py_obj) = py_result {
                 Ok(Some(py_obj))
             } else {
@@ -133,7 +125,6 @@ pub(crate) fn register_stream_window(handle_id: &str, window_id: u64) {
 /// 将前端发来的数据推入 recv 队列（供 Python stream.recv() 消费）
 /// 消息中会注入 source_window_id 字段，让 Python 端知道消息来源
 pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
-    let t = std::time::Instant::now();
 
     // 在消息中注入来源窗口信息
     let enriched_data = if let Some(obj) = data.as_object() {
@@ -150,18 +141,12 @@ pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
     let queue_key = format!("{}:{}", handle_id, window_id);
     let queues = get_recv_queues();
     let mut queues_guard = queues.write();
-    let t_lock = t.elapsed();
+
+
     let queue = queues_guard
         .entry(queue_key)
         .or_insert_with(|| crossbeam::queue::ArrayQueue::new(RECV_QUEUE_LIMIT));
     let _ = queue.push(enriched_data);
-    let t_total = t.elapsed();
-    if t_total.as_micros() > 50 {
-        eprintln!(
-            "[Timing][Stream] push_stream_data 耗时: {:?} (锁={:?}) | handle={} | wid={}",
-            t_total, t_lock, handle_id, window_id
-        );
-    }
 }
 
 // === Stream 订阅管理（handle_id -> 订阅信息） ===

@@ -43,7 +43,6 @@ fn ensure_invoke_pool() -> &'static channel::Sender<IpcRequest> {
             .map(|n| n.get().max(2))
             .unwrap_or(4);
 
-        eprintln!("[IPC][Pool] 初始化 invoke 线程池 | workers={}", num_threads);
 
         for i in 0..num_threads {
             let rx = rx.clone();
@@ -68,8 +67,6 @@ fn ensure_stream_pool() -> &'static channel::Sender<IpcRequest> {
         let (tx, rx) = channel::unbounded::<IpcRequest>();
         // Stream 线程池不需要太多线程，因为每个 stream handler 是长期运行的
         let num_threads = 8;
-
-        eprintln!("[IPC][Pool] 初始化 stream 线程池 | workers={}", num_threads);
 
         for i in 0..num_threads {
             let rx = rx.clone();

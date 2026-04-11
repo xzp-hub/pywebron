@@ -5,6 +5,8 @@ from typing import Any
 
 
 class Stream(Handle):
+    _log_count = {}
+
     @classmethod
     def handle(cls, alias: str = None):
         def decorator(func):
@@ -21,8 +23,11 @@ class Stream(Handle):
             mcast_win_ids: list[int] = None,
     ) -> bool:
         payload, window_ids = {"code": code, "mssg": mssg, "data": data}, None
-        # if self.handle_id != 'system_monitoring_stream':
-        self._logger_(payload, send_mode)
+        count = Stream._log_count.get(self.handle_id, 0)
+        if count < 2:
+            self._logger_(payload, send_mode)
+            Stream._log_count[self.handle_id] = count + 1
+            self._logger_(payload, send_mode)
         match send_mode:
             case StreamSendModes.BROADCAST:
                 window_ids = None

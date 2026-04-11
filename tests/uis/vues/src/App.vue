@@ -52,9 +52,7 @@ import TerminalLog from '@/components/TerminalLog.vue'
   min-height: 0;
 }
 
-.window-left-content > * {
-  flex: none;
-}
+
 
 .window-right-content {
   flex: 1;

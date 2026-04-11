@@ -65,9 +65,9 @@ function buildGaugeOption(val, label, color) {
 }
 
 const gaugeOptions = computed(() => ({
-  cpu: buildGaugeOption(gaugeData.cpu.usage, 'CPU', monitors[0].color),
-  ram: buildGaugeOption(gaugeData.ram.usage, '内存', monitors[1].color),
-  vrm: buildGaugeOption(gaugeData.vrm.usage, '交换区', monitors[2].color)
+  cpu: buildGaugeOption(gaugeData.cpu.usage, 'CPU使用率', monitors[0].color),
+  ram: buildGaugeOption(gaugeData.ram.usage, '内存使用率', monitors[1].color),
+  vrm: buildGaugeOption(gaugeData.vrm.usage, '交换区使用率', monitors[2].color)
 }))
 
 let monitorStream = null
@@ -142,7 +142,6 @@ onUnmounted(() => {
   height: 30px;
   display: flex;
   align-items: center;
-  gap: 5px;
   background: light-dark(#ffffff, rgba(184, 183, 183, .15));
   box-sizing: border-box;
   border-bottom: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
@@ -159,7 +158,7 @@ onUnmounted(() => {
 .monitor-panel-header-icon {
   width: 16px;
   height: 16px;
-  color: #00D4FF;
+  color: #9a8600;
 }
 
 .header-icon-title {
@@ -184,7 +183,6 @@ onUnmounted(() => {
   justify-content: center;
   flex-shrink: 0;
   border-radius: 5px;
-  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
   box-sizing: border-box;
 }
 
@@ -205,7 +203,5 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F7BA1E;
 }
-
 </style>
