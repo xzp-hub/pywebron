@@ -1,10 +1,16 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { usePywebron, useTheme, escapeHtml } from '@/composables/usePywebron'
-import { SendIcon } from 'tdesign-icons-vue-next'
+import { SendIcon, ChatIcon } from 'tdesign-icons-vue-next'
 
-const { isDark } = useTheme()
-const { stream, attributes } = usePywebron()
+const isDark = ref(false)
+const pw = window.pywebron
+const attributes = pw?.attributes || {}
+const stream = pw?.interfaces?.stream
+
+function escapeHtml(str) {
+  if (!str) return ''
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
 
 const chatMessages = ref([])
 const showWelcome = ref(true)
@@ -84,17 +90,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="panel chat-room-panel">
-    <div class="panel-header">
-      <div class="panel-header-icon-wrapper">
-        <svg class="panel-header-icon chat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-        </svg>
+  <div class="chat-room-panel">
+    <div class="chat-room-panel-header">
+      <div class="chat-room-header-icon-box">
+        <ChatIcon class="chat-room-header-icon" />
       </div>
-      <span class="panel-header-text">聊天室</span>
+      <span class="chat-room-header-title">聊天室</span>
     </div>
-    <div class="panel-body chat-room-message-area">
-      <div v-if="showWelcome" class="chat-room-welcome">欢迎加入聊天室</div>
+    <div class="chat-room-message-area">
+      <div v-if="showWelcome" class="chat-room-welcome-text">欢迎加入聊天室</div>
       <div ref="chatMessagesEl" class="chat-room-message-list">
         <div
           v-for="m in chatMessages"
@@ -108,12 +112,12 @@ onUnmounted(() => {
           <template v-else>
             <div class="chat-room-message-row" :class="{ 'chat-room-message-row-self': m.isLocal, 'chat-room-message-row-other': !m.isLocal }">
               <template v-if="!m.isLocal">
-                <img class="chat-room-avatar" :src="m.avatar">
+                <img class="chat-room-user-avatar" :src="m.avatar">
                 <div class="chat-room-message-bubble" v-html="m.msg"></div>
               </template>
               <template v-else>
                 <div class="chat-room-message-bubble" v-html="m.msg"></div>
-                <img class="chat-room-avatar" :src="m.avatar">
+                <img class="chat-room-user-avatar" :src="m.avatar">
               </template>
             </div>
           </template>
@@ -121,15 +125,14 @@ onUnmounted(() => {
       </div>
     </div>
     <div class="chat-room-input-bar">
-      <input
-        type="text"
+      <t-input
         v-model="chatInput"
         class="chat-room-input-field"
         placeholder="输入消息按回车发送..."
-        maxlength="200"
+        :maxlength="200"
         @keydown="onKeydown"
-      >
-      <t-button class="chat-room-send-button" theme="primary" @click="sendMsg">
+      />
+      <t-button class="chat-room-send-button" theme="primary" shape="square" @click="sendMsg">
         <template #icon><SendIcon /></template>
       </t-button>
     </div>
@@ -137,30 +140,31 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.panel {
+.chat-room-panel {
   border-radius: 5px;
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: light-dark(#ffffff, #1e1f21);
   box-sizing: border-box;
+  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
+  flex: 1;
 }
 
-.panel-header {
+.chat-room-panel-header {
   height: 30px;
   display: flex;
   align-items: center;
   gap: 5px;
   background: light-dark(#ffffff, rgba(184, 183, 183, .15));
   backdrop-filter: blur(6px);
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
   border-radius: 5px 5px 0 0;
   box-sizing: border-box;
   padding: 0 5px;
+  box-shadow: inset 0 -1px 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
 }
 
-.panel-header-icon-wrapper {
+.chat-room-header-icon-box {
   width: 30px;
   height: 30px;
   display: flex;
@@ -168,33 +172,18 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.panel-header-icon {
+.chat-room-header-icon {
   width: 16px;
   height: 16px;
-}
-
-.chat-icon {
   color: #00B42A;
 }
 
-.panel-header-text {
+.chat-room-header-title {
   font-size: 12px;
   font-weight: 600;
   color: light-dark(#333, #fff);
   letter-spacing: .5px;
   line-height: 1;
-}
-
-.panel-body {
-  flex: 1;
-  padding: 5px;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.chat-room-panel {
-  flex: 1;
 }
 
 .chat-room-message-area {
@@ -204,9 +193,10 @@ onUnmounted(() => {
   background: light-dark(#ffffff, rgba(30, 31, 33, 0.6));
   min-height: 0;
   overflow: hidden;
+  padding: 5px;
 }
 
-.chat-room-welcome {
+.chat-room-welcome-text {
   padding: 5px;
   font-size: 13px;
   color: light-dark(rgba(0, 0, 0, .45), rgba(255, 255, 255, .7));
@@ -233,32 +223,26 @@ onUnmounted(() => {
 }
 
 .chat-room-input-bar {
-  height: 30px;
-  border-top: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
+  height: 36px;
   display: flex;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
 }
 
 .chat-room-input-field {
   flex: 1;
-  height: 30px;
-  padding: 0 5px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: light-dark(rgba(0, 0, 0, .8), rgba(255, 255, 255, 0.8));
+  height: 36px;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
   font-size: 13px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.chat-room-input-field:focus {
-  outline: none;
 }
 
 .chat-room-send-button {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
+  min-width: auto;
   border: none;
   border-radius: 0;
   flex-shrink: 0;
@@ -300,13 +284,13 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
-.chat-room-avatar {
+.chat-room-user-avatar {
   width: 30px;
   height: 30px;
   border-radius: 5px;
   background: light-dark(#f0f0f0, rgba(255, 255, 255, .1));
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
 }
 
 .chat-room-message-bubble {

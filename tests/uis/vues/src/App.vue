@@ -1,55 +1,32 @@
 <script setup>
-import { onMounted } from 'vue'
-import { usePywebron } from '@/composables/usePywebron'
 import WindowHeader from '@/components/WindowHeader.vue'
 import SystemMonitor from '@/components/SystemMonitor.vue'
 import IoMonitor from '@/components/IoMonitor.vue'
 import ChatRoom from '@/components/ChatRoom.vue'
 import InvokePanel from '@/components/InvokePanel.vue'
 import TerminalLog from '@/components/TerminalLog.vue'
-import ResizeArea from '@/components/ResizeArea.vue'
-
-const { attributes } = usePywebron()
-
-onMounted(() => {
-  if (attributes?.show_title_bar === true) {
-    const appRoot = document.getElementById('app')
-    if (appRoot) appRoot.classList.add('has-system-title-bar')
-  }
-})
+console.log(window.pywebron)
 </script>
 
 <template>
-  <div class="app-root">
-    <WindowHeader />
-    <div class="app-content">
-      <div class="app-content-left">
-        <SystemMonitor />
-        <IoMonitor />
-        <ChatRoom />
-      </div>
-      <div class="app-content-right">
-        <InvokePanel />
-        <TerminalLog />
-      </div>
+  <WindowHeader/>
+  <div class="app-main-content">
+    <div class="app-left-column">
+      <SystemMonitor/>
+      <IoMonitor/>
+      <ChatRoom/>
+    </div>
+    <div class="app-right-column">
+      <InvokePanel/>
+      <TerminalLog/>
     </div>
   </div>
-  <ResizeArea />
 </template>
 
 <style scoped>
-.app-root {
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  padding: 5px;
-  gap: 5px;
-  display: flex;
-  flex-direction: column;
-  background: light-dark(#eeeeee, #3a3a3d);
-}
 
-.app-content {
+
+.app-main-content {
   border-radius: 5px;
   flex: 1;
   display: flex;
@@ -59,7 +36,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.app-content-left {
+.app-left-column {
   width: 50%;
   display: flex;
   flex-direction: column;
@@ -67,7 +44,7 @@ onMounted(() => {
   min-height: 0;
 }
 
-.app-content-right {
+.app-right-column {
   flex: 1;
   display: flex;
   flex-direction: column;

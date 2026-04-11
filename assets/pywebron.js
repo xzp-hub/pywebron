@@ -9,8 +9,7 @@
     const config = window.pywebron || {};
     const {window_id, show_title_bar, window_radius, enable_resizable} = config;
 
-    // 注入圆角 CSS（当 show_title_bar 为 false 且 window_radius > 0 时）
-    if (!show_title_bar && window_radius > 0) {
+    if (!show_title_bar) {
         const radiusStyle = `html,body{border-radius:${window_radius}px!important;color-scheme:light dark!important;overflow:hidden!important;background:transparent!important;margin:0!important;padding:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important}#app{border-radius:${window_radius}px!important}`;
 
         const injectRadiusStyle = () => {

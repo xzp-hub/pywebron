@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted, onUnmounted, reactive, computed, watch } from 'vue'
-import { usePywebron, useTheme } from '@/composables/usePywebron'
+import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
 import VChart from 'vue-echarts'
+import { DesktopIcon } from 'tdesign-icons-vue-next'
 
-const { isDark } = useTheme()
-const { stream } = usePywebron()
+const isDark = ref(false)
+const pw = window.pywebron
+const stream = pw?.interfaces?.stream
 
 const monitors = [
   { key: 'cpu', label: 'CPU 使用率', color: '#00D4FF' },
@@ -105,22 +106,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="panel system-monitor-panel">
-    <div class="panel-header">
-      <div class="panel-header-icon-wrapper">
-        <svg class="panel-header-icon monitor-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <line x1="8" y1="21" x2="16" y2="21"/>
-          <line x1="12" y1="17" x2="12" y2="21"/>
-        </svg>
+  <div class="monitor-panel">
+    <div class="monitor-panel-header">
+      <div class="monitor-panel-header-icon-box">
+        <DesktopIcon class="monitor-panel-header-icon" />
       </div>
-      <span class="panel-header-text">系统监控</span>
+      <span class="monitor-panel-header-title">系统监控</span>
     </div>
-    <div class="panel-body system-monitor-body">
-      <div class="system-monitor-gauges">
-        <div v-for="m in monitors" :key="m.key" class="system-monitor-gauge-item">
-          <v-chart class="system-monitor-gauge-chart" :option="gaugeOptions[m.key]" autoresize />
-          <div class="system-monitor-gauge-label">{{ gaugeData[m.key].stats }}</div>
+    <div class="monitor-panel-body">
+      <div class="monitor-gauges-container">
+        <div v-for="m in monitors" :key="m.key" class="monitor-gauge-card">
+          <v-chart class="monitor-gauge-chart" :option="gaugeOptions[m.key]" autoresize />
+          <div class="monitor-gauge-stat-label">{{ gaugeData[m.key].stats }}</div>
         </div>
       </div>
     </div>
@@ -128,30 +125,31 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.panel {
+.monitor-panel {
   border-radius: 5px;
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: light-dark(#ffffff, #1e1f21);
   box-sizing: border-box;
+  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
+  flex: 0 0 auto;
 }
 
-.panel-header {
+.monitor-panel-header {
   height: 30px;
   display: flex;
   align-items: center;
   gap: 5px;
   background: light-dark(#ffffff, rgba(184, 183, 183, .15));
   backdrop-filter: blur(6px);
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
   border-radius: 5px 5px 0 0;
   box-sizing: border-box;
   padding: 0 5px;
+  box-shadow: inset 0 -1px 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
 }
 
-.panel-header-icon-wrapper {
+.monitor-panel-header-icon-box {
   width: 30px;
   height: 30px;
   display: flex;
@@ -159,16 +157,13 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.panel-header-icon {
+.monitor-panel-header-icon {
   width: 16px;
   height: 16px;
-}
-
-.monitor-icon {
   color: #00D4FF;
 }
 
-.panel-header-text {
+.monitor-panel-header-title {
   font-size: 12px;
   font-weight: 600;
   color: light-dark(#333, #fff);
@@ -176,23 +171,16 @@ onUnmounted(() => {
   line-height: 1;
 }
 
-.panel-body {
+.monitor-panel-body {
   flex: 1;
   padding: 5px;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
 }
 
-.system-monitor-panel {
-  flex: 0 0 auto;
-}
-
-.system-monitor-body {
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
-}
-
-.system-monitor-gauges {
+.monitor-gauges-container {
   height: 160px;
   flex-shrink: 0;
   display: flex;
@@ -201,22 +189,22 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-.system-monitor-gauge-item {
+.monitor-gauge-card {
   flex: 1;
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
   border-radius: 5px;
+  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
 }
 
-.system-monitor-gauge-chart {
+.monitor-gauge-chart {
   flex: 1;
   min-height: 0;
   width: 100%;
 }
 
-.system-monitor-gauge-label {
+.monitor-gauge-stat-label {
   height: 18px;
   font-weight: 600;
   color: light-dark(#555, rgba(255, 255, 255, .8));

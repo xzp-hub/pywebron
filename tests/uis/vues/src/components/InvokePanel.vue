@@ -1,9 +1,9 @@
 <script setup>
 import { ref } from 'vue'
-import { usePywebron } from '@/composables/usePywebron'
-import { DownloadIcon, ThunderboltIcon, WindowIcon } from 'tdesign-icons-vue-next'
+import { DownloadIcon, ThunderIcon, WindowIcon } from 'tdesign-icons-vue-next'
 
-const { invoke } = usePywebron()
+const pw = window.pywebron
+const invoke = pw?.interfaces?.invoke
 
 const downloadDisabled = ref(false)
 const cpuTaskDisabled = ref(false)
@@ -35,17 +35,17 @@ async function createNewWindow() {
 </script>
 
 <template>
-  <div class="panel invoke-panel">
-    <div class="panel-body invoke-panel-button-row">
-      <t-button class="invoke-panel-action invoke-panel-download" :disabled="downloadDisabled" @click="downloadFile" theme="primary">
+  <div class="invoke-panel">
+    <div class="invoke-panel-action-bar">
+      <t-button class="invoke-panel-action-btn invoke-panel-download-btn" :disabled="downloadDisabled" @click="downloadFile" theme="primary">
         <template #icon><DownloadIcon /></template>
         下载文件
       </t-button>
-      <t-button class="invoke-panel-action invoke-panel-cpu" :disabled="cpuTaskDisabled" @click="runCpuTask" theme="success">
-        <template #icon><ThunderboltIcon /></template>
+      <t-button class="invoke-panel-action-btn invoke-panel-cpu-btn" :disabled="cpuTaskDisabled" @click="runCpuTask" theme="success">
+        <template #icon><ThunderIcon /></template>
         执行 CPU 密集任务
       </t-button>
-      <t-button class="invoke-panel-action invoke-panel-window" :disabled="createWindowDisabled" @click="createNewWindow" theme="warning">
+      <t-button class="invoke-panel-action-btn invoke-panel-window-btn" :disabled="createWindowDisabled" @click="createNewWindow" theme="warning">
         <template #icon><WindowIcon /></template>
         创建新窗口
       </t-button>
@@ -54,62 +54,51 @@ async function createNewWindow() {
 </template>
 
 <style scoped>
-.panel {
+.invoke-panel {
   border-radius: 5px;
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: light-dark(#ffffff, #1e1f21);
   box-sizing: border-box;
-}
-
-.panel-body {
-  flex: 1;
-  padding: 5px;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.invoke-panel {
+  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
   flex: 0 0 auto;
 }
 
-.invoke-panel-button-row {
+.invoke-panel-action-bar {
   padding: 0;
   display: flex;
   flex-direction: row;
   overflow: hidden;
 }
 
-.invoke-panel-action {
+.invoke-panel-action-btn {
   flex: 1;
   height: 36px;
-  border-radius: 0;
+  border-radius: 0 !important;
   font-weight: 600;
   font-size: 13px;
   gap: 5px;
-  border: none;
-  border-right: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25));
+  border: none !important;
+  box-shadow: inset -1px 0 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25)) !important;
 }
 
-.invoke-panel-action:last-child {
-  border-right: none;
+.invoke-panel-action-btn:last-child {
+  box-shadow: none !important;
 }
 
-.invoke-panel-download {
-  background: #165DFF;
-  color: #fff;
+.invoke-panel-download-btn {
+  background: #165DFF !important;
+  color: #fff !important;
 }
 
-.invoke-panel-cpu {
-  background: #7BE188;
-  color: rgba(0, 0, 0, .75);
+.invoke-panel-cpu-btn {
+  background: #7BE188 !important;
+  color: rgba(0, 0, 0, .75) !important;
 }
 
-.invoke-panel-window {
-  background: #722ED1;
-  color: #fff;
+.invoke-panel-window-btn {
+  background: #722ED1 !important;
+  color: #fff !important;
 }
 </style>
