@@ -1,47 +1,77 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import { onMounted } from 'vue'
+import { usePywebron } from '@/composables/usePywebron'
+import WindowHeader from '@/components/WindowHeader.vue'
+import SystemMonitor from '@/components/SystemMonitor.vue'
+import IoMonitor from '@/components/IoMonitor.vue'
+import ChatRoom from '@/components/ChatRoom.vue'
+import InvokePanel from '@/components/InvokePanel.vue'
+import TerminalLog from '@/components/TerminalLog.vue'
+import ResizeArea from '@/components/ResizeArea.vue'
+
+const { attributes } = usePywebron()
+
+onMounted(() => {
+  if (attributes?.show_title_bar === true) {
+    const appRoot = document.getElementById('app')
+    if (appRoot) appRoot.classList.add('has-system-title-bar')
+  }
+})
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+  <div class="app-root">
+    <WindowHeader />
+    <div class="app-content">
+      <div class="app-content-left">
+        <SystemMonitor />
+        <IoMonitor />
+        <ChatRoom />
+      </div>
+      <div class="app-content-right">
+        <InvokePanel />
+        <TerminalLog />
+      </div>
     </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  </div>
+  <ResizeArea />
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
+.app-root {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  gap: 5px;
+  display: flex;
+  flex-direction: column;
+  background: light-dark(#eeeeee, #3a3a3d);
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.app-content {
+  border-radius: 5px;
+  flex: 1;
+  display: flex;
+  gap: 5px;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+.app-content-left {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
+}
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.app-content-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
 }
 </style>
