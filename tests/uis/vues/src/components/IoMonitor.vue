@@ -1,9 +1,25 @@
 <script setup>
 import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
-import { useTheme, formatSpeed, formatTotal } from '@/composables/usePywebron'
 import VChart from 'vue-echarts'
+import { ChartLineDataIcon } from 'tdesign-icons-vue-next'
 
-const { isDark } = useTheme()
+const isDark = ref(false)
+
+function formatSpeed(bytes) {
+  if (!bytes || bytes === 0) return '0 B/s'
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s']
+  let i = 0
+  while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++ }
+  return bytes.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
+}
+
+function formatTotal(bytes) {
+  if (!bytes || bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let i = 0
+  while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++ }
+  return bytes.toFixed(i > 0 ? 1 : 0) + ' ' + units[i]
+}
 
 const ioType = ref('disk')
 
@@ -167,38 +183,36 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="panel io-monitor-panel">
-    <div class="panel-header io-monitor-header">
-      <div class="panel-header-icon-wrapper">
-        <svg class="panel-header-icon io-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-        </svg>
+  <div class="io-monitor-panel">
+    <div class="io-monitor-panel-header">
+      <div class="io-monitor-header-icon-box">
+        <ChartLineDataIcon class="io-monitor-header-icon" />
       </div>
-      <span class="panel-header-text">IO 监控</span>
+      <span class="io-monitor-header-title">IO 监控</span>
       <div style="flex:1"></div>
       <div class="io-monitor-type-switch">
-        <div class="io-monitor-type-switch-item" :class="{ active: ioType === 'disk' }" @click="switchIoType('disk')">磁盘IO</div>
-        <div class="io-monitor-type-switch-item" :class="{ active: ioType === 'net' }" @click="switchIoType('net')">网络IO</div>
+        <div class="io-monitor-type-switch-option" :class="{ 'io-monitor-type-switch-active': ioType === 'disk' }" @click="switchIoType('disk')">磁盘IO</div>
+        <div class="io-monitor-type-switch-option" :class="{ 'io-monitor-type-switch-active': ioType === 'net' }" @click="switchIoType('net')">网络IO</div>
       </div>
     </div>
-    <div class="panel-body io-monitor-chart-area">
-      <v-chart class="io-monitor-chart" :option="chartOption" autoresize />
-      <div class="io-monitor-legend">
+    <div class="io-monitor-chart-area">
+      <v-chart class="io-monitor-line-chart" :option="chartOption" autoresize />
+      <div class="io-monitor-chart-legend">
         <span class="io-monitor-legend-item">
-          <span class="io-monitor-legend-color" :style="{ background: ioPanel.color1 }"></span>
-          <span class="io-monitor-legend-label">{{ ioPanel.legText1 }}</span>
+          <span class="io-monitor-legend-color-dot" :style="{ background: ioPanel.color1 }"></span>
+          <span class="io-monitor-legend-text">{{ ioPanel.legText1 }}</span>
         </span>
         <span class="io-monitor-legend-item">
-          <span class="io-monitor-legend-color" :style="{ background: ioPanel.color2 }"></span>
-          <span class="io-monitor-legend-label">{{ ioPanel.legText2 }}</span>
+          <span class="io-monitor-legend-color-dot" :style="{ background: ioPanel.color2 }"></span>
+          <span class="io-monitor-legend-text">{{ ioPanel.legText2 }}</span>
         </span>
-        <span class="io-monitor-stat">
-          <span class="io-monitor-stat-label">{{ ioPanel.label1 }}</span>
-          <span class="io-monitor-stat-value">{{ ioPanel.val1 }}</span>
+        <span class="io-monitor-stat-item">
+          <span class="io-monitor-stat-item-label">{{ ioPanel.label1 }}</span>
+          <span class="io-monitor-stat-item-value">{{ ioPanel.val1 }}</span>
         </span>
-        <span class="io-monitor-stat">
-          <span class="io-monitor-stat-label">{{ ioPanel.label2 }}</span>
-          <span class="io-monitor-stat-value">{{ ioPanel.val2 }}</span>
+        <span class="io-monitor-stat-item">
+          <span class="io-monitor-stat-item-label">{{ ioPanel.label2 }}</span>
+          <span class="io-monitor-stat-item-value">{{ ioPanel.val2 }}</span>
         </span>
       </div>
     </div>
@@ -206,30 +220,33 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.panel {
+.io-monitor-panel {
   border-radius: 5px;
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: light-dark(#ffffff, #1e1f21);
   box-sizing: border-box;
+  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
+  height: 350px;
+  min-height: 350px;
 }
 
-.panel-header {
+.io-monitor-panel-header {
   height: 30px;
   display: flex;
   align-items: center;
   gap: 5px;
   background: light-dark(#ffffff, rgba(184, 183, 183, .15));
   backdrop-filter: blur(6px);
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
   border-radius: 5px 5px 0 0;
   box-sizing: border-box;
   padding: 0 5px;
+  padding-right: 5px;
+  box-shadow: inset 0 -1px 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
 }
 
-.panel-header-icon-wrapper {
+.io-monitor-header-icon-box {
   width: 30px;
   height: 30px;
   display: flex;
@@ -237,38 +254,18 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.panel-header-icon {
+.io-monitor-header-icon {
   width: 16px;
   height: 16px;
-}
-
-.io-icon {
   color: #722ED1;
 }
 
-.panel-header-text {
+.io-monitor-header-title {
   font-size: 12px;
   font-weight: 600;
   color: light-dark(#333, #fff);
   letter-spacing: .5px;
   line-height: 1;
-}
-
-.panel-body {
-  flex: 1;
-  padding: 5px;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.io-monitor-panel {
-  height: 350px;
-  min-height: 350px;
-}
-
-.io-monitor-header {
-  padding-right: 5px;
 }
 
 .io-monitor-type-switch {
@@ -278,7 +275,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.io-monitor-type-switch-item {
+.io-monitor-type-switch-option {
   padding: 2px 8px;
   font-size: 11px;
   color: light-dark(rgba(0, 0, 0, .55), rgba(255, 255, 255, .65));
@@ -288,12 +285,17 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.io-monitor-type-switch-item:hover {
+.io-monitor-type-switch-option:hover {
   color: light-dark(#000, #fff);
   background: light-dark(rgba(0, 0, 0, .06), rgba(255, 255, 255, .12));
 }
 
-.io-monitor-type-switch-item.active {
+.io-monitor-type-switch-active {
+  background: #722ED1;
+  color: #fff;
+}
+
+.io-monitor-type-switch-active:hover {
   background: #722ED1;
   color: #fff;
 }
@@ -303,15 +305,17 @@ onUnmounted(() => {
   min-height: 0;
   position: relative;
   padding: 5px;
+  display: flex;
+  flex-direction: column;
 }
 
-.io-monitor-chart {
+.io-monitor-line-chart {
   width: 100%;
   height: calc(100% - 28px);
   min-height: 0;
 }
 
-.io-monitor-legend {
+.io-monitor-chart-legend {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -326,36 +330,36 @@ onUnmounted(() => {
   font-size: 11px;
 }
 
-.io-monitor-legend-color {
+.io-monitor-legend-color-dot {
   width: 10px;
   height: 10px;
   border-radius: 2px;
   flex-shrink: 0;
 }
 
-.io-monitor-legend-label {
+.io-monitor-legend-text {
   font-size: 14px;
   color: light-dark(rgba(0, 0, 0, .65), rgba(255, 255, 255, .7));
 }
 
-.io-monitor-stat {
+.io-monitor-stat-item {
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  border-left: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25));
   padding-left: 18px;
+  box-shadow: inset 1px 0 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25));
 }
 
-.io-monitor-stat-label {
+.io-monitor-stat-item-label {
   color: light-dark(rgba(0, 0, 0, .55), rgba(255, 255, 255, .65));
 }
 
-.io-monitor-stat-label::after {
+.io-monitor-stat-item-label::after {
   content: ':';
 }
 
-.io-monitor-stat-value {
+.io-monitor-stat-item-value {
   font-weight: 600;
   color: light-dark(#222, #fff);
 }
