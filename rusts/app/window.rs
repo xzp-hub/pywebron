@@ -241,7 +241,7 @@ fn create_window_in_event_loop(
         );
 
         // 存储 dist 路径用于自定义协议处理
-        // dist 模式：指向 dist 目录；html 模式：指向 html 文件所在目录；其他：空
+        // dist 模式：指向 dist 目录；html 模式：指向 html 文件所在目录；link 模式：优先从 icon_path 推导，否则使用当前工作目录
         let dist_path_for_protocol = if config.dist_content.is_some() {
             let dist_path = std::path::Path::new(config.dist_content.as_ref().unwrap());
             if dist_path.is_absolute() {
@@ -257,8 +257,18 @@ fn create_window_in_event_loop(
                 std::env::current_dir().unwrap_or_default().join(html_path)
             };
             absolute_path.parent().unwrap_or(std::path::Path::new("")).to_path_buf()
+        } else if !config.icon_path.is_empty() {
+            // link_content 模式下，从 icon_path 推导资源目录
+            let icon_path = std::path::Path::new(&config.icon_path);
+            let absolute_path = if icon_path.is_absolute() {
+                icon_path.to_path_buf()
+            } else {
+                std::env::current_dir().unwrap_or_default().join(icon_path)
+            };
+            absolute_path.parent().unwrap_or(std::path::Path::new("")).to_path_buf()
         } else {
-            std::path::PathBuf::new()
+            // 无 icon_path 时回退到当前工作目录
+            std::env::current_dir().unwrap_or_default()
         };
 
         // clone 一份供后续 RESOURCE_CACHE 使用（原值会被 move 进闭包）
