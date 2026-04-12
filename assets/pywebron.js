@@ -138,6 +138,13 @@
         attributes: {...config},
 
         interfaces: {
+            resolveAssetUrl(filePath) {
+                if (!filePath || typeof filePath !== 'string') return '';
+                const normalized = filePath.replace(/\\/g, '/');
+                const fileName = normalized.split('/').pop();
+                return fileName ? 'http://app.' + fileName : '';
+            },
+
             async invoke(handle, payload = {}, timeout = 6e4) {
                 const request_id = generateRequestId(handle);
 

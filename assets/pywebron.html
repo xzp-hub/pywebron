@@ -614,9 +614,7 @@
         // 加载窗口图标（通过 app:// 协议加载，与 dist 模式一致）
         const hIcon = $('app')?.querySelector('.h-icon');
         if (hIcon && window.pywebron?.attributes?.icon_path) {
-            const iconPath = window.pywebron.attributes.icon_path.replace(/\\/g, '/');
-            const fileName = iconPath.split('/').pop();
-            if (fileName) hIcon.src = 'http://app.' + fileName;
+            hIcon.src = window.pywebron.interfaces.resolveAssetUrl(window.pywebron.attributes.icon_path);
         }
         // 动态设置标题
         const hTitle = $('app')?.querySelector('.h-title');

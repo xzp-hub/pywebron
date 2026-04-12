@@ -29,9 +29,7 @@ const titleText = ref('PyWebron 控制面板')
 
 onMounted(async () => {
   if (attributes?.icon_path) {
-    const iconPath = attributes.icon_path.replace(/\\/g, '/')
-    const fileName = iconPath.split('/').pop()
-    if (fileName) iconSrc.value = 'http://app.' + fileName
+    iconSrc.value = pw?.interfaces?.resolveAssetUrl(attributes.icon_path) || ''
   }
   // 如果没有图标，使用内置的 app 协议图标作为 fallback
   if (!iconSrc.value && attributes?.icon_path === undefined) {
