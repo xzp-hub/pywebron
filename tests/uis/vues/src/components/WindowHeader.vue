@@ -33,6 +33,10 @@ onMounted(async () => {
     const fileName = iconPath.split('/').pop()
     if (fileName) iconSrc.value = 'http://app.' + fileName
   }
+  // 如果没有图标，使用内置的 app 协议图标作为 fallback
+  if (!iconSrc.value && attributes?.icon_path === undefined) {
+    iconSrc.value = ''
+  }
   if (attributes?.title) {
     titleText.value = attributes.title
   }
@@ -47,7 +51,7 @@ onMounted(async () => {
 <template>
   <div id="window-header" class="window-header">
     <div class="window-header-info">
-      <img v-if="iconSrc" class="window-header-app-icon" :src="iconSrc" alt="">
+      <img class="window-header-app-icon" :src="iconSrc || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cmVjdCB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHJ4PSIzIiBmaWxsPSIjODIwMWY4Ii8+PHRleHQgeD0iOCIgeT0iMTIuNSIgZm9udC1zaXplPSIxMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtd2VpZ2h0PSJib2xkIj5QPC90ZXh0Pjwvc3ZnPg=='" alt="">
       <span class="window-header-app-title">{{ titleText }}</span>
     </div>
     <div class="window-header-control-buttons">

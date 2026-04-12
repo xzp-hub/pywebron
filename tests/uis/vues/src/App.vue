@@ -16,8 +16,8 @@ import TerminalLog from '@/components/TerminalLog.vue'
         <IoMonitor/>
       </div>
       <div class="window-right-content">
-        <ChatRoom/>
         <InvokePanel/>
+        <ChatRoom/>
       </div>
     </div>
     <TerminalLog/>
@@ -62,7 +62,7 @@ import TerminalLog from '@/components/TerminalLog.vue'
   min-height: 0;
 }
 
-.window-right-content > * {
+.window-right-content > :last-child {
   flex: 1;
   min-height: 0;
 }

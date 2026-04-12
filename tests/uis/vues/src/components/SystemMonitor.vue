@@ -110,9 +110,9 @@ onUnmounted(() => {
   <div class="card">
     <div class="header">
       <div class="header-icon-box">
-        <DesktopIcon class="monitor-panel-header-icon"/>
+        <DesktopIcon class="header-icon"/>
       </div>
-      <span class="header-icon-title">系统监控</span>
+      <span class="header-title">系统监控</span>
     </div>
     <div class="body">
       <div v-for="m in monitors" :key="m.key" class="body-item">
@@ -155,13 +155,13 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.monitor-panel-header-icon {
+.header-icon {
   width: 16px;
   height: 16px;
   color: #9a8600;
 }
 
-.header-icon-title {
+.header-title {
   font-size: 14px;
   color: light-dark(#5e5e5e, #fff);
   line-height: 1;

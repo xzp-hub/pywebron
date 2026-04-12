@@ -25,7 +25,7 @@ class Window:
             enable_devtools: bool = True,
             dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
     ) -> bool:
-        pather = lambda name: f"{PROJECT_ROOT_PATH}/assets/{name}"
+        pather = lambda name: fr"{PROJECT_ROOT_PATH}\assets\{name}"
 
         if sum(map(bool, (html_content, link_content, dist_content))) > 1:
             raise ValueError("html_content, link_content, and dist_content cannot be used at the same time")

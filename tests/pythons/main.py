@@ -177,7 +177,7 @@ if __name__ == "__main__":
         window_radius=6,
         dwm_corner=DwmCorners.LITTLE_ROUND,
         link_content="http://localhost:5173/",
-        # html_content=f"{PROJECT_ROOT_PATH}/tests/uis/pywebron.html",
+        # html_content=f"{PROJECT_ROOT_PATH}/assets/pywebron.html",
         # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
     )
 

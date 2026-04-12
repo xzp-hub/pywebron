@@ -35,17 +35,23 @@ async function createNewWindow() {
 </script>
 
 <template>
-  <div class="invoke-panel">
-    <div class="invoke-panel-action-bar">
-      <t-button class="invoke-panel-action-btn invoke-panel-download-btn" :disabled="downloadDisabled" @click="downloadFile" theme="primary">
+  <div class="card">
+    <div class="header">
+      <div class="header-icon-box">
+        <WindowIcon class="header-icon"/>
+      </div>
+      <span class="header-title">快捷操作</span>
+    </div>
+    <div class="body">
+      <t-button class="action-btn action-btn-primary" :disabled="downloadDisabled" @click="downloadFile" theme="primary">
         <template #icon><DownloadIcon /></template>
         下载文件
       </t-button>
-      <t-button class="invoke-panel-action-btn invoke-panel-cpu-btn" :disabled="cpuTaskDisabled" @click="runCpuTask" theme="success">
+      <t-button class="action-btn action-btn-success" :disabled="cpuTaskDisabled" @click="runCpuTask" theme="success">
         <template #icon><ThunderIcon /></template>
         执行 CPU 密集任务
       </t-button>
-      <t-button class="invoke-panel-action-btn invoke-panel-window-btn" :disabled="createWindowDisabled" @click="createNewWindow" theme="warning">
+      <t-button class="action-btn action-btn-warning" :disabled="createWindowDisabled" @click="createNewWindow" theme="warning">
         <template #icon><WindowIcon /></template>
         创建新窗口
       </t-button>
@@ -54,51 +60,62 @@ async function createNewWindow() {
 </template>
 
 <style scoped>
-.invoke-panel {
-  border-radius: 5px;
+.card {
+  height: auto;
+  flex: none;
   display: flex;
+  border-radius: 6px;
   flex-direction: column;
   overflow: hidden;
   background: light-dark(#ffffff, #1e1f21);
   box-sizing: border-box;
-  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
-  flex: 0 0 auto;
+  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
-.invoke-panel-action-bar {
-  padding: 0;
+.header {
+  height: 30px;
   display: flex;
-  flex-direction: row;
-  overflow: hidden;
+  align-items: center;
+  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
+  box-sizing: border-box;
+  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
-.invoke-panel-action-btn {
+.header-icon-box {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-icon {
+  width: 16px;
+  height: 16px;
+  color: #722ED1;
+}
+
+.header-title {
+  font-size: 14px;
+  color: light-dark(#5e5e5e, #fff);
+  line-height: 1;
+}
+
+.body {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.action-btn {
   flex: 1;
   height: 36px;
-  border-radius: 0 !important;
+  border-radius: 5px !important;
   font-weight: 600;
   font-size: 13px;
-  gap: 5px;
+  gap: 4px;
   border: none !important;
-  box-shadow: inset -1px 0 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25)) !important;
-}
-
-.invoke-panel-action-btn:last-child {
-  box-shadow: none !important;
-}
-
-.invoke-panel-download-btn {
-  background: #165DFF !important;
-  color: #fff !important;
-}
-
-.invoke-panel-cpu-btn {
-  background: #7BE188 !important;
-  color: rgba(0, 0, 0, .75) !important;
-}
-
-.invoke-panel-window-btn {
-  background: #722ED1 !important;
-  color: #fff !important;
 }
 </style>

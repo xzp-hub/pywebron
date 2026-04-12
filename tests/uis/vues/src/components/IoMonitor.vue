@@ -208,9 +208,9 @@ onUnmounted(() => {
     <div class="header">
       <div class="header-item">
         <div class="header-icon-box">
-          <ChartLineDataIcon class="io-monitor-header-icon"/>
+          <ChartLineDataIcon class="header-icon"/>
         </div>
-        <span class="io-monitor-header-title">IO 监控</span>
+        <span class="header-title">IO 监控</span>
       </div>
       <div class="header-item">
         <span class="legend-mark" :style="{ background: ioPanel.color1 }"></span>
@@ -279,13 +279,13 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.io-monitor-header-icon {
+.header-icon {
   width: 16px;
   height: 16px;
   color: #8201f8;
 }
 
-.io-monitor-header-title {
+.header-title {
   font-size: 14px;
   color: light-dark(#5e5e5e, #fff);
 }
