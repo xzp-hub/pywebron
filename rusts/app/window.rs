@@ -7,6 +7,7 @@ use pyo3::ffi::{PyEval_RestoreThread, PyEval_SaveThread};
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 #[cfg(any(
     target_os = "linux",
@@ -70,8 +71,19 @@ static WEBVIEWS: Lazy<DashMap<u64, SendSyncWebView>> = Lazy::new(DashMap::new);
 // HTML 文件缓存：避免重复读取文件
 static HTML_CACHE: Lazy<DashMap<String, String>> = Lazy::new(DashMap::new);
 
+/// 资源缓存条目：包含数据、MIME 类型和 ETag
+struct CacheEntry {
+    data: std::sync::Arc<Vec<u8>>,
+    mime: &'static str,
+    etag: String,
+}
+
 // 资源文件缓存：用于自定义协议处理器
-static RESOURCE_CACHE: Lazy<DashMap<String, Vec<u8>>> = Lazy::new(DashMap::new);
+static RESOURCE_CACHE: Lazy<DashMap<String, CacheEntry>> = Lazy::new(DashMap::new);
+
+// 缓存总大小追踪
+static CACHE_TOTAL_SIZE: AtomicUsize = AtomicUsize::new(0);
+const MAX_CACHE_SIZE: usize = 50 * 1024 * 1024; // 50MB
 
 fn cleanup_window(window_id: u64) {
     WINDOWS.remove(&window_id);
@@ -108,6 +120,51 @@ fn get_mime_type(path: &std::path::Path) -> &'static str {
         Some("otf") => "font/otf",
         Some("eot") => "application/vnd.ms-fontobject",
         _ => "application/octet-stream",
+    }
+}
+
+/// 计算简单的 ETag（基于文件大小和路径哈希，避免完整内容的 SHA 开销）
+fn compute_etag(data: &[u8], path: &str) -> String {
+    use std::hash::Hasher;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    std::hash::Hash::hash_slice(data, &mut hasher);
+    std::hash::Hash::hash_slice(path.as_bytes(), &mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
+/// 解析 Range 头，返回 (start, end) 字节范围
+fn parse_range_header(range_header: &str, total_len: u64) -> Option<(u64, u64)> {
+    // 格式: "bytes=start-end" 或 "bytes=start-"
+    let range = range_header.strip_prefix("bytes=")?;
+    let parts: Vec<&str> = range.split('-').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let start: u64 = parts[0].parse().ok()?;
+    let end = if parts[1].is_empty() {
+        total_len - 1
+    } else {
+        let e: u64 = parts[1].parse().ok()?;
+        e.min(total_len - 1)
+    };
+    if start > end {
+        return None;
+    }
+    Some((start, end))
+}
+
+/// 当缓存超过上限时，清理一半条目
+fn evict_cache_if_needed() {
+    if CACHE_TOTAL_SIZE.load(Ordering::Relaxed) <= MAX_CACHE_SIZE {
+        return;
+    }
+    // 收集所有 key，移除一半（DashMap 无序，删除前半部分即可）
+    let keys: Vec<String> = RESOURCE_CACHE.iter().map(|r| r.key().clone()).collect();
+    let remove_count = keys.len() / 2;
+    for key in keys.into_iter().take(remove_count) {
+        if let Some((_, entry)) = RESOURCE_CACHE.remove(&key) {
+            CACHE_TOTAL_SIZE.fetch_sub(entry.data.len(), Ordering::Relaxed);
+        }
     }
 }
 
@@ -284,7 +341,6 @@ fn create_window_in_event_loop(
                 handle_ipc_message(request, window_id_for_ipc, &proxy_for_handler);
             })
             .with_custom_protocol("app".to_string(), move |_id, request| {
-                let t_protocol_start = std::time::Instant::now();
                 let uri = request.uri().to_string();
 
                 // Windows: http://app.<path>, 其他平台: app://<path>
@@ -297,33 +353,123 @@ fn create_window_in_event_loop(
                     .to_string();
 
                 let full_path = dist_path_for_protocol.join(&file_path);
-                let cache_key = full_path.to_string_lossy().to_string();
 
-                // 先检查缓存
-                if let Some(cached_data) = RESOURCE_CACHE.get(&cache_key) {
-                    // 缓存命中 - 静默处理，不打印日志（性能最优）
-                    let mime_type = get_mime_type(&full_path);
+                // 路径穿越防护：确保解析后的路径在允许目录内
+                let canonical_base = match dist_path_for_protocol.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => {
+                        return http::Response::builder()
+                            .status(500)
+                            .body(std::borrow::Cow::Borrowed(&b"Internal Server Error"[..]))
+                            .unwrap();
+                    }
+                };
+                let canonical_full = match full_path.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => {
+                        return http::Response::builder()
+                            .status(404)
+                            .body(std::borrow::Cow::Borrowed(&b"Not Found"[..]))
+                            .unwrap();
+                    }
+                };
+                if !canonical_full.starts_with(&canonical_base) {
                     return http::Response::builder()
-                        .header("Content-Type", mime_type)
+                        .status(403)
+                        .body(std::borrow::Cow::Borrowed(&b"Forbidden"[..]))
+                        .unwrap();
+                }
+
+                let cache_key = canonical_full.to_string_lossy().to_string();
+
+                // 检查 If-None-Match / ETag（304 Not Modified）
+                let if_none_match = request.headers().get("if-none-match").and_then(|v| v.to_str().ok());
+                if let Some(entry) = RESOURCE_CACHE.get(&cache_key) {
+                    if if_none_match == Some(&entry.etag) {
+                        return http::Response::builder()
+                            .status(304)
+                            .header("ETag", &entry.etag)
+                            .header("Cache-Control", "public, max-age=31536000")
+                            .body(std::borrow::Cow::Borrowed(&b""[..]))
+                            .unwrap();
+                    }
+                }
+
+                // 缓存命中
+                if let Some(entry) = RESOURCE_CACHE.get(&cache_key) {
+                    let data = entry.data.clone(); // Arc clone，零拷贝
+                    let mime = entry.mime;
+                    let etag = entry.etag.clone();
+
+                    // 检查 Range 请求
+                    let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
+                    if let Some(range) = range_header {
+                        if let Some((start, end)) = parse_range_header(range, data.len() as u64) {
+                            let sliced = data[start as usize..=end as usize].to_vec();
+                            return http::Response::builder()
+                                .status(206)
+                                .header("Content-Type", mime)
+                                .header("Content-Range", format!("bytes {}-{}/{}", start, end, data.len()))
+                                .header("Content-Length", sliced.len())
+                                .header("ETag", &etag)
+                                .header("Cache-Control", "public, max-age=31536000")
+                                .header("Accept-Ranges", "bytes")
+                                .body(std::borrow::Cow::Owned(sliced))
+                                .unwrap();
+                        }
+                    }
+
+                    return http::Response::builder()
+                        .header("Content-Type", mime)
+                        .header("Content-Length", data.len())
+                        .header("ETag", &etag)
                         .header("Cache-Control", "public, max-age=31536000")
-                        .body(std::borrow::Cow::Owned(cached_data.clone()))
+                        .header("Accept-Ranges", "bytes")
+                        .body(std::borrow::Cow::Owned(std::sync::Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone())))
                         .unwrap();
                 }
 
                 // 缓存未命中，读取文件
                 match std::fs::read(&full_path) {
                     Ok(data) => {
-                        // 存入缓存
-                        RESOURCE_CACHE.insert(cache_key.clone(), data.clone());
+                        let mime = get_mime_type(&full_path);
+                        let etag = compute_etag(&data, &cache_key);
 
-                        let _ = get_mime_type(&full_path);
-                        let _ = t_protocol_start.elapsed();
+                        // 大文件不缓存（>5MB），避免内存占用过高
+                        if data.len() < 5 * 1024 * 1024 {
+                            CACHE_TOTAL_SIZE.fetch_add(data.len(), Ordering::Relaxed);
+                            RESOURCE_CACHE.insert(cache_key.clone(), CacheEntry {
+                                data: std::sync::Arc::new(data.clone()),
+                                mime,
+                                etag: etag.clone(),
+                            });
+                            evict_cache_if_needed();
+                        }
 
-                        let mime_type = get_mime_type(&full_path);
+                        // 检查 Range 请求
+                        let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
+                        if let Some(range) = range_header {
+                            if let Some((start, end)) = parse_range_header(range, data.len() as u64) {
+                                let sliced = data[start as usize..=end as usize].to_vec();
+                                return http::Response::builder()
+                                    .status(206)
+                                    .header("Content-Type", mime)
+                                    .header("Content-Range", format!("bytes {}-{}/{}", start, end, data.len()))
+                                    .header("Content-Length", sliced.len())
+                                    .header("ETag", &etag)
+                                    .header("Cache-Control", "public, max-age=31536000")
+                                    .header("Accept-Ranges", "bytes")
+                                    .body(std::borrow::Cow::Owned(sliced))
+                                    .unwrap();
+                            }
+                        }
 
                         http::Response::builder()
-                            .header("Content-Type", mime_type)
+                            .header("Content-Type", mime)
+                            .header("Content-Length", data.len())
+                            .header("ETag", &etag)
                             .header("Cache-Control", "public, max-age=31536000")
+                            .header("Accept-Ranges", "bytes")
                             .body(std::borrow::Cow::Owned(data))
                             .unwrap()
                     }
@@ -331,7 +477,7 @@ fn create_window_in_event_loop(
                         eprintln!("[Error][Cache] 文件读取失败: {} | 错误: {}", file_path, e);
                         http::Response::builder()
                             .status(404)
-                            .body(std::borrow::Cow::Owned(b"Not Found".to_vec()))
+                            .body(std::borrow::Cow::Borrowed(&b"Not Found"[..]))
                             .unwrap()
                     }
                 }
@@ -391,7 +537,13 @@ fn create_window_in_event_loop(
 
                 // 将 HTML 内容存入缓存，通过自定义协议提供
                 let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
-                RESOURCE_CACHE.insert(cache_key, converted.as_bytes().to_vec());
+                let html_bytes = converted.as_bytes().to_vec();
+                CACHE_TOTAL_SIZE.fetch_add(html_bytes.len(), Ordering::Relaxed);
+                RESOURCE_CACHE.insert(cache_key, CacheEntry {
+                    data: std::sync::Arc::new(html_bytes),
+                    mime: "text/html",
+                    etag: compute_etag(converted.as_bytes(), "index.html"),
+                });
 
                 builder.with_url("app://index.html").build_gtk(vbox)
             } else if is_dist {
@@ -476,7 +628,13 @@ fn create_window_in_event_loop(
 
                 // 将 HTML 内容存入缓存，通过自定义协议提供
                 let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
-                RESOURCE_CACHE.insert(cache_key, converted.as_bytes().to_vec());
+                let html_bytes = converted.as_bytes().to_vec();
+                CACHE_TOTAL_SIZE.fetch_add(html_bytes.len(), Ordering::Relaxed);
+                RESOURCE_CACHE.insert(cache_key, CacheEntry {
+                    data: std::sync::Arc::new(html_bytes),
+                    mime: "text/html",
+                    etag: compute_etag(converted.as_bytes(), "index.html"),
+                });
 
                 builder.with_url("http://app.index.html").build(&window)
             } else if is_dist {
