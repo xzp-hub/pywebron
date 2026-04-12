@@ -207,7 +207,8 @@ fn create_window_in_event_loop(
         .with_resizable(config.enable_resizable)
         .with_min_inner_size(LogicalSize::new(400u32, 300u32))
         .with_transparent(true)
-        .with_undecorated_shadow(false);
+        .with_undecorated_shadow(false)
+        .with_visible(true);
 
     #[cfg(not(target_os = "windows"))]
     let window_builder = WindowBuilder::new()
@@ -361,7 +362,42 @@ fn create_window_in_event_loop(
                     .unwrap_or("")
                     .trim_end_matches('/');
 
+                // 空路径或非关键资源（favicon 等）直接返回空，避免 404
+                if file_path.is_empty() || file_path.ends_with(".ico") {
+                    return http::Response::builder()
+                        .status(200)
+                        .header("Content-Type", "image/x-icon")
+                        .body(std::borrow::Cow::Borrowed(&[][..]))
+                        .unwrap();
+                }
+
                 let full_path = dist_path_for_protocol.join(file_path);
+
+                // 先尝试从缓存直接命中（处理已预缓存的资源，如 html_content 模式下的 index.html）
+                let direct_cache_key = full_path.to_string_lossy().to_string();
+                if let Some(mut entry) = RESOURCE_CACHE.get_mut(&direct_cache_key) {
+                    entry.last_access = std::time::Instant::now();
+                    let data = entry.data.clone();
+                    let mime = entry.mime;
+                    let etag = entry.etag.clone();
+
+                    let if_none_match = request.headers().get("if-none-match").and_then(|v| v.to_str().ok());
+                    if if_none_match == Some(&etag) {
+                        return http::Response::builder()
+                            .status(304)
+                            .header("ETag", &etag)
+                            .body(std::borrow::Cow::Borrowed(&b""[..]))
+                            .unwrap();
+                    }
+
+                    return http::Response::builder()
+                        .status(200)
+                        .header("Content-Type", mime)
+                        .header("ETag", &etag)
+                        .header("Cache-Control", "public, max-age=31536000")
+                        .body(std::borrow::Cow::Owned(data.to_vec()))
+                        .unwrap();
+                }
 
                 // 路径穿越防护：使用预计算的 canonical_base
                 let canonical_base = match &canonical_base {

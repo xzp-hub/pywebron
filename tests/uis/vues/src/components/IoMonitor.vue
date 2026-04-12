@@ -107,16 +107,17 @@ const chartOption = computed(() => {
         if (!params || !params.length) return ''
         let html = `<div style="color:rgba(255,255,255,.5);font-size:11px;margin-bottom:4px;">${timeMap[params[0].axisValue] || params[0].axisValue}</div>`
         params.forEach(p => {
+          const val = Array.isArray(p.value) ? p.value[1] : p.value
           html += `<div style="display:flex;align-items:center;gap:5px;">
             <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${p.color};"></span>
             <span style="color:rgba(255,255,255,.7)">${p.seriesName}:</span>
-            <span style="font-weight:600;margin-left:auto;">${formatSpeed(p.value)}</span>
+            <span style="font-weight:600;margin-left:auto;">${formatSpeed(val)}</span>
           </div>`
         })
         return html
       }
     },
-    grid: {top: 8, right: 8, bottom: 22, left: 45},
+    grid: {top: 6, right: 20, bottom: 22, left: 45},
     xAxis: {
       type: 'value',
       min: 0,
@@ -357,7 +358,7 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   position: relative;
-  padding: 2px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
 }
