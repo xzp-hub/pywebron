@@ -59,6 +59,7 @@ const chartOption = computed(() => {
   const dark = isDark.value
 
   const times = history.times.slice(-IO_MAX_POINTS)
+  const timeMap = Object.fromEntries(times.map((t, i) => [i, t]))
   const seriesData = keys.map((key, idx) => ({
     name: labels[idx],
     type: 'line',
@@ -77,7 +78,7 @@ const chartOption = computed(() => {
         ]
       }
     },
-    data: history[key].slice(-IO_MAX_POINTS)
+    data: history[key].slice(-IO_MAX_POINTS).map((v, i) => [i, v])
   }))
 
   let yMax = 100
@@ -104,7 +105,7 @@ const chartOption = computed(() => {
       textStyle: {color: '#fff', fontSize: 12},
       formatter(params) {
         if (!params || !params.length) return ''
-        let html = `<div style="color:rgba(255,255,255,.5);font-size:11px;margin-bottom:4px;">${params[0].axisValue}</div>`
+        let html = `<div style="color:rgba(255,255,255,.5);font-size:11px;margin-bottom:4px;">${timeMap[params[0].axisValue] || params[0].axisValue}</div>`
         params.forEach(p => {
           html += `<div style="display:flex;align-items:center;gap:5px;">
             <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${p.color};"></span>
@@ -115,19 +116,22 @@ const chartOption = computed(() => {
         return html
       }
     },
-    grid: {top: 30, right: 15, bottom: 30, left: 55},
+    grid: {top: 8, right: 8, bottom: 22, left: 45},
     xAxis: {
-      type: 'category',
-      data: times,
+      type: 'value',
+      min: 0,
       axisLine: {lineStyle: {color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}},
       axisTick: {show: false},
-      axisLabel: {color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontSize: 12}
+      axisLabel: {
+        color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontSize: 12,
+        formatter: (v) => timeMap[v] || ''
+      }
     },
     yAxis: {
       type: 'value',
       max: yMax,
       splitLine: {lineStyle: {color: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}},
-      axisLine: {lineStyle: {color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}},
+      axisLine: {show: true, lineStyle: {color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}},
       axisLabel: {color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontSize: 12}
     },
     series: seriesData,
@@ -353,7 +357,7 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   position: relative;
-  padding: 5px;
+  padding: 2px;
   display: flex;
   flex-direction: column;
 }

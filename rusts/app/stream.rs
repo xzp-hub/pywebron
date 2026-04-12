@@ -6,8 +6,10 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::OnceLock;
 
-pub fn load_js_api() -> String {
-    include_str!("../../assets/pywebron.js").to_string()
+pub fn load_js_api() -> &'static str {
+    static JS_API: once_cell::sync::Lazy<String> =
+        once_cell::sync::Lazy::new(|| include_str!("../../assets/pywebron.js").to_string());
+    &JS_API
 }
 
 // === Stream 接收数据队列（有界队列防止 OOM，handle_id:window_id -> Queue） ===
@@ -123,25 +125,23 @@ pub(crate) fn register_stream_window(handle_id: &str, window_id: u64) {
 }
 
 /// 将前端发来的数据推入 recv 队列（供 Python stream.recv() 消费）
-/// 消息中会注入 source_window_id 字段，让 Python 端知道消息来源
+/// 仅在 data 是 Object 且无 _source_window_id 时注入，避免不必要的 clone
 pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
-
-    // 在消息中注入来源窗口信息
-    let enriched_data = if let Some(obj) = data.as_object() {
-        let mut enriched = obj.clone();
-        enriched.insert(
-            "_source_window_id".to_string(),
-            serde_json::json!(window_id),
-        );
-        serde_json::Value::Object(enriched)
-    } else {
-        data
+    let enriched_data = match &data {
+        serde_json::Value::Object(obj) if !obj.contains_key("_source_window_id") => {
+            let mut enriched = obj.clone();
+            enriched.insert(
+                "_source_window_id".to_string(),
+                serde_json::json!(window_id),
+            );
+            serde_json::Value::Object(enriched)
+        }
+        _ => data,
     };
 
     let queue_key = format!("{}:{}", handle_id, window_id);
     let queues = get_recv_queues();
     let mut queues_guard = queues.write();
-
 
     let queue = queues_guard
         .entry(queue_key)
@@ -220,9 +220,9 @@ pub fn stream_send<'py>(
         }
     };
 
-    // 发送消息到目标窗口（Arc 共享，零拷贝）
+    // 发送消息到目标窗口（Arc 共享引用，避免重复 clone 字符串）
     for window_id in target_windows {
-        crate::app::send_script_to_window(window_id, (*js_code).clone());
+        crate::app::send_script_to_window(window_id, std::sync::Arc::clone(&js_code));
     }
 
     // 返回一个可 await 的 Future（实际已同步完成，但支持 Python await 语法）

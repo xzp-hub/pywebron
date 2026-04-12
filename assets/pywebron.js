@@ -5,6 +5,7 @@
     const pending = new Map(), streams = new Map();
     const interceptors = {response: [], error: []};
     const streamMessages = new Map();
+    let _reqCounter = 0;
 
     const config = window.pywebron || {};
     const {window_id, show_title_bar, window_radius, enable_resizable} = config;
@@ -35,7 +36,7 @@
     }
 
     function generateRequestId(handleId) {
-        return `${handleId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        return `${handleId}_${++_reqCounter}`;
     }
 
     function ipcSend(message) {
@@ -149,6 +150,11 @@
                 const request_id = generateRequestId(handle);
 
                 return new Promise((resolve, reject) => {
+                    // 防止 pending Map 无限增长
+                    if (pending.size > 1000) {
+                        const oldest = pending.keys().next().value;
+                        pending.delete(oldest);
+                    }
                     pending.set(request_id, {resolve, reject});
 
                     ipcSend({

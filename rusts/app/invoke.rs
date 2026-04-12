@@ -99,26 +99,30 @@ fn process_invoke_request(request: IpcRequest) {
     // );
 
     // 获取 Python GIL，执行 handler
-    // eprintln!("[Invoke]     准备获取 GIL | handle={}", handle_id);
     let mut result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
-        // eprintln!("[Invoke]     Python::attach 成功 | handle={}", handle_id);
+        // 优先从缓存获取 handler，避免重复 Python import
+        let handler = {
+            let cache = HANDLE_CACHE.read();
+            if let Some(h) = cache.get(&handle_id) {
+                h.bind(py).to_owned()
+            } else {
+                drop(cache);
+                let configs = py.import("pywebron.configs")?;
+                let invoke_handles = configs.getattr("INVOKE_HANDLES")?;
 
-        // 从 INVOKE_HANDLES 获取 handler
-        let configs = py.import("pywebron.configs")?;
-        let invoke_handles = configs.getattr("INVOKE_HANDLES")?;
-
-        let handler = if let Ok(h) = invoke_handles.get_item(&handle_id) {
-            // eprintln!("[Invoke]     从 INVOKE_HANDLES 加载 | handle={}", handle_id);
-            let h: Bound<'_, PyAny> = h.to_owned();
-            HANDLE_CACHE
-                .write()
-                .insert(handle_id.clone(), h.clone().unbind());
-            h
-        } else {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "Invoke handler not found: {}",
-                handle_id
-            )));
+                if let Ok(h) = invoke_handles.get_item(&handle_id) {
+                    let h: Bound<'_, PyAny> = h.to_owned();
+                    HANDLE_CACHE
+                        .write()
+                        .insert(handle_id.clone(), h.clone().unbind());
+                    h
+                } else {
+                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                        "Invoke handler not found: {}",
+                        handle_id
+                    )));
+                }
+            }
         };
 
         // 构建请求对象
@@ -178,7 +182,7 @@ fn process_invoke_request(request: IpcRequest) {
         );
         let _ = proxy.send_event(UserEvent::EvaluateScript {
             window_id,
-            script: js_code,
+            script: std::sync::Arc::new(js_code),
         });
     }
     // eprintln!("[Invoke] <<< 调用完成 | handle={}", handle_id);
@@ -200,26 +204,30 @@ fn process_stream_request(request: IpcRequest) {
     crate::app::stream::register_stream_window(&handle_id, window_id);
 
     // 获取 Python GIL，执行 handler
-    // eprintln!("[Stream]     准备获取 GIL | handle={}", handle_id);
     let result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
-        // eprintln!("[Stream]     Python::attach 成功 | handle={}", handle_id);
+        // 优先从缓存获取 handler，避免重复 Python import
+        let handler = {
+            let cache = HANDLE_CACHE.read();
+            if let Some(h) = cache.get(&handle_id) {
+                h.bind(py).to_owned()
+            } else {
+                drop(cache);
+                let configs = py.import("pywebron.configs")?;
+                let stream_handles = configs.getattr("STREAM_HANDLES")?;
 
-        // 从 STREAM_HANDLES 获取 handler
-        let configs = py.import("pywebron.configs")?;
-        let stream_handles = configs.getattr("STREAM_HANDLES")?;
-
-        let handler = if let Ok(h) = stream_handles.get_item(&handle_id) {
-            // eprintln!("[Stream]     从 STREAM_HANDLES 加载 | handle={}", handle_id);
-            let h: Bound<'_, PyAny> = h.to_owned();
-            HANDLE_CACHE
-                .write()
-                .insert(handle_id.clone(), h.clone().unbind());
-            h
-        } else {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "Stream handler not found: {}",
-                handle_id
-            )));
+                if let Ok(h) = stream_handles.get_item(&handle_id) {
+                    let h: Bound<'_, PyAny> = h.to_owned();
+                    HANDLE_CACHE
+                        .write()
+                        .insert(handle_id.clone(), h.clone().unbind());
+                    h
+                } else {
+                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                        "Stream handler not found: {}",
+                        handle_id
+                    )));
+                }
+            }
         };
 
         // 构建请求对象

@@ -61,21 +61,19 @@ static MAIN_EVENT_PROXY: once_cell::sync::Lazy<
 // 待创建的窗口队列
 static PENDING_WINDOWS: Lazy<Mutex<HashMap<u64, WindowConfig>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
-// 存储 webview 对象（WebView 不是 Send/Sync，用 unsafe wrapper 绕过）
-struct SendSyncWebView(std::sync::Arc<Mutex<Option<wry::WebView>>>);
-unsafe impl Send for SendSyncWebView {}
-unsafe impl Sync for SendSyncWebView {}
+// 存储 webview 对象（WebView 包含非 Send 的原始指针，需要 unsafe wrapper）
+struct WebViewWrapper(std::sync::Arc<Mutex<Option<wry::WebView>>>);
+unsafe impl Send for WebViewWrapper {}
+unsafe impl Sync for WebViewWrapper {}
 
-static WEBVIEWS: Lazy<DashMap<u64, SendSyncWebView>> = Lazy::new(DashMap::new);
+static WEBVIEWS: Lazy<DashMap<u64, WebViewWrapper>> = Lazy::new(DashMap::new);
 
-// HTML 文件缓存：避免重复读取文件
-static HTML_CACHE: Lazy<DashMap<String, String>> = Lazy::new(DashMap::new);
-
-/// 资源缓存条目：包含数据、MIME 类型和 ETag
+/// 资源缓存条目：包含数据、MIME 类型、ETag 和访问时间（用于 LRU 驱逐）
 struct CacheEntry {
     data: std::sync::Arc<Vec<u8>>,
     mime: &'static str,
     etag: String,
+    last_access: std::time::Instant,
 }
 
 // 资源文件缓存：用于自定义协议处理器
@@ -123,11 +121,11 @@ fn get_mime_type(path: &std::path::Path) -> &'static str {
     }
 }
 
-/// 计算简单的 ETag（基于文件大小和路径哈希，避免完整内容的 SHA 开销）
+/// 计算轻量级 ETag（基于文件大小和路径，避免全内容哈希开销）
 fn compute_etag(data: &[u8], path: &str) -> String {
     use std::hash::Hasher;
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    std::hash::Hash::hash_slice(data, &mut hasher);
+    std::hash::Hash::hash_slice(&(data.len() as u64).to_le_bytes(), &mut hasher);
     std::hash::Hash::hash_slice(path.as_bytes(), &mut hasher);
     format!("{:016x}", hasher.finish())
 }
@@ -153,15 +151,24 @@ fn parse_range_header(range_header: &str, total_len: u64) -> Option<(u64, u64)> 
     Some((start, end))
 }
 
-/// 当缓存超过上限时，清理一半条目
+/// 当缓存超过上限时，按 LRU 策略清理：移除最久未访问的条目，直到总大小降到阈值以下
 fn evict_cache_if_needed() {
     if CACHE_TOTAL_SIZE.load(Ordering::Relaxed) <= MAX_CACHE_SIZE {
         return;
     }
-    // 收集所有 key，移除一半（DashMap 无序，删除前半部分即可）
-    let keys: Vec<String> = RESOURCE_CACHE.iter().map(|r| r.key().clone()).collect();
-    let remove_count = keys.len() / 2;
-    for key in keys.into_iter().take(remove_count) {
+    // 收集所有条目的 (key, last_access, data_len)，按 last_access 排序
+    let mut entries: Vec<(String, std::time::Instant, usize)> = RESOURCE_CACHE
+        .iter()
+        .map(|r| (r.key().clone(), r.value().last_access, r.value().data.len()))
+        .collect();
+    entries.sort_by_key(|(_, t, _)| *t);
+
+    // 从最旧的开始删除，直到总大小降到 MAX_CACHE_SIZE / 2
+    let target = MAX_CACHE_SIZE / 2;
+    for (key, _, _len) in entries {
+        if CACHE_TOTAL_SIZE.load(Ordering::Relaxed) <= target {
+            break;
+        }
         if let Some((_, entry)) = RESOURCE_CACHE.remove(&key) {
             CACHE_TOTAL_SIZE.fetch_sub(entry.data.len(), Ordering::Relaxed);
         }
@@ -169,16 +176,14 @@ fn evict_cache_if_needed() {
 }
 
 /// 向指定窗口发送 JavaScript 消息（通过事件循环）
-pub fn send_script_to_window(window_id: u64, script: String) -> bool {
-    let _t = std::time::Instant::now();
-    let result = if let Some(proxy) = EVENT_PROXIES.get(&window_id) {
+pub fn send_script_to_window(window_id: u64, script: std::sync::Arc<String>) -> bool {
+    if let Some(proxy) = EVENT_PROXIES.get(&window_id) {
         proxy
             .send_event(UserEvent::EvaluateScript { window_id, script })
             .is_ok()
     } else {
         false
-    };
-    result
+    }
 }
 
 /// 在事件循环中创建实际窗口和 WebView
@@ -331,6 +336,11 @@ fn create_window_in_event_loop(
         // clone 一份供后续 RESOURCE_CACHE 使用（原值会被 move 进闭包）
         let dist_path_for_cache = dist_path_for_protocol.clone();
 
+        // 预计算 canonical_base（路径穿越防护用），避免每次请求都 canonicalize
+        let canonical_base = match dist_path_for_protocol.canonicalize() {
+            Ok(p) => Some(p),
+            Err(_) => None,
+        };
 
         let builder = WebViewBuilder::new()
             .with_devtools(config.enable_devtools)
@@ -349,15 +359,14 @@ fn create_window_in_event_loop(
                     .or_else(|| uri.strip_prefix("https://app."))
                     .or_else(|| uri.strip_prefix("app://"))
                     .unwrap_or("")
-                    .trim_end_matches('/')
-                    .to_string();
+                    .trim_end_matches('/');
 
-                let full_path = dist_path_for_protocol.join(&file_path);
+                let full_path = dist_path_for_protocol.join(file_path);
 
-                // 路径穿越防护：确保解析后的路径在允许目录内
-                let canonical_base = match dist_path_for_protocol.canonicalize() {
-                    Ok(p) => p,
-                    Err(_) => {
+                // 路径穿越防护：使用预计算的 canonical_base
+                let canonical_base = match &canonical_base {
+                    Some(p) => p,
+                    None => {
                         return http::Response::builder()
                             .status(500)
                             .body(std::borrow::Cow::Borrowed(&b"Internal Server Error"[..]))
@@ -373,7 +382,7 @@ fn create_window_in_event_loop(
                             .unwrap();
                     }
                 };
-                if !canonical_full.starts_with(&canonical_base) {
+                if !canonical_full.starts_with(canonical_base) {
                     return http::Response::builder()
                         .status(403)
                         .body(std::borrow::Cow::Borrowed(&b"Forbidden"[..]))
@@ -384,7 +393,8 @@ fn create_window_in_event_loop(
 
                 // 检查 If-None-Match / ETag（304 Not Modified）
                 let if_none_match = request.headers().get("if-none-match").and_then(|v| v.to_str().ok());
-                if let Some(entry) = RESOURCE_CACHE.get(&cache_key) {
+                if let Some(mut entry) = RESOURCE_CACHE.get_mut(&cache_key) {
+                    entry.last_access = std::time::Instant::now();
                     if if_none_match == Some(&entry.etag) {
                         return http::Response::builder()
                             .status(304)
@@ -396,7 +406,8 @@ fn create_window_in_event_loop(
                 }
 
                 // 缓存命中
-                if let Some(entry) = RESOURCE_CACHE.get(&cache_key) {
+                if let Some(mut entry) = RESOURCE_CACHE.get_mut(&cache_key) {
+                    entry.last_access = std::time::Instant::now();
                     let data = entry.data.clone(); // Arc clone，零拷贝
                     let mime = entry.mime;
                     let etag = entry.etag.clone();
@@ -442,6 +453,7 @@ fn create_window_in_event_loop(
                                 data: std::sync::Arc::new(data.clone()),
                                 mime,
                                 etag: etag.clone(),
+                                last_access: std::time::Instant::now(),
                             });
                             evict_cache_if_needed();
                         }
@@ -514,18 +526,11 @@ fn create_window_in_event_loop(
             if is_url {
                 builder.with_url(&resolved_content).build_gtk(vbox)
             } else if is_file_path {
-                let html_content = if let Some(cached) = HTML_CACHE.get(&resolved_content) {
-                    cached.clone()
-                } else {
-                    match std::fs::read_to_string(&resolved_content) {
-                        Ok(html) => {
-                            HTML_CACHE.insert(resolved_content.clone(), html.clone());
-                            html
-                        }
-                        Err(_) => {
-                            eprintln!("[Error] 读取 HTML 文件失败：{}", resolved_content);
-                            return;
-                        }
+                let html_content = match std::fs::read_to_string(&resolved_content) {
+                    Ok(html) => html,
+                    Err(_) => {
+                        eprintln!("[Error] 读取 HTML 文件失败：{}", resolved_content);
+                        return;
                     }
                 };
 
@@ -535,7 +540,7 @@ fn create_window_in_event_loop(
                     .replace("href='/", "href='app://")
                     .replace("src='/", "src='app://");
 
-                // 将 HTML 内容存入缓存，通过自定义协议提供
+                // 将 HTML 内容存入资源缓存，通过自定义协议提供
                 let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
                 let html_bytes = converted.as_bytes().to_vec();
                 CACHE_TOTAL_SIZE.fetch_add(html_bytes.len(), Ordering::Relaxed);
@@ -543,6 +548,7 @@ fn create_window_in_event_loop(
                     data: std::sync::Arc::new(html_bytes),
                     mime: "text/html",
                     etag: compute_etag(converted.as_bytes(), "index.html"),
+                    last_access: std::time::Instant::now(),
                 });
 
                 builder.with_url("app://index.html").build_gtk(vbox)
@@ -594,18 +600,11 @@ fn create_window_in_event_loop(
             let res = if is_url {
                 builder.with_url(&resolved_content).build(&window)
             } else if is_file_path {
-                let html_content = if let Some(cached) = HTML_CACHE.get(&resolved_content) {
-                    cached.clone()
-                } else {
-                    match std::fs::read_to_string(&resolved_content) {
-                        Ok(html) => {
-                            HTML_CACHE.insert(resolved_content.clone(), html.clone());
-                            html
-                        }
-                        Err(e) => {
-                            eprintln!("[Error] 读取 HTML 文件失败：{}", e);
-                            return;
-                        }
+                let html_content = match std::fs::read_to_string(&resolved_content) {
+                    Ok(html) => html,
+                    Err(e) => {
+                        eprintln!("[Error] 读取 HTML 文件失败：{}", e);
+                        return;
                     }
                 };
 
@@ -626,7 +625,7 @@ fn create_window_in_event_loop(
                         .replace("src='/", "src='app://")
                 };
 
-                // 将 HTML 内容存入缓存，通过自定义协议提供
+                // 将 HTML 内容存入资源缓存，通过自定义协议提供
                 let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
                 let html_bytes = converted.as_bytes().to_vec();
                 CACHE_TOTAL_SIZE.fetch_add(html_bytes.len(), Ordering::Relaxed);
@@ -634,6 +633,7 @@ fn create_window_in_event_loop(
                     data: std::sync::Arc::new(html_bytes),
                     mime: "text/html",
                     etag: compute_etag(converted.as_bytes(), "index.html"),
+                    last_access: std::time::Instant::now(),
                 });
 
                 builder.with_url("http://app.index.html").build(&window)
@@ -684,7 +684,7 @@ fn create_window_in_event_loop(
 
         match result {
             Ok(wv) => {
-                SendSyncWebView(std::sync::Arc::new(Mutex::new(Some(wv))))
+                WebViewWrapper(std::sync::Arc::new(Mutex::new(Some(wv))))
             }
             Err(_e) => {
                 return;
@@ -868,7 +868,7 @@ fn handle_ipc_message(
                         );
                         let _ = proxy.send_event(UserEvent::EvaluateScript {
                             window_id,
-                            script: js_code,
+                            script: std::sync::Arc::new(js_code),
                         });
                         return;
                     }
@@ -920,7 +920,7 @@ fn handle_ipc_message(
                         );
                         let _ = proxy.send_event(UserEvent::EvaluateScript {
                             window_id,
-                            script: js_code,
+                            script: std::sync::Arc::new(js_code),
                         });
                         return;
                     }
@@ -990,7 +990,7 @@ fn handle_ipc_message(
                         );
                         let _ = proxy.send_event(UserEvent::EvaluateScript {
                             window_id,
-                            script: js_code,
+                            script: std::sync::Arc::new(js_code),
                         });
                         return;
                     }
@@ -1284,7 +1284,7 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
         );
         let _ = proxy.send_event(UserEvent::EvaluateScript {
             window_id: id,
-            script: js_code,
+            script: std::sync::Arc::new(js_code),
         });
     }
 
@@ -1304,7 +1304,7 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
         );
         let _ = proxy.send_event(UserEvent::EvaluateScript {
             window_id: id,
-            script: js_code,
+            script: std::sync::Arc::new(js_code),
         });
     }
 
@@ -1341,7 +1341,7 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
         );
         let _ = proxy.send_event(UserEvent::EvaluateScript {
             window_id: id,
-            script: js_code,
+            script: std::sync::Arc::new(js_code),
         });
     }
 

@@ -1,10 +1,10 @@
 #[derive(Debug, Clone)]
 pub enum UserEvent {
     CloseWindow(u64),
-    // P1: IPC 消息分发到 WebView
+    // IPC 消息分发到 WebView（Arc<String> 避免多窗口广播时重复 clone）
     EvaluateScript {
         window_id: u64,
-        script: String,
+        script: std::sync::Arc<String>,
     },
     // 唤醒事件循环，处理待创建的窗口
     WakeUp,
