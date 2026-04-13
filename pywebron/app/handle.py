@@ -30,7 +30,7 @@ class Handle:
             print(f"[Invoke]-{header}: {payload}")
 
     @classmethod
-    def _handler_(cls, func: Callable, alias: str):
+    def _handler_(cls, func: Callable, alias: str | None):
         params = signature(func).parameters
 
         def maker(param_name):

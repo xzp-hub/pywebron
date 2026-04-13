@@ -213,11 +213,11 @@ fn create_window_in_event_loop(
     #[cfg(not(target_os = "windows"))]
     let window_builder = WindowBuilder::new()
         .with_title(&config.title)
-        .with_inner_size(PhysicalSize::new(config.width, config.height))
+        .with_inner_size(LogicalSize::new(config.width, config.height))
         .with_window_icon(generate_win_icon(config.icon_path.clone()))
         .with_decorations(config.show_title_bar)
         .with_resizable(config.enable_resizable)
-        .with_min_inner_size(PhysicalSize::new(400u32, 300u32))
+        .with_min_inner_size(LogicalSize::new(400u32, 300u32))
         .with_transparent(true);
 
 
@@ -382,7 +382,7 @@ fn create_window_in_event_loop(
                     let etag = entry.etag.clone();
 
                     let if_none_match = request.headers().get("if-none-match").and_then(|v| v.to_str().ok());
-                    if if_none_match == Some(&etag) {
+                    if if_none_match == Some(etag.as_str()) {
                         return http::Response::builder()
                             .status(304)
                             .header("ETag", &etag)
@@ -431,7 +431,7 @@ fn create_window_in_event_loop(
                 let if_none_match = request.headers().get("if-none-match").and_then(|v| v.to_str().ok());
                 if let Some(mut entry) = RESOURCE_CACHE.get_mut(&cache_key) {
                     entry.last_access = std::time::Instant::now();
-                    if if_none_match == Some(&entry.etag) {
+                    if if_none_match == Some(entry.etag.as_str()) {
                         return http::Response::builder()
                             .status(304)
                             .header("ETag", &entry.etag)
@@ -1077,6 +1077,9 @@ pub fn init(prewarm_webview: bool) -> PyResult<()> {
     if prewarm_webview {
         prewarm_webview2();
     }
+
+    #[cfg(not(target_os = "windows"))]
+    let _ = prewarm_webview;
 
     Ok(())
 }
