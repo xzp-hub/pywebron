@@ -118,7 +118,7 @@ const chartOption = computed(() => {
         return html
       }
     },
-    grid: {top: 10, right: 45, bottom: 20, left: 40},
+    grid: {top: 10, right: 25, bottom: 20, left: 40},
     xAxis: {
       type: 'value',
       min: 0,
