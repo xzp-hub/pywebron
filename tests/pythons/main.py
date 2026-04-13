@@ -179,6 +179,7 @@ if __name__ == "__main__":
         # link_content="http://localhost:5173/",
         # html_content=f"{PROJECT_ROOT_PATH}/assets/pywebron.html",
         dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
+        icon_path=f"{PROJECT_ROOT_PATH}/assets/pywebron.png",
     )
 
     t_register_done = perf_counter()

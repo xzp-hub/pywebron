@@ -28,8 +28,13 @@ const iconSrc = ref('')
 const titleText = ref('PyWebron 控制面板')
 
 onMounted(async () => {
+  console.log('[WindowHeader] attributes:', JSON.stringify(attributes))
+  console.log('[WindowHeader] icon_path:', attributes?.icon_path)
   if (attributes?.icon_path) {
-    iconSrc.value = pw?.interfaces?.resolveAssetUrl(attributes.icon_path) || ''
+    const resolved = pw?.interfaces?.resolveAssetUrl(attributes.icon_path)
+    console.log('[WindowHeader] resolveAssetUrl result:', resolved, '| input:', attributes.icon_path)
+    iconSrc.value = resolved || ''
+    console.log('[WindowHeader] iconSrc set to:', iconSrc.value)
   }
   // 如果没有图标，使用内置的 app 协议图标作为 fallback
   if (!iconSrc.value && attributes?.icon_path === undefined) {
