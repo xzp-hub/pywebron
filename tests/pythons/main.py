@@ -176,9 +176,9 @@ if __name__ == "__main__":
         enable_resizable=True,
         window_radius=6,
         dwm_corner=DwmCorners.LITTLE_ROUND,
-        # link_content="http://localhost:5173/",
+        link_content="http://localhost:5173/",
         # html_content=f"{PROJECT_ROOT_PATH}/assets/pywebron.html",
-        dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
+        # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
     )
 
     t_register_done = perf_counter()
