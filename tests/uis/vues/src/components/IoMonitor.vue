@@ -96,6 +96,7 @@ const chartOption = computed(() => {
   }
 
   return {
+
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(30, 30, 50, 0.95)',
@@ -117,11 +118,10 @@ const chartOption = computed(() => {
         return html
       }
     },
-    grid: {top: 10, right: 48, bottom: 20, left: 0},
+    grid: {top: 10, right: 45, bottom: 20, left: 40},
     xAxis: {
       type: 'value',
-      min: -0.45,
-      max: Math.max(0, times.length - 1) + 0.45,
+      min: 0,
       axisLine: {lineStyle: {color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}},
       axisTick: {
         show: true,
@@ -130,20 +130,16 @@ const chartOption = computed(() => {
       },
       axisLabel: {
         color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontSize: 12,
-        margin: 8,
         formatter: (v) => timeMap[v] || ''
       }
     },
     yAxis: {
       type: 'value',
-      position: 'right',
-      min: -yMax * 0.08,
-      max: yMax * 1.08,
+      max: yMax,
       splitLine: {lineStyle: {color: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}},
       axisLine: {show: true, lineStyle: {color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}},
       axisLabel: {
-        color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontSize: 12,
-        margin: 6
+        color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontSize: 12
       }
     },
     series: seriesData,
