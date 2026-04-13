@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { SendIcon, ChatIcon } from 'tdesign-icons-vue-next'
+import {ref, onMounted, onUnmounted, nextTick} from 'vue'
+import {SendIcon, ChatIcon} from 'tdesign-icons-vue-next'
 
 const isDark = ref(false)
 const pw = window.pywebron
@@ -13,10 +13,10 @@ function escapeHtml(str) {
 }
 
 const chatMessages = ref([])
-const showWelcome = ref(true)
 const chatInput = ref('')
 const chatMessagesEl = ref(null)
 const msgIds = new Set()
+const sentMsgs = new Set()
 
 const avatarCache = {
   user: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user',
@@ -34,9 +34,7 @@ function displayMsg(data, isLocal = false) {
   const msg = data.mssg || data.message || (data.mssg?.message) || ''
   if (!msg.trim()) return
 
-  if (type === 'system' && msg === '欢迎加入聊天室') showWelcome.value = false
-
-  const id = type === 'system' ? `sys-${msg}` : `${isLocal ? 'local' : 'remote'}-${data.window_id || 'u'}-${Date.now()}-${msg}`
+  const id = type === 'system' ? `sys-${msg}` : `${isLocal ? 'local' : 'remote'}-${data.window_id || 'u'}-${msg}`
   if (id && msgIds.has(id)) return
   if (id) {
     msgIds.add(id)
@@ -64,7 +62,10 @@ function displayMsg(data, isLocal = false) {
 function sendMsg() {
   const msg = chatInput.value.trim()
   if (!msg || !chatStream?.send) return
-  displayMsg({ type: 'message', message: msg, window_id: attributes?.window_id }, true)
+  const sendId = `sent-${Date.now()}-${msg}`
+  if (sentMsgs.has(sendId)) return
+  sentMsgs.add(sendId)
+  displayMsg({type: 'message', message: msg, window_id: attributes?.window_id}, true)
   chatStream.send(msg)
   chatInput.value = ''
 }
@@ -77,7 +78,8 @@ async function startChat() {
   try {
     chatStream = await stream('chat_room_stream')
     chatStream.recv(displayMsg)
-  } catch (e) { /* noop */ }
+  } catch (e) { /* noop */
+  }
 }
 
 onMounted(() => {
@@ -93,18 +95,17 @@ onUnmounted(() => {
   <div class="card">
     <div class="header">
       <div class="header-icon-box">
-        <ChatIcon class="header-icon" />
+        <ChatIcon class="header-icon"/>
       </div>
       <span class="header-title">聊天室</span>
     </div>
-    <div class="message-area">
-      <div v-if="showWelcome" class="welcome-text">欢迎加入聊天室</div>
+    <div class="body">
       <div ref="chatMessagesEl" class="message-list">
         <div
-          v-for="m in chatMessages"
-          :key="m.id"
-          class="message-item"
-          :class="{ 'message-system': m.type === 'system', 'message-self': m.isLocal && m.type !== 'system', 'message-other': !m.isLocal && m.type !== 'system' }"
+            v-for="m in chatMessages"
+            :key="m.id"
+            class="message-item"
+            :class="{ 'message-system': m.type === 'system', 'message-self': m.isLocal && m.type !== 'system', 'message-other': !m.isLocal && m.type !== 'system' }"
         >
           <template v-if="m.type === 'system'">
             <div class="message-bubble" v-html="m.msg"></div>
@@ -124,17 +125,18 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
-    <div class="input-bar">
-      <t-input
-        v-model="chatInput"
-        class="input-field"
-        placeholder="输入消息按回车发送..."
-        :maxlength="200"
-        @keydown="onKeydown"
+    <div class="footer">
+      <input
+          v-model="chatInput"
+          type="text"
+          class="input-field"
+          placeholder="输入消息按回车发送..."
+          :maxlength="200"
+          @keydown="onKeydown"
       />
-      <t-button class="send-button" theme="primary" shape="square" @click="sendMsg">
-        <template #icon><SendIcon /></template>
-      </t-button>
+      <button class="send-button" @click="sendMsg">
+        <SendIcon/>
+      </button>
     </div>
   </div>
 </template>
@@ -181,7 +183,7 @@ onUnmounted(() => {
   line-height: 1;
 }
 
-.message-area {
+.body {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -189,14 +191,6 @@ onUnmounted(() => {
   min-height: 0;
   overflow: hidden;
   padding: 5px;
-}
-
-.welcome-text {
-  padding: 5px;
-  font-size: 13px;
-  color: light-dark(rgba(0, 0, 0, .45), rgba(255, 255, 255, .7));
-  text-align: center;
-  flex-shrink: 0;
 }
 
 .message-list {
@@ -217,30 +211,46 @@ onUnmounted(() => {
   border-radius: 5px;
 }
 
-.input-bar {
-  height: 36px;
+.footer {
+  height: 30px;
   display: flex;
   flex-shrink: 0;
-  box-shadow: inset 0 1px 0 0 light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .35));
+  border-top: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
+  box-sizing: border-box;
 }
 
 .input-field {
   flex: 1;
-  height: 36px;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: light-dark(#ffffff, #2a2a2a);
   font-size: 13px;
+  color: light-dark(#222, #ddd);
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.input-field::placeholder {
+  color: light-dark(rgba(0, 0, 0, 0.35), rgba(255, 255, 255, 0.4));
 }
 
 .send-button {
-  width: 36px;
-  height: 36px;
-  min-width: auto;
+  width: 60px;
+  height: 100%;
+  background: #0052D9;
   border: none;
-  border-radius: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  color: #fff;
+  box-sizing: border-box;
+}
+
+.send-button:hover {
+  background: #0046c4;
 }
 
 .message-item {
@@ -251,8 +261,14 @@ onUnmounted(() => {
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-system {

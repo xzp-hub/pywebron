@@ -23,7 +23,7 @@ function buildGaugeOption(val, label, color) {
   return {
     series: [{
       type: 'gauge',
-      startAngle: 100,
+      startAngle: 270,
       endAngle: -269.999,
       min: 0,
       max: 100,
@@ -32,7 +32,7 @@ function buildGaugeOption(val, label, color) {
       progress: {
         show: true,
         overlap: false,
-        roundCap: true,
+        roundCap: false,
         clip: false,
         itemStyle: {color: color}
       },

@@ -117,12 +117,16 @@ const chartOption = computed(() => {
         return html
       }
     },
-    grid: {top: 6, right: 20, bottom: 22, left: 45},
+    grid: {top: 4, right: 35, bottom: 20, left: 38},
     xAxis: {
       type: 'value',
       min: 0,
       axisLine: {lineStyle: {color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}},
-      axisTick: {show: false},
+      axisTick: {
+        show: true,
+        length: 5,
+        lineStyle: {color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}
+      },
       axisLabel: {
         color: dark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)', fontSize: 12,
         formatter: (v) => timeMap[v] || ''

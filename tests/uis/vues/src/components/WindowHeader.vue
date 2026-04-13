@@ -86,7 +86,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   background: light-dark(#ffffff, #1a1b1d);
-  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
+  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .2));
 }
 
 .window-header-info {
