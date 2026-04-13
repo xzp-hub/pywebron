@@ -142,8 +142,8 @@
             resolveAssetUrl(filePath) {
                 if (!filePath || typeof filePath !== 'string') return '';
                 const normalized = filePath.replace(/\\/g, '/');
-                const fileName = normalized.split('/').pop();
-                return fileName ? 'http://app.' + fileName : '';
+                // 保留完整路径，让协议处理器在 dist 目录找不到时回退到绝对路径
+                return 'http://app.' + normalized;
             },
 
             async invoke(handle, payload = {}, timeout = 6e4) {

@@ -478,58 +478,89 @@ fn create_window_in_event_loop(
                 }
 
                 // 缓存未命中，读取文件
-                match std::fs::read(&full_path) {
+                // 先尝试从 dist 目录读取；失败后回退到绝对路径查找
+                // （resolveAssetUrl 只返回文件名如 "pywebron.png"，可能不在 dist 目录内）
+                let read_result = std::fs::read(&full_path);
+                let (data, actual_mime) = match read_result {
                     Ok(data) => {
                         let mime = get_mime_type(&full_path);
-                        let etag = compute_etag(&data, &cache_key);
-
-                        // 大文件不缓存（>5MB），避免内存占用过高
-                        if data.len() < 5 * 1024 * 1024 {
-                            CACHE_TOTAL_SIZE.fetch_add(data.len(), Ordering::Relaxed);
-                            RESOURCE_CACHE.insert(cache_key.clone(), CacheEntry {
-                                data: std::sync::Arc::new(data.clone()),
-                                mime,
-                                etag: etag.clone(),
-                                last_access: std::time::Instant::now(),
-                            });
-                            evict_cache_if_needed();
-                        }
-
-                        // 检查 Range 请求
-                        let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
-                        if let Some(range) = range_header {
-                            if let Some((start, end)) = parse_range_header(range, data.len() as u64) {
-                                let sliced = data[start as usize..=end as usize].to_vec();
+                        (data, mime)
+                    }
+                    Err(_) => {
+                        // 回退：将请求路径视为绝对路径尝试读取
+                        let abs_candidate = std::path::Path::new(file_path);
+                        if abs_candidate.is_absolute() || (!file_path.contains('/') && !file_path.contains('\\')) {
+                            // 纯文件名（如 "pywebron.png"）：无法直接定位，跳过
+                            // 绝对路径但不在 dist 内：直接读取
+                            if abs_candidate.is_absolute() && abs_candidate.exists() {
+                                match std::fs::read(abs_candidate) {
+                                    Ok(d) => (d, get_mime_type(abs_candidate)),
+                                    Err(e) => {
+                                        eprintln!("[Error][Cache] 文件读取失败(回退): {} | 错误: {}", file_path, e);
+                                        return http::Response::builder()
+                                            .status(404)
+                                            .body(std::borrow::Cow::Borrowed(&b"Not Found"[..]))
+                                            .unwrap();
+                                    }
+                                }
+                            } else {
+                                eprintln!("[Error][Cache] 文件不存在(dist+绝对路径均未找到): {}", file_path);
                                 return http::Response::builder()
-                                    .status(206)
-                                    .header("Content-Type", mime)
-                                    .header("Content-Range", format!("bytes {}-{}/{}", start, end, data.len()))
-                                    .header("Content-Length", sliced.len())
-                                    .header("ETag", &etag)
-                                    .header("Cache-Control", "public, max-age=31536000")
-                                    .header("Accept-Ranges", "bytes")
-                                    .body(std::borrow::Cow::Owned(sliced))
+                                    .status(404)
+                                    .body(std::borrow::Cow::Borrowed(&b"Not Found"[..]))
                                     .unwrap();
                             }
+                        } else {
+                            eprintln!("[Error][Cache] 文件读取失败: {} | 错误: {}", file_path, read_result.unwrap_err());
+                            return http::Response::builder()
+                                .status(404)
+                                .body(std::borrow::Cow::Borrowed(&b"Not Found"[..]))
+                                .unwrap();
                         }
+                    }
+                };
 
-                        http::Response::builder()
+                let mime = actual_mime;
+                let etag = compute_etag(&data, &cache_key);
+
+                // 大文件不缓存（>5MB），避免内存占用过高
+                if data.len() < 5 * 1024 * 1024 {
+                    CACHE_TOTAL_SIZE.fetch_add(data.len(), Ordering::Relaxed);
+                    RESOURCE_CACHE.insert(cache_key.clone(), CacheEntry {
+                        data: std::sync::Arc::new(data.clone()),
+                        mime,
+                        etag: etag.clone(),
+                        last_access: std::time::Instant::now(),
+                    });
+                    evict_cache_if_needed();
+                }
+
+                // 检查 Range 请求
+                let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
+                if let Some(range) = range_header {
+                    if let Some((start, end)) = parse_range_header(range, data.len() as u64) {
+                        let sliced = data[start as usize..=end as usize].to_vec();
+                        return http::Response::builder()
+                            .status(206)
                             .header("Content-Type", mime)
-                            .header("Content-Length", data.len())
+                            .header("Content-Range", format!("bytes {}-{}/{}", start, end, data.len()))
+                            .header("Content-Length", sliced.len())
                             .header("ETag", &etag)
                             .header("Cache-Control", "public, max-age=31536000")
                             .header("Accept-Ranges", "bytes")
-                            .body(std::borrow::Cow::Owned(data))
-                            .unwrap()
-                    }
-                    Err(e) => {
-                        eprintln!("[Error][Cache] 文件读取失败: {} | 错误: {}", file_path, e);
-                        http::Response::builder()
-                            .status(404)
-                            .body(std::borrow::Cow::Borrowed(&b"Not Found"[..]))
-                            .unwrap()
+                            .body(std::borrow::Cow::Owned(sliced))
+                            .unwrap();
                     }
                 }
+
+                http::Response::builder()
+                    .header("Content-Type", mime)
+                    .header("Content-Length", data.len())
+                    .header("ETag", &etag)
+                    .header("Cache-Control", "public, max-age=31536000")
+                    .header("Accept-Ranges", "bytes")
+                    .body(std::borrow::Cow::Owned(data))
+                    .unwrap()
             });
 
         #[cfg(target_os = "windows")]
@@ -616,7 +647,20 @@ fn create_window_in_event_loop(
                     }
                 };
 
-                builder.with_html(&html_content).build_gtk(vbox)
+                // 将转换后的 HTML 存入资源缓存，通过自定义协议提供
+                // （与 html_file_path 模式一致，确保页面有正确的 origin，
+                //  支持 ES Module / crossorigin 等特性）
+                let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
+                let html_bytes = html_content.as_bytes().to_vec();
+                CACHE_TOTAL_SIZE.fetch_add(html_bytes.len(), Ordering::Relaxed);
+                RESOURCE_CACHE.insert(cache_key, CacheEntry {
+                    data: std::sync::Arc::new(html_bytes),
+                    mime: "text/html",
+                    etag: compute_etag(html_content.as_bytes(), "index.html"),
+                    last_access: std::time::Instant::now(),
+                });
+
+                builder.with_url("app://index.html").build_gtk(vbox)
             } else {
                 builder
                     .with_html("<html><body>No content specified</body></html>")
@@ -677,12 +721,13 @@ fn create_window_in_event_loop(
             } else if is_dist {
                 let dist_path = std::path::Path::new(&resolved_content);
                 let index_html = dist_path.join("index.html");
+
                 if !index_html.exists() {
                     eprintln!("[Error] dist 目录中不存在 index.html：{}", resolved_content);
                     return;
                 }
 
-                // 读取 HTML 并将所有路径改为 app:// 协议
+                // 读取 HTML 并将所有路径改为 app 协议
                 let html_content = match std::fs::read_to_string(&index_html) {
                     Ok(html) => {
 
@@ -710,7 +755,26 @@ fn create_window_in_event_loop(
                     }
                 };
 
-                builder.with_html(&html_content).build(&window)
+                // 将转换后的 HTML 存入资源缓存，通过自定义协议提供
+                // （与 html_file_path 模式一致，确保页面有正确的 origin，
+                //  支持 ES Module / crossorigin 等特性）
+                let cache_key = dist_path_for_cache.join("index.html").to_string_lossy().to_string();
+                let html_bytes = html_content.as_bytes().to_vec();
+                CACHE_TOTAL_SIZE.fetch_add(html_bytes.len(), Ordering::Relaxed);
+                RESOURCE_CACHE.insert(cache_key, CacheEntry {
+                    data: std::sync::Arc::new(html_bytes),
+                    mime: "text/html",
+                    etag: compute_etag(html_content.as_bytes(), "index.html"),
+                    last_access: std::time::Instant::now(),
+                });
+
+                #[cfg(target_os = "windows")]
+                let build_result = builder.with_url("http://app.index.html").build(&window);
+
+                #[cfg(not(target_os = "windows"))]
+                let build_result = builder.with_url("app://index.html").build_gtk(vbox);
+
+                build_result
             } else {
                 builder
                     .with_html("<html><body>No content specified</body></html>")
