@@ -224,7 +224,8 @@ fn create_window_in_event_loop(
 
     let window = match window_builder.build(event_loop) {
         Ok(w) => w,
-        Err(_) => {
+        Err(e) => {
+            eprintln!("[pywebron] 窗口创建失败: {:?}", e);
             return;
         }
     };
