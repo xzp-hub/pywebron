@@ -11,7 +11,7 @@
     const {window_id, show_title_bar, window_radius, enable_resizable} = config;
 
     if (!show_title_bar) {
-        const radiusStyle = `html,body{border-radius:${window_radius}px!important;color-scheme:light dark!important;overflow:hidden!important;background:transparent!important;margin:0!important;padding:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important}#app{border-radius:${window_radius}px!important}`;
+        const radiusStyle = `html,body{border-radius:${window_radius}px!important;color-scheme:light dark!important;overflow:hidden!important;background:transparent!important;margin:0!important;padding:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important}html{border:1px solid transparent!important}body{border:1px solid light-dark(rgba(0,0,0,.2), rgba(255,255,255,.2))!important}#app,#app>[id='app'],.app,main{border-radius:${window_radius}px!important;background:light-dark(#dddddd,#3a3a3d)!important}`;
 
         const injectRadiusStyle = () => {
             if (document.getElementById('__pywebron_radius_style__')) return true;
