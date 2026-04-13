@@ -54,7 +54,7 @@ const chartOption = computed(() => {
   const history = ioHistory[type]
   const colors = IO_COLORS[type]
   const keys = type === 'disk' ? ['read', 'write'] : ['upload', 'download']
-  const labels = type === 'disk' ? ['读取', '写入'] : ['上行', '下行']
+  const labels = type === 'disk' ? ['读取', '写入'] : ['读取', '写入']
   const colorKeys = type === 'disk' ? ['read', 'write'] : ['upload', 'download']
   const dark = isDark.value
 
@@ -168,14 +168,14 @@ function updateIoPanel(ios) {
     ioPanel.legText1 = '读取';
     ioPanel.legText2 = '写入'
   } else {
-    ioPanel.label1 = '总发送';
+    ioPanel.label1 = '总读取';
     ioPanel.label2 = '总接收'
     ioPanel.val1 = formatTotal(ios.net_io.write_total)
     ioPanel.val2 = formatTotal(ios.net_io.read_total)
     ioPanel.color1 = '#00FF88';
     ioPanel.color2 = '#FFB347'
-    ioPanel.legText1 = '上行';
-    ioPanel.legText2 = '下行'
+    ioPanel.legText1 = '读取';
+    ioPanel.legText2 = '写入'
   }
 }
 
