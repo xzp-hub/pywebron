@@ -331,10 +331,12 @@ onUnmounted(() => {
   padding: 0 16px;
   border: none;
   border-left: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
   background: transparent;
   color: var(--text-tertiary);
   transition: all 0.2s ease;
   box-sizing: border-box;
+  margin-bottom: -1px;
 }
 
 [data-theme="dark"] .io-type-btn {
@@ -345,6 +347,7 @@ onUnmounted(() => {
   background: var(--active-bg);
   color: #fff;
   border-left-color: var(--active-bg);
+  border-bottom-color: var(--active-bg);
 }
 
 .header-item:nth-child(2) {

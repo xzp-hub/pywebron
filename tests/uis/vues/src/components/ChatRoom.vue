@@ -227,6 +227,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   border-top: 1px solid var(--border-default);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .input-field {
@@ -263,6 +264,7 @@ onUnmounted(() => {
   height: 100%;
   background: #0052D9;
   border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -270,6 +272,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   color: #fff;
   box-sizing: border-box;
+  transition: all 0.2s;
 }
 
 .send-button:hover {
