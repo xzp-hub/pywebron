@@ -97,6 +97,7 @@ async function createNewWindow() {
 
 .body {
   display: flex;
+  align-items: center;
   gap: 6px;
   padding: 8px;
   box-sizing: border-box;
@@ -110,8 +111,7 @@ async function createNewWindow() {
 
 .action-btn {
   flex: 1;
-  height: 30px;
-  margin-top: 3px;
+  height: 26px;
   border-radius: 5px !important;
   font-weight: 600;
   font-size: 13px;

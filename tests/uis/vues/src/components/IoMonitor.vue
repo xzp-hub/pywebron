@@ -2,6 +2,7 @@
 import {ref, onMounted, onUnmounted, reactive, computed, watch} from 'vue'
 import VChart from 'vue-echarts'
 import {ChartLineDataIcon} from 'tdesign-icons-vue-next'
+import {Button} from 'tdesign-vue-next'
 
 const isDark = ref(false)
 
@@ -245,16 +246,20 @@ onUnmounted(() => {
         <span class="legend-text">{{ ioPanel.legText2 }}</span>
       </div>
       <div class="header-item">
-        <div
+        <t-button
           class="io-type-btn"
           :class="{ active: ioType === 'disk' }"
           @click="ioType = 'disk'"
-        >磁盘IO</div>
-        <div
+          size="small"
+          :theme="ioType === 'disk' ? 'primary' : 'default'"
+        >磁盘IO</t-button>
+        <t-button
           class="io-type-btn"
           :class="{ active: ioType === 'net' }"
           @click="ioType = 'net'"
-        >网络IO</div>
+          size="small"
+          :theme="ioType === 'net' ? 'primary' : 'default'"
+        >网络IO</t-button>
       </div>
     </div>
     <div class="body">
@@ -319,36 +324,25 @@ onUnmounted(() => {
   gap: 5px;
 }
 
+.header-item:nth-child(3) {
+  gap: 5px;
+}
+
 .io-type-btn {
   flex: 1;
-  height: 30px;
-  margin-top: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  cursor: pointer;
-  user-select: none;
-  padding: 0 16px;
+  height: 26px;
   border: none;
-  border-left: 1px solid var(--border-default);
-  border-bottom: 1px solid var(--border-default);
-  background: transparent;
-  color: var(--text-tertiary);
-  transition: all 0.2s ease;
-  box-sizing: border-box;
   margin-bottom: -1px;
 }
 
-[data-theme="dark"] .io-type-btn {
-  color: #ffffff;
+.io-type-btn:last-child {
+  margin-right: 5px;
 }
 
 .io-type-btn.active {
   background: var(--active-bg);
   color: #fff;
   border-left-color: var(--active-bg);
-  border-bottom-color: var(--active-bg);
 }
 
 .header-item:nth-child(2) {

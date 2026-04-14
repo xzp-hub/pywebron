@@ -1,6 +1,7 @@
 <script setup>
 import {ref, onMounted, onUnmounted, nextTick} from 'vue'
 import {SendIcon, ChatIcon} from 'tdesign-icons-vue-next'
+import {Button} from 'tdesign-vue-next'
 
 const isDark = ref(false)
 const pw = window.pywebron
@@ -146,9 +147,9 @@ onUnmounted(() => {
           :maxlength="200"
           @keydown="onKeydown"
       />
-      <div class="send-button" @click="sendMsg">
-        <SendIcon/>
-      </div>
+      <t-button class="send-button" @click="sendMsg" size="small">
+        <template #icon><SendIcon/></template>
+      </t-button>
     </div>
   </div>
 </template>
@@ -225,6 +226,7 @@ onUnmounted(() => {
 .footer {
   height: 36px;
   display: flex;
+  align-items: center;
   flex-shrink: 0;
   box-sizing: border-box;
   border-top: 1px solid var(--border-default);
@@ -260,25 +262,12 @@ onUnmounted(() => {
 }
 
 .send-button {
-  width: 60px;
-  height: 30px;
-  margin-top: 3px;
-  background: #0052D9;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 26px;
+  width: 52px;
   flex-shrink: 0;
-  color: #fff;
-  box-sizing: border-box;
-  transition: all 0.2s;
   position: relative;
   z-index: 2;
-}
-
-.send-button:hover {
-  background: #0046c4;
-  border-top-color: #0046c4;
+  margin-right: 5px;
 }
 
 .message-item {
