@@ -146,9 +146,9 @@ onUnmounted(() => {
           :maxlength="200"
           @keydown="onKeydown"
       />
-      <button class="send-button" @click="sendMsg">
+      <div class="send-button" @click="sendMsg">
         <SendIcon/>
-      </button>
+      </div>
     </div>
   </div>
 </template>
@@ -160,6 +160,7 @@ onUnmounted(() => {
   @include card-base;
   height: auto;
   flex: 1;
+  overflow: hidden;
 }
 
 .header {
@@ -225,9 +226,30 @@ onUnmounted(() => {
   height: 30px;
   display: flex;
   flex-shrink: 0;
-  border-top: 1px solid var(--border-default);
   box-sizing: border-box;
-  overflow: hidden;
+  position: relative;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-default);
+  z-index: 3;
+}
+
+.footer::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-default);
+  z-index: 3;
 }
 
 .input-field {
@@ -263,8 +285,6 @@ onUnmounted(() => {
   width: 60px;
   height: 100%;
   background: #0052D9;
-  border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -273,10 +293,13 @@ onUnmounted(() => {
   color: #fff;
   box-sizing: border-box;
   transition: all 0.2s;
+  position: relative;
+  z-index: 2;
 }
 
 .send-button:hover {
   background: #0046c4;
+  border-top-color: #0046c4;
 }
 
 .message-item {
