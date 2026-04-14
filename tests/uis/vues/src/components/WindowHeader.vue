@@ -176,9 +176,38 @@ onMounted(async () => {
   color: #ffffff !important;
 }
 
+/* 前三个按钮：hover 无背景色，边框+图标跟随颜色 */
 .window-header-btn:hover {
-  background: var(--hover-bg-strong) !important;
-  color: var(--text-inverse) !important;
+  background: transparent !important;
+  color: #165DFF !important;
+  border-color: #165DFF !important;
+}
+
+.window-header-btn:hover svg,
+.window-header-btn:hover .t-icon {
+  color: #165DFF !important;
+}
+
+[data-theme="dark"] .window-header-btn:hover {
+  color: #6aa1ff !important;
+  border-color: #6aa1ff !important;
+}
+
+[data-theme="dark"] .window-header-btn:hover svg,
+[data-theme="dark"] .window-header-btn:hover .t-icon {
+  color: #6aa1ff !important;
+}
+
+/* 关闭按钮：hover 红色背景 + 白色图标 */
+.window-header-btn-close:hover {
+  background: #E34D59 !important;
+  color: #fff !important;
+  border-color: #E34D59 !important;
+}
+
+.window-header-btn-close:hover svg,
+.window-header-btn-close:hover .t-icon {
+  color: #fff !important;
 }
 
 .window-header-btn-theme {
