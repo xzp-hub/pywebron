@@ -7,6 +7,19 @@ const isDark = ref(false)
 const pw = window.pywebron
 const stream = pw?.interfaces?.stream
 
+// 主题切换：监听系统偏好 + 手动切换
+function applyTheme() {
+  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
+    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+}
+
+onMounted(() => {
+  applyTheme()
+  const observer = new MutationObserver(applyTheme)
+  observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})
+  window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener('change', applyTheme)
+})
+
 const monitors = [
   {key: 'cpu', label: 'CPU 使用率', color: '#00D4FF'},
   {key: 'ram', label: '内存使用率', color: '#00FF88'},
@@ -125,45 +138,28 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use 'assets/themes/mixins' as *;
+
 .card {
+  @include card-base;
   height: auto;
   flex: none;
-  display: flex;
-  border-radius: 6px;
-  flex-direction: column;
-  overflow: hidden;
-  background: light-dark(#ffffff, #1e1f21);
-  box-sizing: border-box;
-  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
 .header {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
-  box-sizing: border-box;
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
-}
-
-.header-icon-box {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include card-header-base;
+  @include icon-box;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
+  @include icon-base;
   color: #9a8600;
 }
 
 .header-title {
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
   line-height: 1;
 }
 
@@ -190,16 +186,16 @@ onUnmounted(() => {
   height: 30px;
   display: flex;
   justify-content: space-between;
-  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
+  background: var(--bg-card-footer);
   box-sizing: border-box;
-  border-top: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
+  border-top: 1px solid var(--border-default);
 }
 
 
 .footer-item {
   width: 150px;
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;

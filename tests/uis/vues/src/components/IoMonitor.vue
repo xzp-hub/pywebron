@@ -5,6 +5,18 @@ import {ChartLineDataIcon} from 'tdesign-icons-vue-next'
 
 const isDark = ref(false)
 
+// 主题切换
+function applyTheme() {
+  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
+    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+}
+
+onMounted(() => {
+  applyTheme()
+  const observer = new MutationObserver(applyTheme)
+  observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})
+})
+
 function formatSpeed(bytes) {
   if (!bytes || bytes === 0) return '0 B/s'
   const units = ['B/s', 'KB/s', 'MB/s', 'GB/s']
@@ -199,8 +211,9 @@ function onIoUpdate(e) {
         while (h[k].length > IO_MAX_POINTS) h[k].shift()
       }
     })
-    while (h.times.length > IO_MAX_POINTS) h.times.shift()
   })
+  while (ioHistory.disk.times.length > IO_MAX_POINTS) ioHistory.disk.times.shift()
+  while (ioHistory.net.times.length > IO_MAX_POINTS) ioHistory.net.times.shift()
 
   lastIoData.value = {time, ios}
   updateIoPanel(ios)
@@ -260,46 +273,35 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use 'assets/themes/mixins' as *;
+
 .card {
+  @include card-base;
   height: auto;
   flex: 1;
-  display: flex;
-  border-radius: 6px;
-  flex-direction: column;
-  overflow: hidden;
-  background: light-dark(#ffffff, #1e1f21);
-  box-sizing: border-box;
-  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
 .header {
-  height: 30px;
+  @include card-header-base;
   display: flex;
   padding-left: 6px;
   justify-content: space-between;
-  align-items: center;
-  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
-  box-sizing: border-box;
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
 .header-icon-box {
+  @include icon-box;
   width: auto;
-  height: 30px;
-  display: flex;
-  align-items: center;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
+  @include icon-base;
   color: #8201f8;
 }
 
 .header-title {
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
 }
 
 .header-item {
@@ -323,16 +325,16 @@ onUnmounted(() => {
   cursor: pointer;
   user-select: none;
   padding: 0 16px;
-  border: 1px solid light-dark(rgba(0, 0, 0, .15), rgba(255, 255, 255, .25));
-  background: light-dark(#f5f5f5, #2a2a2a);
-  color: light-dark(#858a99, #ccc);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
   transition: all 0.2s ease;
 }
 
 .io-type-btn.active {
-  background: #8201f8;
+  background: var(--active-bg);
   color: #fff;
-  border-color: #8201f8;
+  border-color: var(--active-bg);
 }
 
 .header-item:nth-child(2) {
@@ -350,13 +352,13 @@ onUnmounted(() => {
 
 .legend-text {
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
 }
 
 .legend-divider {
   width: 1px;
   height: 10px;
-  background: light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .3));
+  background: var(--border-strong);
   display: inline-block;
   flex-shrink: 0;
 }
@@ -380,15 +382,15 @@ onUnmounted(() => {
   height: 30px;
   display: flex;
   justify-content: space-between;
-  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
+  background: var(--bg-card-footer);
   box-sizing: border-box;
-  border-top: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
+  border-top: 1px solid var(--border-default);
 }
 
 .footer-item {
   flex: 1;
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -398,5 +400,4 @@ onUnmounted(() => {
 .footer-value {
   font-weight: 600;
 }
-
 </style>

@@ -7,6 +7,18 @@ const pw = window.pywebron
 const attributes = pw?.attributes || {}
 const stream = pw?.interfaces?.stream
 
+// 主题切换
+function applyTheme() {
+  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
+    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+}
+
+onMounted(() => {
+  applyTheme()
+  const observer = new MutationObserver(applyTheme)
+  observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})
+})
+
 function escapeHtml(str) {
   if (!str) return ''
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -141,45 +153,28 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use 'assets/themes/mixins' as *;
+
 .card {
+  @include card-base;
   height: auto;
   flex: 1;
-  display: flex;
-  border-radius: 6px;
-  flex-direction: column;
-  overflow: hidden;
-  background: light-dark(#ffffff, #1e1f21);
-  box-sizing: border-box;
-  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
 .header {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
-  box-sizing: border-box;
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
-}
-
-.header-icon-box {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include card-header-base;
+  @include icon-box;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
+  @include icon-base;
   color: #00B42A;
 }
 
 .header-title {
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
   line-height: 1;
 }
 
@@ -187,7 +182,7 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: light-dark(#ffffff, rgba(30, 31, 33, 0.6));
+  background: var(--bg-content-area);
   min-height: 0;
   overflow: hidden;
   padding: 5px;
@@ -207,7 +202,7 @@ onUnmounted(() => {
 }
 
 .message-list::-webkit-scrollbar-thumb {
-  background: rgba(100, 100, 255, .3);
+  background: var(--log-scrollbar);
   border-radius: 5px;
 }
 
@@ -215,7 +210,7 @@ onUnmounted(() => {
   height: 30px;
   display: flex;
   flex-shrink: 0;
-  border-top: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
+  border-top: 1px solid var(--border-default);
   box-sizing: border-box;
 }
 
@@ -224,15 +219,15 @@ onUnmounted(() => {
   height: 100%;
   border: none;
   outline: none;
-  background: light-dark(#ffffff, #2a2a2a);
+  background: var(--bg-elevated);
   font-size: 13px;
-  color: light-dark(#222, #ddd);
+  color: var(--text-primary);
   padding: 0 8px;
   box-sizing: border-box;
 }
 
 .input-field::placeholder {
-  color: light-dark(rgba(0, 0, 0, 0.35), rgba(255, 255, 255, 0.4));
+  color: var(--text-placeholder);
 }
 
 .send-button {
@@ -299,9 +294,9 @@ onUnmounted(() => {
   width: 30px;
   height: 30px;
   border-radius: 5px;
-  background: light-dark(#f0f0f0, rgba(255, 255, 255, .1));
+  background: var(--avatar-bg);
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .3));
+  box-shadow: inset 0 0 0 1px var(--border-input);
 }
 
 .message-bubble {
@@ -313,21 +308,21 @@ onUnmounted(() => {
 }
 
 .message-system .message-bubble {
-  color: light-dark(rgba(0, 0, 0, .5), rgba(255, 255, 255, .7));
+  color: var(--text-system);
   font-size: 12px;
   font-style: italic;
   text-align: center;
 }
 
 .message-row-other .message-bubble {
-  background: #e5e6eb;
+  background: var(--bubble-other-bg);
   border: none;
-  color: rgba(0, 0, 0, .75);
+  color: var(--bubble-text);
 }
 
 .message-row-self .message-bubble {
-  background: #7BE188;
+  background: var(--bubble-self-bg);
   border: none;
-  color: rgba(0, 0, 0, .75);
+  color: var(--bubble-text);
 }
 </style>

@@ -2,6 +2,8 @@ import { createApp } from 'vue'
 import TDesign from 'tdesign-vue-next'
 import 'tdesign-vue-next/es/style/index.css'
 import App from './App.vue'
+// 引入主题系统（包含 CSS 变量 + 全局基础样式）
+import './assets/main.scss'
 
 import { use } from 'echarts/core'
 import { GaugeChart, LineChart } from 'echarts/charts'

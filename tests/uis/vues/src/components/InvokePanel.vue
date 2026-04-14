@@ -59,45 +59,28 @@ async function createNewWindow() {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use 'assets/themes/mixins' as *;
+
 .card {
+  @include card-base;
   height: auto;
   flex: none;
-  display: flex;
-  border-radius: 6px;
-  flex-direction: column;
-  overflow: hidden;
-  background: light-dark(#ffffff, #1e1f21);
-  box-sizing: border-box;
-  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
 .header {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
-  box-sizing: border-box;
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
-}
-
-.header-icon-box {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include card-header-base;
+  @include icon-box;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
+  @include icon-base;
   color: #722ED1;
 }
 
 .header-title {
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
   line-height: 1;
 }
 

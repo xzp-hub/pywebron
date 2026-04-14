@@ -81,7 +81,9 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use 'assets/themes/mixins' as *;
+
 .window-header {
   width: 100%;
   height: 30px;
@@ -90,8 +92,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: light-dark(#ffffff, #1a1b1d);
-  border: 1px solid light-dark(rgba(0, 0, 0, .3), rgba(255, 255, 255, .2));
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
 }
 
 .window-header-info {
@@ -111,7 +113,7 @@ onMounted(async () => {
 
 .window-header-app-title {
   font-size: 12px;
-  color: light-dark(#000000, #ffffff);
+  color: var(--text-inverse);
   line-height: 16px;
 }
 
@@ -127,14 +129,14 @@ onMounted(async () => {
   height: 30px;
   min-width: auto;
   border-radius: 0 !important;
-  color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, .8)) !important;
+  color: var(--text-tertiary) !important;
   background: transparent !important;
   transition: .2s;
 }
 
 .window-header-btn:hover {
-  background: light-dark(rgba(0, 0, 0, .1), rgba(255, 255, 255, .15)) !important;
-  color: light-dark(#000000, #ffffff) !important;
+  background: var(--hover-bg-strong) !important;
+  color: var(--text-inverse) !important;
 }
 
 .window-header-btn-close {

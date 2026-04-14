@@ -6,6 +6,18 @@ const isDark = ref(false)
 const pw = window.pywebron
 const stream = pw?.interfaces?.stream
 
+// 主题切换
+function applyTheme() {
+  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
+    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+}
+
+onMounted(() => {
+  applyTheme()
+  const observer = new MutationObserver(applyTheme)
+  observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})
+})
+
 const terminalLogsEl = ref(null)
 let retryTimer = null
 
@@ -21,15 +33,15 @@ async function startTerminalLog() {
         const line = document.createElement('div')
         let text = typeof log === 'string' ? log : JSON.stringify(log)
         if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
-          line.style.color = dark ? '#ff6b6b' : '#c0392b'
+          line.style.color = varToColor('--log-error', dark ? '#ff6b6b' : '#c0392b')
         } else if (text.includes('[Performance]')) {
-          line.style.color = dark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)'
+          line.style.color = varToColor('--text-log-perf', dark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)')
         } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
-          line.style.color = dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'
+          line.style.color = varToColor('--text-log-info', dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)')
         } else if (text.includes('[Warning]') || text.includes('警告')) {
-          line.style.color = dark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)'
+          line.style.color = varToColor('--text-log-warn', dark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)')
         } else {
-          line.style.color = dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.75)'
+          line.style.color = varToColor('--text-log-normal', dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.75)')
         }
         line.textContent = text
         frag.appendChild(line)
@@ -47,6 +59,14 @@ onMounted(() => {
 onUnmounted(() => {
   if (retryTimer) clearTimeout(retryTimer)
 })
+
+// 辅助函数：读取 CSS 变量值，带 fallback
+function varToColor(varName, fallback) {
+  if (typeof getComputedStyle !== 'undefined') {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback
+  }
+  return fallback
+}
 </script>
 
 <template>
@@ -61,45 +81,28 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@use 'assets/themes/mixins' as *;
+
 .card {
+  @include card-base;
   height: auto;
   flex: 1;
-  display: flex;
-  border-radius: 6px;
-  flex-direction: column;
-  overflow: hidden;
-  background: light-dark(#ffffff, #1e1f21);
-  box-sizing: border-box;
-  border: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
 }
 
 .header {
-  height: 30px;
-  display: flex;
-  align-items: center;
-  background: light-dark(#ffffff, rgba(184, 183, 183, .15));
-  box-sizing: border-box;
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, .2), rgba(255, 255, 255, .2));
-}
-
-.header-icon-box {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include card-header-base;
+  @include icon-box;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
+  @include icon-base;
   color: #F7BA1E;
 }
 
 .header-title {
   font-size: 14px;
-  color: light-dark(#5e5e5e, #fff);
+  color: var(--text-secondary);
   line-height: 1;
 }
 
@@ -111,8 +114,8 @@ onUnmounted(() => {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 12px;
   line-height: 1.5;
-  color: light-dark(rgba(0, 0, 0, .7), rgba(255, 255, 255, 0.8));
-  background: light-dark(#ffffff, rgba(30, 31, 33, 0.6));
+  color: var(--text-log-normal);
+  background: var(--bg-content-area);
 }
 
 .content-area::-webkit-scrollbar {
@@ -120,7 +123,7 @@ onUnmounted(() => {
 }
 
 .content-area::-webkit-scrollbar-thumb {
-  background: rgba(100, 100, 255, .3);
+  background: var(--log-scrollbar);
   border-radius: 5px;
 }
 </style>
