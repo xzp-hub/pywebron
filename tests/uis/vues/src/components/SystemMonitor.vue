@@ -200,7 +200,7 @@ onUnmounted(() => {
 }
 
 .footer {
-  height: 30px;
+  height: 36px;
   display: flex;
   justify-content: space-between;
   background: var(--bg-card-footer);

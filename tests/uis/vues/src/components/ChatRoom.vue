@@ -223,33 +223,11 @@ onUnmounted(() => {
 }
 
 .footer {
-  height: 30px;
+  height: 36px;
   display: flex;
   flex-shrink: 0;
   box-sizing: border-box;
-  position: relative;
-}
-
-.footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--border-default);
-  z-index: 3;
-}
-
-.footer::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--border-default);
-  z-index: 3;
+  border-top: 1px solid var(--border-default);
 }
 
 .input-field {
@@ -283,7 +261,8 @@ onUnmounted(() => {
 
 .send-button {
   width: 60px;
-  height: 100%;
+  height: 30px;
+  margin-top: 3px;
   background: #0052D9;
   cursor: pointer;
   display: flex;

@@ -104,7 +104,7 @@ onMounted(async () => {
 
 .window-header {
   width: 100%;
-  height: 30px;
+  height: 36px;
   border-radius: 5px;
   box-sizing: border-box;
   display: flex;
@@ -151,8 +151,9 @@ onMounted(async () => {
 }
 
 .window-header-btn {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
+  margin-top: 4px;
   min-width: auto;
   border-radius: 0 !important;
   color: var(--text-tertiary) !important;
@@ -181,8 +182,8 @@ onMounted(async () => {
 .window-header-btn-close {
   border-top-right-radius: 5px !important;
   border-bottom-right-radius: 5px !important;
-  margin: 0;
-  height: 100%;
+  margin-top: 4px;
+  height: 28px;
 }
 
 .window-header-btn-close:hover {

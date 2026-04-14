@@ -310,7 +310,7 @@ onUnmounted(() => {
 
 .header-item {
   width: auto;
-  height: 30px;
+  height: 36px;
   display: flex;
   align-items: center;
 }
@@ -321,7 +321,8 @@ onUnmounted(() => {
 
 .io-type-btn {
   flex: 1;
-  height: 100%;
+  height: 30px;
+  margin-top: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -401,7 +402,7 @@ onUnmounted(() => {
 }
 
 .footer {
-  height: 30px;
+  height: 36px;
   display: flex;
   justify-content: space-between;
   background: var(--bg-card-footer);

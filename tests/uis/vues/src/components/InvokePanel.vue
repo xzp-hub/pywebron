@@ -110,7 +110,8 @@ async function createNewWindow() {
 
 .action-btn {
   flex: 1;
-  height: 36px;
+  height: 30px;
+  margin-top: 3px;
   border-radius: 5px !important;
   font-weight: 600;
   font-size: 13px;
