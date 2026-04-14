@@ -73,7 +73,7 @@ const { currentTheme, toggleTheme, setTheme } = useTheme()
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style scoped>
 .theme-demo {
   padding: 20px;
   background: var(--bg-card);
@@ -83,55 +83,55 @@ const { currentTheme, toggleTheme, setTheme } = useTheme()
 
 .demo-header {
   margin-bottom: 20px;
-  
-  h2 {
-    color: var(--text-primary);
-    margin: 0 0 8px 0;
-  }
-  
-  p {
-    color: var(--text-secondary);
-    margin: 0;
-  }
-  
-  strong {
-    color: var(--text-primary);
-  }
+}
+
+.demo-header h2 {
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.demo-header p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.demo-header strong {
+  color: var(--text-primary);
 }
 
 .demo-controls {
   display: flex;
   gap: 10px;
   margin-bottom: 30px;
-  
-  button {
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid var(--border-default);
-    background: var(--bg-elevated);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s;
-    
-    &:hover {
-      background: var(--hover-bg-strong);
-      border-color: var(--border-strong);
-    }
-    
-    &:active {
-      transform: scale(0.98);
-    }
-  }
-  
-  .btn-toggle {
-    background: var(--active-bg);
-    color: white;
-    border-color: var(--active-bg);
-    
-    &:hover {
-      opacity: 0.9;
-    }
-  }
+}
+
+.demo-controls button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.demo-controls button:hover {
+  background: var(--hover-bg-strong);
+  border-color: var(--border-strong);
+}
+
+.demo-controls button:active {
+  transform: scale(0.98);
+}
+
+.demo-controls .btn-toggle {
+  background: var(--active-bg);
+  color: white;
+  border-color: var(--active-bg);
+}
+
+.demo-controls .btn-toggle:hover {
+  opacity: 0.9;
 }
 
 .demo-colors {
@@ -140,12 +140,10 @@ const { currentTheme, toggleTheme, setTheme } = useTheme()
   gap: 20px;
 }
 
-.color-group {
-  h3 {
-    color: var(--text-primary);
-    font-size: 14px;
-    margin: 0 0 12px 0;
-  }
+.color-group h3 {
+  color: var(--text-primary);
+  font-size: 14px;
+  margin: 0 0 12px 0;
 }
 
 .color-item {
@@ -154,20 +152,20 @@ const { currentTheme, toggleTheme, setTheme } = useTheme()
   border-radius: 6px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-default);
-  
-  span {
-    color: var(--text-primary);
-    font-size: 12px;
-    font-family: monospace;
-  }
-  
-  &.interactive {
-    cursor: pointer;
-    transition: background 0.2s;
-    
-    &:hover {
-      background: var(--hover-bg-strong);
-    }
-  }
+}
+
+.color-item span {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.color-item.interactive {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.color-item.interactive:hover {
+  background: var(--hover-bg-strong);
 }
 </style>

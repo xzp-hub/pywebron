@@ -9,7 +9,7 @@ const isDark = ref(false)
 // 主题切换
 function applyTheme() {
   isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
-    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+      || window.matchMedia?.('(prefers-color-scheme: dark)').matches
 }
 
 onMounted(() => {
@@ -247,19 +247,23 @@ onUnmounted(() => {
       </div>
       <div class="header-item">
         <t-button
-          class="io-type-btn"
-          :class="{ active: ioType === 'disk' }"
-          @click="ioType = 'disk'"
-          size="small"
-          :theme="ioType === 'disk' ? 'primary' : 'default'"
-        >磁盘IO</t-button>
+            class="io-type-btn"
+            :class="{ active: ioType === 'disk' }"
+            @click="ioType = 'disk'"
+            size="small"
+            variant="outline"
+            :theme="ioType === 'disk' ? 'primary' : 'default'"
+        >磁盘IO
+        </t-button>
         <t-button
-          class="io-type-btn"
-          :class="{ active: ioType === 'net' }"
-          @click="ioType = 'net'"
-          size="small"
-          :theme="ioType === 'net' ? 'primary' : 'default'"
-        >网络IO</t-button>
+            class="io-type-btn"
+            :class="{ active: ioType === 'net' }"
+            @click="ioType = 'net'"
+            size="small"
+            variant="outline"
+            :theme="ioType === 'net' ? 'primary' : 'default'"
+        >网络IO
+        </t-button>
       </div>
     </div>
     <div class="body">
@@ -278,29 +282,44 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style lang="scss" scoped>
-@use 'assets/themes/mixins' as *;
+<style scoped>
 
 .card {
-  @include card-base;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-sizing: border-box;
+  border: 1px solid var(--border-default);
   height: auto;
   flex: 1;
 }
 
 .header {
-  @include card-header-base;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-card-header);
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   padding-left: 6px;
   justify-content: space-between;
 }
 
 .header-icon-box {
-  @include icon-box;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: auto;
 }
 
 .header-icon {
-  @include icon-base;
+  width: 16px;
+  height: 16px;
   color: #8201f8;
 }
 
@@ -331,8 +350,9 @@ onUnmounted(() => {
 .io-type-btn {
   flex: 1;
   height: 26px;
-  border: none;
-  margin-bottom: -1px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .io-type-btn:last-child {
@@ -340,15 +360,13 @@ onUnmounted(() => {
 }
 
 .io-type-btn.active {
-  background: var(--active-bg);
-  color: #fff;
-  border-left-color: var(--active-bg);
+  color: #165DFF;
+  border-color: #165DFF;
 }
 
 .header-item:nth-child(2) {
   justify-content: center;
 }
-
 
 
 .legend-mark {

@@ -138,29 +138,44 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style lang="scss" scoped>
-@use 'assets/themes/mixins' as *;
+<style scoped>
 
 .card {
-  @include card-base;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-sizing: border-box;
+  border: 1px solid var(--border-default);
   height: auto;
   flex: none;
 }
 
 .header {
-  @include card-header-base;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-card-header);
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   padding-left: 6px;
   gap: 5px;
 }
 
 .header-icon-box {
-  @include icon-box;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: auto;
 }
 
 .header-icon {
-  @include icon-base;
+  width: 16px;
+  height: 16px;
   color: #9a8600;
 }
 

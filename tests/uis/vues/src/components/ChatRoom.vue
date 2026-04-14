@@ -11,7 +11,7 @@ const stream = pw?.interfaces?.stream
 // 主题切换
 function applyTheme() {
   isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
-    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+      || window.matchMedia?.('(prefers-color-scheme: dark)').matches
 }
 
 onMounted(() => {
@@ -139,45 +139,60 @@ onUnmounted(() => {
       </div>
     </div>
     <div class="footer">
-      <input
+      <t-input
           v-model="chatInput"
-          type="text"
-          class="input-field"
           placeholder="输入消息按回车发送..."
           :maxlength="200"
           @keydown="onKeydown"
       />
-      <t-button class="send-button" @click="sendMsg" size="small">
-        <template #icon><SendIcon/></template>
+      <t-button class="send-button" variant="outline" @click="sendMsg" size="small">
+        <template #icon>
+          <SendIcon/>
+        </template>
       </t-button>
     </div>
   </div>
 </template>
 
-<style lang="scss" scoped>
-@use 'assets/themes/mixins' as *;
+<style scoped>
 
 .card {
-  @include card-base;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-sizing: border-box;
+  border: 1px solid var(--border-default);
   height: auto;
   flex: 1;
   overflow: hidden;
 }
 
 .header {
-  @include card-header-base;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-card-header);
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   padding-left: 6px;
   gap: 5px;
 }
 
 .header-icon-box {
-  @include icon-box;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: auto;
 }
 
 .header-icon {
-  @include icon-base;
+  width: 16px;
+  height: 16px;
   color: #00B42A;
 }
 
@@ -230,35 +245,13 @@ onUnmounted(() => {
   flex-shrink: 0;
   box-sizing: border-box;
   border-top: 1px solid var(--border-default);
+  padding: 5px;
+  gap: 5px;
 }
 
-.input-field {
-  flex: 1;
-  height: 100%;
-  border: none;
-  outline: none;
-  background: var(--bg-elevated);
-  font-size: 13px;
-  color: var(--text-primary);
-  padding: 0 8px;
-  box-sizing: border-box;
-}
 
-[data-theme="light"] .input-field {
-  background: #ffffff;
-}
-
-[data-theme="dark"] .input-field {
-  background: #1a1b1d;
-  color: #ffffff;
-}
-
-.input-field::placeholder {
-  color: var(--text-placeholder);
-}
-
-[data-theme="dark"] .input-field::placeholder {
-  color: #ffffff;
+:deep(.t-input) {
+  height: 26px;
 }
 
 .send-button {
@@ -267,7 +260,9 @@ onUnmounted(() => {
   flex-shrink: 0;
   position: relative;
   z-index: 2;
-  margin-right: 5px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .message-item {

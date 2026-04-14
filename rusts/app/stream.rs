@@ -57,14 +57,12 @@ pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'p
 
         // 轮询所有订阅窗口的队列，从任意窗口取消息
         let mut result_data = None;
-        let mut source_window_id = 0u64;
 
         for window_id in &window_ids {
             let queue_key = format!("{}:{}", hid, window_id);
             if let Some(queue) = queues_read.get(&queue_key) {
                 if let Some(data) = queue.pop() {
                     result_data = Some(data);
-                    source_window_id = *window_id;
                     break;
                 }
             }
@@ -74,7 +72,6 @@ pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'p
             // 构建完整的协议响应格式
             let response = serde_json::json!({
                 "handle_id": hid,
-                "window_id": source_window_id,
                 "handle_type": "stream",
                 "request_id": null,
                 "payload": payload
@@ -125,20 +122,7 @@ pub(crate) fn register_stream_window(handle_id: &str, window_id: u64) {
 }
 
 /// 将前端发来的数据推入 recv 队列（供 Python stream.recv() 消费）
-/// 仅在 data 是 Object 且无 _source_window_id 时注入，避免不必要的 clone
 pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
-    let enriched_data = match &data {
-        serde_json::Value::Object(obj) if !obj.contains_key("_source_window_id") => {
-            let mut enriched = obj.clone();
-            enriched.insert(
-                "_source_window_id".to_string(),
-                serde_json::json!(window_id),
-            );
-            serde_json::Value::Object(enriched)
-        }
-        _ => data,
-    };
-
     let queue_key = format!("{}:{}", handle_id, window_id);
     let queues = get_recv_queues();
     let mut queues_guard = queues.write();
@@ -146,7 +130,7 @@ pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
     let queue = queues_guard
         .entry(queue_key)
         .or_insert_with(|| crossbeam::queue::ArrayQueue::new(RECV_QUEUE_LIMIT));
-    let _ = queue.push(enriched_data);
+    let _ = queue.push(data);
 }
 
 // === Stream 订阅管理（handle_id -> 订阅信息） ===

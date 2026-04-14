@@ -24,8 +24,7 @@ import TerminalLog from '@/components/TerminalLog.vue'
   </div>
 </template>
 
-<style lang="scss" scoped>
-@use 'assets/themes/mixins' as *;
+<style scoped>
 
 .window-content {
   border-radius: 5px;

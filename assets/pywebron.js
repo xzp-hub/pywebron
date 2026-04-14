@@ -11,10 +11,7 @@
     const { window_id, show_title_bar, window_radius, enable_resizable } = config;
 
     if (!show_title_bar) {
-        // CSS 变量主题系统
-        const themeVars = `:root{--bg-primary:#dddddd;--bg-secondary:#ffffff;--bg-card:#ffffff;--bg-header:#ffffff;--text-primary:#000000;--text-secondary:#666666;--border-color:rgba(0,0,0,0.2);--shadow-color:rgba(0,0,0,0.1)}:root[data-theme="dark"]{--bg-primary:#3a3a3d;--bg-secondary:#2c2c2e;--bg-card:#2c2c2e;--bg-header:rgba(184,183,183,0.15);--text-primary:#ffffff;--text-secondary:#999999;--border-color:rgba(255,255,255,0.2);--shadow-color:rgba(0,0,0,0.3)}`;
-
-        const radiusStyle = `${themeVars}html,body{border-radius:${window_radius}px!important;overflow:hidden!important;background:transparent!important;margin:0!important;padding:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important}html{border:1px solid transparent!important}body{border:1px solid var(--border-color)!important}#app,#app>[id='app'],.app,main{border-radius:${window_radius}px!important;background:var(--bg-primary)!important}`;
+        const radiusStyle = `html,body{border-radius:${window_radius}px!important;overflow:hidden!important;background:transparent!important;margin:0!important;padding:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important}html{border:1px solid transparent!important}body{border:1px solid var(--border-color)!important}#app,#app>[id='app'],.app,main{border-radius:${window_radius}px!important;background:var(--bg-primary)!important}`;
 
         const injectRadiusStyle = () => {
             if (document.getElementById('__pywebron_radius_style__')) return true;
@@ -23,39 +20,18 @@
             style.id = '__pywebron_radius_style__';
             style.textContent = radiusStyle;
             document.head.insertBefore(style, document.head.firstChild);
-            console.log('[pywebron] 样式已注入');
             return true;
-        };
-
-        // 主题初始化
-        const updateTheme = () => {
-            const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-            console.log('[pywebron] 主题:', isDark ? 'dark' : 'light');
         };
 
         if (!injectRadiusStyle()) {
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    injectRadiusStyle();
-                    updateTheme();
-                }, { once: true });
+                document.addEventListener('DOMContentLoaded', injectRadiusStyle, { once: true });
             } else {
                 let retries = 0;
                 const retry = setInterval(() => {
-                    if (injectRadiusStyle() || ++retries > 10) {
-                        clearInterval(retry);
-                        updateTheme();
-                    }
+                    if (injectRadiusStyle() || ++retries > 10) clearInterval(retry);
                 }, 50);
             }
-        } else {
-            updateTheme();
-        }
-
-        // 监听系统主题变化
-        if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
         }
     }
 

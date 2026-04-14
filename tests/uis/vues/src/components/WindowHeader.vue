@@ -60,19 +60,19 @@ onMounted(async () => {
       <span class="window-header-app-title">{{ titleText }}</span>
     </div>
     <div class="window-header-control-buttons">
-      <t-button class="window-header-btn window-header-btn-theme" variant="text" shape="square" :title="currentTheme === 'light' ? '切换到暗色模式' : '切换到亮色模式'" @click="toggleTheme">
+      <t-button class="window-header-btn window-header-btn-theme" variant="outline" shape="square" :title="currentTheme === 'light' ? '切换到暗色模式' : '切换到亮色模式'" @click="toggleTheme">
         <template #icon>
-          <MoonIcon v-if="currentTheme === 'dark'"/>
+          <MoonIcon v-if="currentTheme === 'light'"/>
           <BrightnessIcon v-else/>
         </template>
       </t-button>
-      <t-button class="window-header-btn window-header-btn-minimize" variant="text" shape="square" title="最小化"
+      <t-button class="window-header-btn window-header-btn-minimize" variant="outline" shape="square" title="最小化"
                 @click="windowAction('min')">
         <template #icon>
           <MinusIcon/>
         </template>
       </t-button>
-      <t-button class="window-header-btn window-header-btn-maximize" variant="text" shape="square"
+      <t-button class="window-header-btn window-header-btn-maximize" variant="outline" shape="square"
                 :title="isMaximized ? '还原' : '最大化'" @click="windowAction('toggle')">
         <template #icon>
           <svg v-if="!isMaximized" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -86,7 +86,7 @@ onMounted(async () => {
           </svg>
         </template>
       </t-button>
-      <t-button class="window-header-btn window-header-btn-close" variant="text" shape="square" title="关闭"
+      <t-button class="window-header-btn window-header-btn-close" variant="outline" shape="square" title="关闭"
                 @click="windowAction('shut')">
         <template #icon>
           <CloseIcon/>
@@ -96,8 +96,7 @@ onMounted(async () => {
   </div>
 </template>
 
-<style lang="scss" scoped>
-@use 'assets/themes/mixins' as *;
+<style scoped>
 
 .window-header {
   width: 100%;
@@ -109,6 +108,7 @@ onMounted(async () => {
   justify-content: space-between;
   background: var(--bg-card);
   border: 1px solid var(--border-strong);
+  padding-right: 5px;
 }
 
 [data-theme="dark"] .window-header {
@@ -122,8 +122,8 @@ onMounted(async () => {
 }
 
 .window-header-app-icon {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   margin-right: 5px;
   border-radius: 5px;
   object-fit: contain;
@@ -131,7 +131,7 @@ onMounted(async () => {
 }
 
 .window-header-app-title {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-inverse);
   line-height: 16px;
 }
@@ -152,7 +152,6 @@ onMounted(async () => {
   height: 26px !important;
   min-width: auto !important;
   color: var(--text-tertiary) !important;
-  border: none !important;
   padding: 0 !important;
   margin: 0 !important;
   display: flex !important;
@@ -180,7 +179,6 @@ onMounted(async () => {
 .window-header-btn:hover {
   background: var(--hover-bg-strong) !important;
   color: var(--text-inverse) !important;
-  border: none !important;
 }
 
 .window-header-btn-theme {
