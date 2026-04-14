@@ -70,7 +70,14 @@ async function createNewWindow() {
 
 .header {
   @include card-header-base;
+  display: flex;
+  padding-left: 6px;
+  gap: 5px;
+}
+
+.header-icon-box {
   @include icon-box;
+  width: auto;
 }
 
 .header-icon {
@@ -84,12 +91,21 @@ async function createNewWindow() {
   line-height: 1;
 }
 
+[data-theme="dark"] .header-title {
+  color: #ffffff;
+}
+
 .body {
   display: flex;
   gap: 6px;
   padding: 8px;
   box-sizing: border-box;
   flex-shrink: 0;
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .body {
+  background: #1a1b1d;
 }
 
 .action-btn {

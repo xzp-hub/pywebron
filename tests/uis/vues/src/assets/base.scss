@@ -1,0 +1,28 @@
+@use 'themes/variables' as *;
+
+// 导入字体
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.22/index.min.css');
+
+* {
+  font-family: "Noto Sans SC", "Microsoft YaHei", "微软雅黑", sans-serif;
+}
+
+// === 全局基础样式（替代 index.html 内联的 light-dark 样式）===
+html {
+  border: 1px solid transparent;
+}
+
+body {
+  border: 1px solid var(--window-outer-border);
+}
+
+#app {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  gap: 5px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+}

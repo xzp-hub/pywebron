@@ -164,7 +164,14 @@ onUnmounted(() => {
 
 .header {
   @include card-header-base;
+  display: flex;
+  padding-left: 6px;
+  gap: 5px;
+}
+
+.header-icon-box {
   @include icon-box;
+  width: auto;
 }
 
 .header-icon {
@@ -178,14 +185,22 @@ onUnmounted(() => {
   line-height: 1;
 }
 
+[data-theme="dark"] .header-title {
+  color: #ffffff;
+}
+
 .body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--bg-content-area);
+  background: var(--bg-card);
   min-height: 0;
   overflow: hidden;
   padding: 5px;
+}
+
+[data-theme="dark"] .body {
+  background: #1a1b1d;
 }
 
 .message-list {
@@ -226,8 +241,21 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
+[data-theme="light"] .input-field {
+  background: #ffffff;
+}
+
+[data-theme="dark"] .input-field {
+  background: #1a1b1d;
+  color: #ffffff;
+}
+
 .input-field::placeholder {
   color: var(--text-placeholder);
+}
+
+[data-theme="dark"] .input-field::placeholder {
+  color: #ffffff;
 }
 
 .send-button {

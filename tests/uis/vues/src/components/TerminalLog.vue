@@ -10,6 +10,27 @@ const stream = pw?.interfaces?.stream
 function applyTheme() {
   isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
     || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  
+  // 更新已存在的日志颜色
+  if (terminalLogsEl.value) {
+    const dark = isDark.value
+    const lines = terminalLogsEl.value.children
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const text = line.textContent || ''
+      if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
+        line.style.color = dark ? '#ff6b6b' : '#c0392b'
+      } else if (text.includes('[Performance]')) {
+        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
+      } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
+        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.7)'
+      } else if (text.includes('[Warning]') || text.includes('警告')) {
+        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.65)'
+      } else {
+        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
+      }
+    }
+  }
 }
 
 onMounted(() => {
@@ -28,20 +49,21 @@ async function startTerminalLog() {
       if (!terminalLogsEl.value) return
       const logs = data.data?.logs || data.logs || []
       const frag = document.createDocumentFragment()
-      const dark = isDark.value
+      // 每次接收日志时都检查当前主题
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark'
       logs.forEach(log => {
         const line = document.createElement('div')
         let text = typeof log === 'string' ? log : JSON.stringify(log)
         if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
-          line.style.color = varToColor('--log-error', dark ? '#ff6b6b' : '#c0392b')
+          line.style.color = dark ? '#ff6b6b' : '#c0392b'
         } else if (text.includes('[Performance]')) {
-          line.style.color = varToColor('--text-log-perf', dark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)')
+          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
         } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
-          line.style.color = varToColor('--text-log-info', dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)')
+          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.7)'
         } else if (text.includes('[Warning]') || text.includes('警告')) {
-          line.style.color = varToColor('--text-log-warn', dark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)')
+          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.65)'
         } else {
-          line.style.color = varToColor('--text-log-normal', dark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.75)')
+          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
         }
         line.textContent = text
         frag.appendChild(line)
@@ -92,7 +114,14 @@ function varToColor(varName, fallback) {
 
 .header {
   @include card-header-base;
+  display: flex;
+  padding-left: 6px;
+  gap: 5px;
+}
+
+.header-icon-box {
   @include icon-box;
+  width: auto;
 }
 
 .header-icon {
@@ -106,6 +135,10 @@ function varToColor(varName, fallback) {
   line-height: 1;
 }
 
+[data-theme="dark"] .header-title {
+  color: #ffffff;
+}
+
 .content-area {
   flex: 1;
   min-height: 0;
@@ -115,7 +148,12 @@ function varToColor(varName, fallback) {
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-log-normal);
-  background: var(--bg-content-area);
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .content-area {
+  background: #1a1b1d;
+  color: #ffffff;
 }
 
 .content-area::-webkit-scrollbar {

@@ -304,6 +304,10 @@ onUnmounted(() => {
   color: var(--text-secondary);
 }
 
+[data-theme="dark"] .header-title {
+  color: #ffffff;
+}
+
 .header-item {
   width: auto;
   height: 30px;
@@ -317,7 +321,7 @@ onUnmounted(() => {
 
 .io-type-btn {
   flex: 1;
-  height: 30px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -325,16 +329,22 @@ onUnmounted(() => {
   cursor: pointer;
   user-select: none;
   padding: 0 16px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-elevated);
+  border: none;
+  border-left: 1px solid var(--border-default);
+  background: transparent;
   color: var(--text-tertiary);
   transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+[data-theme="dark"] .io-type-btn {
+  color: #ffffff;
 }
 
 .io-type-btn.active {
   background: var(--active-bg);
   color: #fff;
-  border-color: var(--active-bg);
+  border-left-color: var(--active-bg);
 }
 
 .header-item:nth-child(2) {
@@ -355,6 +365,10 @@ onUnmounted(() => {
   color: var(--text-secondary);
 }
 
+[data-theme="dark"] .legend-text {
+  color: #ffffff;
+}
+
 .legend-divider {
   width: 1px;
   height: 10px;
@@ -370,6 +384,11 @@ onUnmounted(() => {
   padding: 6px;
   display: flex;
   flex-direction: column;
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .body {
+  background: #1a1b1d;
 }
 
 .io-monitor-line-chart {
@@ -397,7 +416,15 @@ onUnmounted(() => {
   gap: 5px;
 }
 
+[data-theme="dark"] .footer-item {
+  color: #ffffff;
+}
+
 .footer-value {
   font-weight: 600;
+}
+
+[data-theme="dark"] .footer-value {
+  color: #ffffff;
 }
 </style>

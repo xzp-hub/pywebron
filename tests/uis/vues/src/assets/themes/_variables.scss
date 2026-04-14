@@ -1,0 +1,154 @@
+// ============================================
+// PyWebron 主题变量系统
+// 基于 CSS 自定义属性实现主题切换
+// ============================================
+
+// --- 语义色（不随主题变化）---
+$color-primary: #165DFF;
+$color-primary-hover: #4080FF;
+$color-success: #7BE188;
+$color-warning: #722ED1;
+$color-danger: #ff6b6b;
+
+// === 亮色主题 (Light) ===
+:root,
+[data-theme="light"] {
+  // --- 背景层级 ---
+  --bg-base: #dde0e6; // 应用根背景
+  --bg-card: #ffffff; // 卡片背景
+  --bg-card-header: #ffffff; // 卡片头部
+  --bg-card-footer: #ffffff; // 卡片底部
+  --bg-elevated: #f5f5f5; // 浮层/输入框背景
+  --bg-content-area: #ffffff; // 内容区域（聊天、终端）
+  --bg-overlay: rgba(184, 183, 183, 0.15); // 毛玻璃效果
+  --bg-tooltip: rgba(30, 30, 50, 0.95); // 提示框背景
+
+  // --- 文本色 ---
+  --text-primary: #222222; // 主要文本
+  --text-secondary: #5e5e5e; // 次要文本
+  --text-tertiary: rgba(0, 0, 0, 0.55); // 三级文本
+  --text-placeholder: rgba(0, 0, 0, 0.35); // 占位符文本
+  --text-inverse: #000000; // 反色文本
+  --text-on-primary: #ffffff; // 主色上的文本
+  --text-system: rgba(0, 0, 0, 0.5); // 系统消息
+  --text-log-normal: rgba(0, 0, 0, 0.75); // 普通日志
+  --text-log-perf: rgba(0, 0, 0, 0.75); // 性能日志
+  --text-log-info: rgba(0, 0, 0, 0.7); // 信息日志
+  --text-log-warn: rgba(0, 0, 0, 0.65); // 警告日志
+
+  // --- 边框色 ---
+  --border-default: rgba(0, 0, 0, 0.2); // 默认边框
+  --border-strong: rgba(0, 0, 0, 0.3); // 强调边框
+  --border-subtle: rgba(0, 0, 0, 0.15); // 弱化边框
+  --border-input: rgba(0, 0, 0, 0.3); // 输入框边框
+
+  // --- 分割线 / 网格线 ---
+  --divider: rgba(0, 0, 0, 0.2); // 分割线
+  --grid-line: rgba(0, 0, 0, 0.06); // 网格线
+  --grid-line-strong: rgba(0, 0, 0, 0.2); // 强调网格线
+
+  // --- 交互状态 ---
+  --hover-bg: rgba(0, 0, 0, 0.06); // 悬停背景
+  --hover-bg-strong: rgba(0, 0, 0, 0.1); // 强调悬停背景
+  --active-bg: #8201f8; // 激活背景
+
+  // --- 图表/仪表盘 ---
+  --gauge-track: rgba(0, 0, 0, 0.08); // 仪表盘轨道
+  --gauge-text: #222; // 仪表盘文本
+  --gauge-label: rgba(0, 0, 0, 0.5); // 仪表盘标签
+  --chart-axis-line: rgba(0, 0, 0, 0.2); // 图表坐标轴线
+  --chart-axis-tick: rgba(0, 0, 0, 0.2); // 图表刻度线
+  --chart-axis-label: rgba(0, 0, 0, 0.5); // 图表坐标轴标签
+  --chart-grid: rgba(0, 0, 0, 0.06); // 图表网格
+  --chart-tooltip-bg: rgba(30, 30, 50, 0.95); // 图表提示框背景
+  --chart-tooltip-border: rgba(255, 255, 255, 0.3); // 图表提示框边框
+  --chart-tooltip-text: #fff; // 图表提示框文本
+
+  // --- 聊天气泡 ---
+  --bubble-self-bg: #7BE188; // 自己的消息气泡
+  --bubble-other-bg: #e5e6eb; // 他人的消息气泡
+  --bubble-text: rgba(0, 0, 0, 0.75); // 气泡文本
+  --avatar-bg: #f0f0f0; // 头像背景
+
+  // --- 窗口边框 ---
+  --window-outer-border: rgba(0, 0, 0, 0.2); // 窗口外边框
+  --window-inner-border: transparent; // 窗口内边框
+
+  // --- 终端日志 ---
+  --log-error: #c0392b; // 错误日志颜色
+  --log-scrollbar: rgba(100, 100, 255, 0.3); // 滚动条颜色
+
+  // --- 图例 ---
+  --legend-bg: #f5f5f5; // 图例背景
+}
+
+// === 暗色主题 (Dark) ===
+[data-theme="dark"] {
+  // --- 背景层级 ---
+  --bg-base: #1a1b1d;
+  --bg-card: #1a1b1d;
+  --bg-card-header: #1a1b1d;
+  --bg-card-footer: #1a1b1d;
+  --bg-elevated: #1a1b1d;
+  --bg-content-area: #1a1b1d;
+  --bg-overlay: rgba(184, 183, 183, 0.15);
+  --bg-tooltip: rgba(30, 30, 50, 0.95);
+
+  // --- 文本色 ---
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-tertiary: #ffffff;
+  --text-placeholder: rgba(255, 255, 255, 0.5);
+  --text-inverse: #ffffff;
+  --text-on-primary: #ffffff;
+  --text-system: #ffffff;
+  --text-log-normal: #ffffff;
+  --text-log-perf: #ffffff;
+  --text-log-info: #ffffff;
+  --text-log-warn: #ffffff;
+
+  // --- 边框色 ---
+  --border-default: rgba(255, 255, 255, 0.2);
+  --border-strong: rgba(255, 255, 255, 0.3);
+  --border-subtle: rgba(255, 255, 255, 0.25);
+  --border-input: rgba(255, 255, 255, 0.3);
+
+  // --- 分割线 / 网格线 ---
+  --divider: rgba(255, 255, 255, 0.2);
+  --grid-line: rgba(255, 255, 255, 0.1);
+  --grid-line-strong: rgba(255, 255, 255, 0.3);
+
+  // --- 交互状态 ---
+  --hover-bg: rgba(255, 255, 255, 0.12);
+  --hover-bg-strong: rgba(255, 255, 255, 0.15);
+  --active-bg: #8201f8;
+
+  // --- 图表/仪表盘 ---
+  --gauge-track: rgba(255, 255, 255, 0.15);
+  --gauge-text: #fff;
+  --gauge-label: #ffffff;
+  --chart-axis-line: rgba(255, 255, 255, 0.3);
+  --chart-axis-tick: rgba(255, 255, 255, 0.3);
+  --chart-axis-label: #ffffff;
+  --chart-grid: rgba(255, 255, 255, 0.1);
+  --chart-tooltip-bg: rgba(30, 30, 50, 0.95);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.3);
+  --chart-tooltip-text: #fff;
+
+  // --- 聊天气泡 ---
+  --bubble-self-bg: #7BE188;
+  --bubble-other-bg: #3d3d42;
+  --bubble-text: #ffffff;
+  --avatar-bg: rgba(255, 255, 255, 0.1);
+
+  // --- 窗口边框 ---
+  --window-outer-border: rgba(255, 255, 255, 0.35);
+  --window-inner-border: transparent;
+
+  // --- 终端日志 ---
+  --log-error: #ff6b6b;
+  --log-scrollbar: rgba(100, 100, 255, 0.3);
+
+  // --- 图例 ---
+  --legend-bg: rgba(255, 255, 255, 0.08);
+}

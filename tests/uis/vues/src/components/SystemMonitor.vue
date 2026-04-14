@@ -68,7 +68,7 @@ function buildGaugeOption(val, label, color) {
       },
       title: {
         fontSize: 11,
-        color: isDark.value ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)',
+        color: isDark.value ? '#ffffff' : 'rgba(0,0,0,0.5)',
         offsetCenter: [0, '22%']
       },
       data: [{value: parseFloat(val.toFixed(2)), name: label}],
@@ -149,7 +149,14 @@ onUnmounted(() => {
 
 .header {
   @include card-header-base;
+  display: flex;
+  padding-left: 6px;
+  gap: 5px;
+}
+
+.header-icon-box {
   @include icon-box;
+  width: auto;
 }
 
 .header-icon {
@@ -163,12 +170,21 @@ onUnmounted(() => {
   line-height: 1;
 }
 
+[data-theme="dark"] .header-title {
+  color: #ffffff;
+}
+
 .body {
   display: flex;
   justify-content: space-between;
   gap: 6px;
   box-sizing: border-box;
   flex-shrink: 0;
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .body {
+  background: #1a1b1d;
 }
 
 .body-item {
@@ -180,6 +196,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   border-radius: 5px;
   box-sizing: border-box;
+  background: transparent;
 }
 
 .footer {
@@ -199,5 +216,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+[data-theme="dark"] .footer-item {
+  color: #ffffff;
 }
 </style>
