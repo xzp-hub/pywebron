@@ -130,6 +130,7 @@ async function createNewWindowsAtRuntime() {
 
 .t-button {
   height: 26px;
+  padding: 0 6px !important;
   border-radius: 5px;
   font-size: 12px;
   align-items: center;

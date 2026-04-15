@@ -301,7 +301,6 @@ onUnmounted(() => {
   background: var(--bg-card-header);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
-  display: flex;
   padding-left: 6px;
   justify-content: space-between;
 }
@@ -312,7 +311,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
 }
 
 .header-icon {

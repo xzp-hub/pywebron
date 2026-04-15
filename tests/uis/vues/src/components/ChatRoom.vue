@@ -251,6 +251,24 @@ onUnmounted(() => {
   height: 26px;
 }
 
+:deep(.t-input__wrap) {
+  border: none !important;
+  box-shadow: none !important;
+  background: var(--bg-card) !important;
+}
+
+:deep(.t-input__inner) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:deep(.t-input:hover .t-input__wrap),
+:deep(.t-input__wrap:hover),
+:deep(.t-input.t-is-focused .t-input__wrap) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .send-button {
   height: 26px;
   width: 52px;

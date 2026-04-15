@@ -18,9 +18,13 @@ const windowAction = async (type) => {
   }
   const action = type === 'toggle' ? (isMaximized.value ? 'rep' : 'max') : type
   try {
-    const res = await invoke('window_controls_invoke', {control_type: map[action]}, 5000)
-    if (res?.code === 200) {
-      isMaximized.value = action === 'max' || (type === 'toggle' && !isMaximized.value)
+    const res = await invoke('window_controls_invoke', {control_type: map[action]})
+    if (res?.stat === true) {
+      if (action === 'max') {
+        isMaximized.value = true
+      } else if (action === 'rep') {
+        isMaximized.value = false
+      }
     }
   } catch (e) { /* noop */
   }
@@ -107,7 +111,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   background: var(--bg-card);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-default);
   padding-right: 5px;
 }
 
