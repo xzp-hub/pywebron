@@ -18,6 +18,10 @@ onMounted(() => {
   const observer = new MutationObserver(applyTheme)
   observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})
   window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener('change', applyTheme)
+  // Delay ECharts initialization to ensure DOM is fully rendered
+  setTimeout(() => {
+    startMonitoring()
+  }, 100)
 })
 
 const monitors = [
@@ -110,10 +114,6 @@ async function startMonitoring() {
   }
 }
 
-onMounted(() => {
-  startMonitoring()
-})
-
 onUnmounted(() => {
   if (retryTimer) clearTimeout(retryTimer)
 })
@@ -129,7 +129,7 @@ onUnmounted(() => {
     </div>
     <div class="body">
       <div v-for="m in monitors" :key="m.key" class="body-item">
-        <v-chart :key="m.key" :option="gaugeOptions[m.key]"/>
+        <v-chart :key="m.key" :option="gaugeOptions[m.key]" autoresize/>
       </div>
     </div>
     <div class="footer">

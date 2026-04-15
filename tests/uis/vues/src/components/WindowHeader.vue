@@ -1,3 +1,6 @@
+
+
+
 <script setup>
 import {ref, onMounted} from 'vue'
 import {MinusIcon, FullscreenIcon, CloseIcon, BrightnessIcon, MoonIcon} from 'tdesign-icons-vue-next'
@@ -34,15 +37,10 @@ const iconSrc = ref('')
 const titleText = ref('PyWebron 控制面板')
 
 onMounted(async () => {
-  console.log('[WindowHeader] attributes:', JSON.stringify(attributes))
-  console.log('[WindowHeader] icon_path:', attributes?.icon_path)
   if (attributes?.icon_path) {
     const resolved = pw?.interfaces?.resolveAssetUrl(attributes.icon_path)
-    console.log('[WindowHeader] resolveAssetUrl result:', resolved, '| input:', attributes.icon_path)
     iconSrc.value = resolved || ''
-    console.log('[WindowHeader] iconSrc set to:', iconSrc.value)
   }
-  // 如果没有图标，使用内置的 app 协议图标作为 fallback
   if (!iconSrc.value && attributes?.icon_path === undefined) {
     iconSrc.value = ''
   }

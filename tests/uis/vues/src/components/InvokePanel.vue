@@ -10,28 +10,19 @@ const createNewWindowsAtRuntimeRef = ref(false)
 
 async function saveFilesViaDialog() {
   saveFilesViaDialogRef.value = true
-  const res = await invoke('save_files_via_dialog_invoke')
-  if (res['data']) {
-    console.log(res['mssg'], res['data'])
-  }
+  await invoke('save_files_via_dialog_invoke')
   saveFilesViaDialogRef.value = false
 }
 
 async function executeCpuIntensiveTasks() {
   executeCpuIntensiveTasksRef.value = true
-  const res = await invoke('execute_cpu_intensive_tasks_invoke')
-  if (res['data']) {
-    console.log(res['mssg'], res['data'])
-  }
+  await invoke('execute_cpu_intensive_tasks_invoke')
   executeCpuIntensiveTasksRef.value = false
 }
 
 async function createNewWindowsAtRuntime() {
   createNewWindowsAtRuntimeRef.value = true
-  const res = await invoke('create_new_windows_at_runtime_invoke')
-  if (res['data']) {
-    console.log(res['mssg'], res['data'])
-  }
+  await invoke('create_new_windows_at_runtime_invoke')
   createNewWindowsAtRuntimeRef.value = false
 }
 </script>
