@@ -252,7 +252,6 @@ onUnmounted(() => {
             @click="ioType = 'disk'"
             size="small"
             variant="outline"
-            :theme="ioType === 'disk' ? 'primary' : 'default'"
         >磁盘IO
         </t-button>
         <t-button
@@ -261,7 +260,6 @@ onUnmounted(() => {
             @click="ioType = 'net'"
             size="small"
             variant="outline"
-            :theme="ioType === 'net' ? 'primary' : 'default'"
         >网络IO
         </t-button>
       </div>
@@ -359,9 +357,19 @@ onUnmounted(() => {
   margin-right: 5px;
 }
 
+.io-type-btn:hover,
 .io-type-btn.active {
-  color: #165DFF;
-  border-color: #165DFF;
+  background: #F59E0B !important;
+  color: #fff !important;
+  border-color: #F59E0B !important;
+}
+
+
+[data-theme="dark"] .io-type-btn:hover,
+[data-theme="dark"] .io-type-btn.active:hover {
+  background: #F59E0B !important;
+  color: #fff !important;
+  border-color: #F59E0B !important;
 }
 
 .header-item:nth-child(2) {

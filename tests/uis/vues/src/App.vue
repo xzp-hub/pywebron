@@ -8,23 +8,39 @@ import TerminalLog from '@/components/TerminalLog.vue'
 </script>
 
 <template>
-  <WindowHeader/>
-  <div class="window-content">
-    <div class="window-top-content">
-      <div class="window-left-content">
-        <SystemMonitor/>
-        <IoMonitor/>
+  <div class="window">
+    <WindowHeader/>
+    <div class="window-content">
+      <div class="window-top-content">
+        <div class="window-left-content">
+          <SystemMonitor/>
+          <IoMonitor/>
+        </div>
+        <div class="window-right-content">
+          <InvokePanel/>
+          <ChatRoom/>
+        </div>
       </div>
-      <div class="window-right-content">
-        <InvokePanel/>
-        <ChatRoom/>
-      </div>
+      <TerminalLog/>
     </div>
-    <TerminalLog/>
   </div>
 </template>
 
 <style scoped>
+.window {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 5px;
+  padding: 5px;
+  background: #eeeeee;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+}
+
+[data-theme="dark"] .window {
+  background: #393b40;
+}
 
 .window-content {
   border-radius: 5px;
@@ -52,8 +68,6 @@ import TerminalLog from '@/components/TerminalLog.vue'
   gap: 5px;
   min-height: 0;
 }
-
-
 
 .window-right-content {
   flex: 1;

@@ -32,11 +32,9 @@ async def setup_drag_region(invoke: app.invoke, struct: SetupDragRegionStruct):
     try:
         selector = struct.selector
         res = app.window.dragdrop_window(invoke.window_id, selector)
-        return await invoke.json_response(
-            200, "拖拽区域设置成功", {"selector": selector, "result": res}
-        )
+        return await invoke.json_response(True, "拖拽区域设置成功", {"selector": selector, "result": res})
     except Exception:
-        return await invoke.json_response(500, "拖拽区域设置失败", format_exc())
+        return await invoke.json_response(False, "拖拽区域设置失败", format_exc())
 
 
 @app.invoke.handle("window_controls_invoke")
@@ -52,44 +50,45 @@ async def window_controls(invoke: app.invoke, struct: WindowControlsStruct):
                 res = app.window.reappear_window(invoke.window_id)
             case "shutdown_window":
                 res = app.window.shutdown_window(invoke.window_id)
-        return await invoke.json_response(200, f"{control_type} 操作成功", res)
+        return await invoke.json_response(True, f"{control_type} 操作成功", res)
     except Exception:
-        return await invoke.json_response(500, f"{control_type} 操作失败", format_exc())
+        return await invoke.json_response(False, f"{control_type} 操作失败", format_exc())
 
 
-@app.invoke.handle("cpu_intensive_task_invoke_command")
-async def cpu_intensive_task(invoke: app.invoke, worker: app.worker):
+@app.invoke.handle("save_files_via_dialog_invoke")
+async def save_files_via_dialog(invoke: app.invoke):
+    try:
+        source_path = f'{PROJECT_ROOT_PATH}/assets/pywebron.html'
+        new_path = await save_file_dialog(str(source_path))
+        return await invoke.json_response(True, "文件保存成功", new_path)
+    except Exception:
+        return await invoke.json_response(False, "文件保存失败", format_exc())
+
+
+@app.invoke.handle("execute_cpu_intensive_tasks_invoke")
+async def execute_cpu_intensive_tasks(invoke: app.invoke, worker: app.worker):
     try:
         start = time()
         task1, task2 = await gather(worker.run(cpu_task, 1), worker.run(cpu_task, 2))
         res = {"res": str(task1 + task2), "time": time() - start}
-        return await invoke.json_response(200, "cpu 任务测试成功", res)
+        return await invoke.json_response(True, "cpu 任务测试成功", res)
     except Exception:
-        return await invoke.json_response(500, "cpu 任务测试失败", format_exc())
+        return await invoke.json_response(False, "cpu 任务测试失败", format_exc())
 
 
-@app.invoke.handle("running_create_window_invoke_handle")
-async def running_create_window(invoke: app.invoke):
+@app.invoke.handle("create_new_windows_at_runtime_invoke")
+async def create_new_windows_at_runtime(invoke: app.invoke):
     try:
         res = app.window.register_window(
             title="运行时创建窗口",
             width=1200,
             height=1200,
             show_title_bar=False,
+            dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
         )
-        return await invoke.json_response(200, f"运行时创建窗口成功：{res}", res)
+        return await invoke.json_response(True, f"运行时创建窗口成功：{res}", res)
     except Exception:
-        return await invoke.json_response(500, "运行时创建窗口失败", format_exc())
-
-
-@app.invoke.handle("file_download_invoke")
-async def file_download(invoke: app.invoke):
-    try:
-        source_path = f'{PROJECT_ROOT_PATH}/assets/pywebron.html'
-        new_path = await save_file_dialog(str(source_path))
-        return await invoke.json_response(200, "文件保存成功", new_path)
-    except Exception:
-        return await invoke.json_response(500, "文件保存失败", format_exc())
+        return await invoke.json_response(False, "运行时创建窗口失败", format_exc())
 
 
 @app.stream.handle("system_monitoring_stream")
@@ -119,7 +118,7 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
         await stream.send(200, "欢迎加入聊天室", {"type": "system"})
         while True:
             match res := await stream.recv():
-                case None:
+                case None | {}:
                     await asyncio_sleep(0.1)
                 case "multicast_test":
                     (wids := list(app.get_windows().keys())).remove(stream.window_id)
@@ -139,12 +138,13 @@ async def chat_room(stream: app.stream, worker: app.worker, struct: ChatRoomStru
                         send_mode=StreamSendModes.UNITYCAST,
                     )
                 case _:
-                    await stream.send(
-                        200,
-                        f"收到 {res}",
-                        {"type": "chat"},
-                        send_mode=StreamSendModes.UNITYCAST,
-                    )
+                    if res:  # 过滤空消息
+                        await stream.send(
+                            200,
+                            f"收到 {res}",
+                            {"type": "chat"},
+                            send_mode=StreamSendModes.UNITYCAST,
+                        )
     except Exception:
         await stream.send(500, "聊天室错误", format_exc())
 
@@ -184,6 +184,6 @@ if __name__ == "__main__":
 
     t_register_done = perf_counter()
     print(
-        f"窗口注册完成，耗时: {(t_register_done - t_register_start) * 1000:.2f}ms" )
-    print( f"从应用启动到窗口注册完成，总耗时: {(t_register_done - t_app_start) * 1000:.2f}ms")
+        f"窗口注册完成，耗时: {(t_register_done - t_register_start) * 1000:.2f}ms")
+    print(f"从应用启动到窗口注册完成，总耗时: {(t_register_done - t_app_start) * 1000:.2f}ms")
     app.run()

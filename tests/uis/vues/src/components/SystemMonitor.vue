@@ -145,22 +145,18 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-card);
   box-sizing: border-box;
   border: 1px solid var(--border-default);
-  height: auto;
-  flex: none;
 }
 
 .header {
   height: 36px;
   display: flex;
   align-items: center;
-  background: var(--bg-card-header);
+  background: var(--bg-card);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
-  display: flex;
-  padding-left: 6px;
+  padding-left: 5px;
   gap: 5px;
 }
 
@@ -170,7 +166,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
 }
 
 .header-icon {
@@ -211,7 +206,6 @@ onUnmounted(() => {
   flex-shrink: 0;
   border-radius: 5px;
   box-sizing: border-box;
-  background: transparent;
 }
 
 .footer {

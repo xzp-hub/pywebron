@@ -10,6 +10,6 @@ class Invoke(Handle):
 
         return decorator
 
-    async def json_response(self, code: int, mssg: str, data: Any):
-        self._logger_(payload := {'code': code, 'mssg': mssg, 'data': data})
+    async def json_response(self, stat: bool, mssg: str, data: Any = None):
+        self._logger_(payload := {'stat': stat, 'mssg': mssg, 'data': data})
         return {'window_id': self.window_id, 'handle_id': self.handle_id, 'payload': payload}

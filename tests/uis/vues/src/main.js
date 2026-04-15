@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import TDesign from 'tdesign-vue-next'
 import 'tdesign-vue-next/es/style/index.css'
+import '@fontsource/noto-sans-sc'
 import App from './App.vue'
 // 引入主题系统（包含 CSS 变量 + 全局基础样式）
 import './assets/main.css'

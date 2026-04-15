@@ -1,36 +1,38 @@
 <script setup>
-import { ref } from 'vue'
-import { DownloadIcon, ThunderIcon, WindowIcon } from 'tdesign-icons-vue-next'
+import {SaveIcon, CpuIcon, WindowIcon, AddIcon} from 'tdesign-icons-vue-next'
+import {ref} from 'vue'
 
-const pw = window.pywebron
-const invoke = pw?.interfaces?.invoke
+const invoke = window.pywebron?.interfaces?.invoke
 
-const downloadDisabled = ref(false)
-const cpuTaskDisabled = ref(false)
-const createWindowDisabled = ref(false)
+const saveFilesViaDialogRef = ref(false)
+const executeCpuIntensiveTasksRef = ref(false)
+const createNewWindowsAtRuntimeRef = ref(false)
 
-async function downloadFile() {
-  downloadDisabled.value = true
-  try {
-    await invoke('file_download_invoke')
-  } catch (e) { /* noop */ }
-  finally { downloadDisabled.value = false }
+async function saveFilesViaDialog() {
+  saveFilesViaDialogRef.value = true
+  const res = await invoke('save_files_via_dialog_invoke')
+  if (res['data']) {
+    console.log(res['mssg'], res['data'])
+  }
+  saveFilesViaDialogRef.value = false
 }
 
-async function runCpuTask() {
-  cpuTaskDisabled.value = true
-  try {
-    await invoke('cpu_intensive_task_invoke_command')
-  } catch (e) { /* noop */ }
-  finally { cpuTaskDisabled.value = false }
+async function executeCpuIntensiveTasks() {
+  executeCpuIntensiveTasksRef.value = true
+  const res = await invoke('execute_cpu_intensive_tasks_invoke')
+  if (res['data']) {
+    console.log(res['mssg'], res['data'])
+  }
+  executeCpuIntensiveTasksRef.value = false
 }
 
-async function createNewWindow() {
-  createWindowDisabled.value = true
-  try {
-    await invoke('running_create_window_invoke_handle')
-  } catch (e) { /* noop */ }
-  finally { createWindowDisabled.value = false }
+async function createNewWindowsAtRuntime() {
+  createNewWindowsAtRuntimeRef.value = true
+  const res = await invoke('create_new_windows_at_runtime_invoke')
+  if (res['data']) {
+    console.log(res['mssg'], res['data'])
+  }
+  createNewWindowsAtRuntimeRef.value = false
 }
 </script>
 
@@ -43,24 +45,31 @@ async function createNewWindow() {
       <span class="header-title">快捷操作</span>
     </div>
     <div class="body">
-      <t-button class="action-btn action-btn-primary" :disabled="downloadDisabled" @click="downloadFile" variant="outline" theme="primary">
-        <template #icon><DownloadIcon /></template>
-        下载文件
+      <t-button class="t-btn" :disabled="saveFilesViaDialogRef" @click="saveFilesViaDialog" variant="outline">
+        <template #icon>
+          <SaveIcon/>
+        </template>
+        通过对话框保存文件
       </t-button>
-      <t-button class="action-btn action-btn-success" :disabled="cpuTaskDisabled" @click="runCpuTask" variant="outline" theme="success">
-        <template #icon><ThunderIcon /></template>
+      <t-button class="t-btn" :disabled="executeCpuIntensiveTasksRef" @click="executeCpuIntensiveTasks"
+                variant="outline">
+        <template #icon>
+          <CpuIcon/>
+        </template>
         执行 CPU 密集任务
       </t-button>
-      <t-button class="action-btn action-btn-warning" :disabled="createWindowDisabled" @click="createNewWindow" variant="outline" theme="warning">
-        <template #icon><WindowIcon /></template>
-        创建新窗口
+      <t-button class="t-btn" :disabled="createNewWindowsAtRuntimeRef" @click="createNewWindowsAtRuntime"
+                variant="outline">
+        <template #icon>
+          <AddIcon/>
+        </template>
+        运行时创建新窗口
       </t-button>
     </div>
   </div>
 </template>
 
 <style scoped>
-
 .card {
   border-radius: 6px;
   display: flex;
@@ -69,8 +78,7 @@ async function createNewWindow() {
   background: var(--bg-card);
   box-sizing: border-box;
   border: 1px solid var(--border-default);
-  height: auto;
-  flex: none;
+  color: var(--text-secondary);
 }
 
 .header {
@@ -80,24 +88,21 @@ async function createNewWindow() {
   background: var(--bg-card-header);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
-  display: flex;
-  padding-left: 6px;
   gap: 5px;
 }
 
 .header-icon-box {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
 }
 
 .header-icon {
   width: 16px;
   height: 16px;
-  color: #722ED1;
+  color: #065e51;
 }
 
 .header-title {
@@ -123,14 +128,12 @@ async function createNewWindow() {
   background: #1a1b1d;
 }
 
-.action-btn {
+.t-button {
   height: 26px;
-  border-radius: 5px !important;
-  font-weight: 600;
-  font-size: 13px;
-  gap: 4px;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  border-radius: 5px;
+  font-size: 12px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
 }
 </style>

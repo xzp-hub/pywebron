@@ -75,7 +75,7 @@ onMounted(async () => {
       <t-button class="window-header-btn window-header-btn-maximize" variant="outline" shape="square"
                 :title="isMaximized ? '还原' : '最大化'" @click="windowAction('toggle')">
         <template #icon>
-          <svg v-if="!isMaximized" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg v-if="isMaximized" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
             <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
             <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
@@ -176,26 +176,73 @@ onMounted(async () => {
   color: #ffffff !important;
 }
 
-/* 前三个按钮：hover 无背景色，边框+图标跟随颜色 */
-.window-header-btn:hover {
-  background: transparent !important;
-  color: #165DFF !important;
-  border-color: #165DFF !important;
+/* 主题切换按钮：hover 紫色背景 + 白色图标 */
+.window-header-btn-theme:hover {
+  background: #8B5CF6 !important;
+  color: #fff !important;
+  border-color: #8B5CF6 !important;
 }
 
-.window-header-btn:hover svg,
-.window-header-btn:hover .t-icon {
-  color: #165DFF !important;
+.window-header-btn-theme:hover svg,
+.window-header-btn-theme:hover .t-icon {
+  color: #fff !important;
 }
 
-[data-theme="dark"] .window-header-btn:hover {
-  color: #6aa1ff !important;
-  border-color: #6aa1ff !important;
+[data-theme="dark"] .window-header-btn-theme:hover {
+  background: #8B5CF6 !important;
+  color: #fff !important;
+  border-color: #8B5CF6 !important;
 }
 
-[data-theme="dark"] .window-header-btn:hover svg,
-[data-theme="dark"] .window-header-btn:hover .t-icon {
-  color: #6aa1ff !important;
+[data-theme="dark"] .window-header-btn-theme:hover svg,
+[data-theme="dark"] .window-header-btn-theme:hover .t-icon {
+  color: #fff !important;
+}
+
+/* 最小化按钮：hover 蓝色背景 + 白色图标 */
+.window-header-btn-minimize:hover {
+  background: #3B82F6 !important;
+  color: #fff !important;
+  border-color: #3B82F6 !important;
+}
+
+.window-header-btn-minimize:hover svg,
+.window-header-btn-minimize:hover .t-icon {
+  color: #fff !important;
+}
+
+[data-theme="dark"] .window-header-btn-minimize:hover {
+  background: #3B82F6 !important;
+  color: #fff !important;
+  border-color: #3B82F6 !important;
+}
+
+[data-theme="dark"] .window-header-btn-minimize:hover svg,
+[data-theme="dark"] .window-header-btn-minimize:hover .t-icon {
+  color: #fff !important;
+}
+
+/* 最大化/还原按钮：hover 绿色背景 + 白色图标 */
+.window-header-btn-maximize:hover {
+  background: #10B981 !important;
+  color: #fff !important;
+  border-color: #10B981 !important;
+}
+
+.window-header-btn-maximize:hover svg,
+.window-header-btn-maximize:hover .t-icon {
+  color: #fff !important;
+}
+
+[data-theme="dark"] .window-header-btn-maximize:hover {
+  background: #10B981 !important;
+  color: #fff !important;
+  border-color: #10B981 !important;
+}
+
+[data-theme="dark"] .window-header-btn-maximize:hover svg,
+[data-theme="dark"] .window-header-btn-maximize:hover .t-icon {
+  color: #fff !important;
 }
 
 /* 关闭按钮：hover 红色背景 + 白色图标 */
@@ -207,6 +254,17 @@ onMounted(async () => {
 
 .window-header-btn-close:hover svg,
 .window-header-btn-close:hover .t-icon {
+  color: #fff !important;
+}
+
+[data-theme="dark"] .window-header-btn-close:hover {
+  background: #E34D59 !important;
+  color: #fff !important;
+  border-color: #E34D59 !important;
+}
+
+[data-theme="dark"] .window-header-btn-close:hover svg,
+[data-theme="dark"] .window-header-btn-close:hover .t-icon {
   color: #fff !important;
 }
 

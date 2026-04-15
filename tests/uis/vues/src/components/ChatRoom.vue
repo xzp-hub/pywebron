@@ -161,12 +161,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-card);
   box-sizing: border-box;
   border: 1px solid var(--border-default);
   height: auto;
   flex: 1;
-  overflow: hidden;
 }
 
 .header {
@@ -176,7 +174,6 @@ onUnmounted(() => {
   background: var(--bg-card-header);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
-  display: flex;
   padding-left: 6px;
   gap: 5px;
 }
@@ -187,7 +184,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: auto;
 }
 
 .header-icon {
@@ -213,7 +209,7 @@ onUnmounted(() => {
   background: var(--bg-card);
   min-height: 0;
   overflow: hidden;
-  padding: 5px;
+  padding: 0 6px;
 }
 
 [data-theme="dark"] .body {
@@ -247,6 +243,7 @@ onUnmounted(() => {
   border-top: 1px solid var(--border-default);
   padding: 5px;
   gap: 5px;
+  background: var(--bg-card);
 }
 
 
@@ -263,6 +260,18 @@ onUnmounted(() => {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+}
+
+.send-button:hover {
+  background: #06B6D4 !important;
+  color: #fff !important;
+  border-color: #06B6D4 !important;
+}
+
+[data-theme="dark"] .send-button:hover {
+  background: #06B6D4 !important;
+  color: #fff !important;
+  border-color: #06B6D4 !important;
 }
 
 .message-item {
@@ -300,7 +309,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 5px;
+  padding: 0;
 }
 
 .message-row-self {
@@ -313,7 +322,6 @@ onUnmounted(() => {
   border-radius: 5px;
   background: var(--avatar-bg);
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px var(--border-input);
 }
 
 .message-bubble {

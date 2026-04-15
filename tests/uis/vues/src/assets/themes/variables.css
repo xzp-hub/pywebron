@@ -31,7 +31,7 @@
 
   /* --- 边框色 --- */
   --border-default: rgba(0, 0, 0, 0.2);
-  --border-strong: rgba(0, 0, 0, 0.3);
+  --border-strong: rgb(117 117 117 / 0.3);
   --border-subtle: rgba(0, 0, 0, 0.15);
   --border-input: rgba(0, 0, 0, 0.3);
 
@@ -102,7 +102,7 @@
     --text-log-warn: #ffffff;
 
     --border-default: rgba(255, 255, 255, 0.2);
-    --border-strong: rgba(255, 255, 255, 0.3);
+    --border-strong: rgb(255 255 255 / 0.3);
     --border-subtle: rgba(255, 255, 255, 0.25);
     --border-input: rgba(255, 255, 255, 0.3);
 

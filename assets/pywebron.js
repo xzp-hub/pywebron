@@ -53,7 +53,7 @@
         return error;
     }
 
-    const MESSAGE_COLORS = [, '#165DFF', '#00B42A', '#165DFF', '#F7BA1E', '#F53F3F'];
+    const MESSAGE_COLORS = { success: '#00B42A', error: '#F59E0B' };
     let messageStyleInjected = false;
 
     function injectMessageStyle() {
@@ -66,14 +66,14 @@
         }
     }
 
-    function showMessage(mssg, type = 200, streamId = null) {
+    function showMessage(mssg, stat = true, streamId = null) {
         if (streamId) {
             if (streamMessages.get(streamId) === mssg) return;
             streamMessages.set(streamId, mssg);
         }
 
         if (!document.body) {
-            setTimeout(() => showMessage(mssg, type, streamId), 100);
+            setTimeout(() => showMessage(mssg, stat, streamId), 100);
             return;
         }
 
@@ -88,7 +88,7 @@
         }
 
         const messageEl = document.createElement('div');
-        const color = MESSAGE_COLORS[Math.min(Math.floor(type / 100), 5)] || '#00B42A';
+        const color = stat ? MESSAGE_COLORS.success : MESSAGE_COLORS.error;
 
         messageEl.style.cssText = `padding:12px 24px;background:${color};color:white;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,0.15);animation:slideIn .3s ease;cursor:pointer;transition:opacity .3s`;
         messageEl.textContent = mssg;
@@ -104,8 +104,11 @@
     }
 
     interceptors.response.push((response) => {
-        if (response && response.code >= 400 && response.mssg) {
-            showMessage(response.mssg, response.code);
+        if (response && response.stat === false) {
+            if (response.mssg) showMessage(response.mssg, false);
+            if (response.data) console.error(response.data);
+        } else if (response && response.stat === true && response.mssg) {
+            showMessage(response.mssg, true);
         }
     });
 
@@ -115,9 +118,9 @@
         if (handle_type === 'invoke') {
             const h = pending.get(request_id);
             if (h) {
-                if (payload && payload.error) {
-                    handleError(new Error(payload.error));
-                    h.reject(new Error(payload.error));
+                if (payload && payload.stat === false) {
+                    handleError(new Error(payload.mssg || payload.data));
+                    h.reject(new Error(payload.mssg || payload.data));
                 } else {
                     handleResponse(payload);
                     h.resolve(payload);
@@ -127,8 +130,8 @@
         } else if (handle_type === 'stream') {
             const s = streams.get(handle_id);
             if (s && s.onData) {
-                if (payload && payload.code !== undefined && payload.mssg) {
-                    showMessage(payload.mssg, payload.code, handle_id);
+                if (payload && payload.stat !== undefined && payload.mssg) {
+                    showMessage(payload.mssg, payload.stat, handle_id);
                 }
                 s.onData(payload);
             }
