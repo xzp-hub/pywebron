@@ -160,6 +160,8 @@ onMounted(async () => {
   align-items: center !important;
   justify-content: center !important;
   line-height: 1 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 .window-header-btn > .t-button__content,
@@ -182,7 +184,7 @@ onMounted(async () => {
 .window-header-btn-theme:hover {
   background: #8B5CF6 !important;
   color: #fff !important;
-  border-color: #8B5CF6 !important;
+  border: none !important;
 }
 
 .window-header-btn-theme:hover svg,
@@ -193,7 +195,7 @@ onMounted(async () => {
 [data-theme="dark"] .window-header-btn-theme:hover {
   background: #8B5CF6 !important;
   color: #fff !important;
-  border-color: #8B5CF6 !important;
+  border: none !important;
 }
 
 [data-theme="dark"] .window-header-btn-theme:hover svg,
@@ -205,7 +207,7 @@ onMounted(async () => {
 .window-header-btn-minimize:hover {
   background: #3B82F6 !important;
   color: #fff !important;
-  border-color: #3B82F6 !important;
+  border: none !important;
 }
 
 .window-header-btn-minimize:hover svg,
@@ -216,7 +218,7 @@ onMounted(async () => {
 [data-theme="dark"] .window-header-btn-minimize:hover {
   background: #3B82F6 !important;
   color: #fff !important;
-  border-color: #3B82F6 !important;
+  border: none !important;
 }
 
 [data-theme="dark"] .window-header-btn-minimize:hover svg,
@@ -228,7 +230,7 @@ onMounted(async () => {
 .window-header-btn-maximize:hover {
   background: #10B981 !important;
   color: #fff !important;
-  border-color: #10B981 !important;
+  border: none !important;
 }
 
 .window-header-btn-maximize:hover svg,
@@ -239,7 +241,7 @@ onMounted(async () => {
 [data-theme="dark"] .window-header-btn-maximize:hover {
   background: #10B981 !important;
   color: #fff !important;
-  border-color: #10B981 !important;
+  border: none !important;
 }
 
 [data-theme="dark"] .window-header-btn-maximize:hover svg,
@@ -251,7 +253,7 @@ onMounted(async () => {
 .window-header-btn-close:hover {
   background: #E34D59 !important;
   color: #fff !important;
-  border-color: #E34D59 !important;
+  border: none !important;
 }
 
 .window-header-btn-close:hover svg,
@@ -262,7 +264,7 @@ onMounted(async () => {
 [data-theme="dark"] .window-header-btn-close:hover {
   background: #E34D59 !important;
   color: #fff !important;
-  border-color: #E34D59 !important;
+  border: none !important;
 }
 
 [data-theme="dark"] .window-header-btn-close:hover svg,

@@ -1,175 +1,70 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { TerminalIcon } from 'tdesign-icons-vue-next'
+import BaseCard from './BaseCard.vue'
+import { useThemeDetect, useStream } from '@/composables/usePywebron'
 
-const isDark = ref(false)
-const pw = window.pywebron
-const stream = pw?.interfaces?.stream
-
-// 主题切换
-function applyTheme() {
-  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
-    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
-  
-  // 更新已存在的日志颜色
-  if (terminalLogsEl.value) {
-    const dark = isDark.value
-    const lines = terminalLogsEl.value.children
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const text = line.textContent || ''
-      if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
-        line.style.color = dark ? '#ff6b6b' : '#c0392b'
-      } else if (text.includes('[Performance]')) {
-        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
-      } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
-        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.7)'
-      } else if (text.includes('[Warning]') || text.includes('警告')) {
-        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.65)'
-      } else {
-        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
-      }
-    }
-  }
-}
-
-onMounted(() => {
-  applyTheme()
-  const observer = new MutationObserver(applyTheme)
-  observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})
-})
-
+const { isDark } = useThemeDetect()
 const terminalLogsEl = ref(null)
-let retryTimer = null
 
-async function startTerminalLog() {
-  try {
-    const terminalStream = await stream('terminal_log_stream')
-    terminalStream.recv((data) => {
-      if (!terminalLogsEl.value) return
-      const logs = data.data?.logs || data.logs || []
-      const frag = document.createDocumentFragment()
-      // 每次接收日志时都检查当前主题
-      const dark = document.documentElement.getAttribute('data-theme') === 'dark'
-      logs.forEach(log => {
-        const line = document.createElement('div')
-        let text = typeof log === 'string' ? log : JSON.stringify(log)
-        if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
-          line.style.color = dark ? '#ff6b6b' : '#c0392b'
-        } else if (text.includes('[Performance]')) {
-          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
-        } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
-          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.7)'
-        } else if (text.includes('[Warning]') || text.includes('警告')) {
-          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.65)'
-        } else {
-          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
-        }
-        line.textContent = text
-        frag.appendChild(line)
-      })
-      terminalLogsEl.value.appendChild(frag)
-      terminalLogsEl.value.scrollTop = terminalLogsEl.value.scrollHeight
-    })
-  } catch (e) { /* noop */ }
-}
-
-onMounted(() => {
-  startTerminalLog()
-})
-
-onUnmounted(() => {
-  if (retryTimer) clearTimeout(retryTimer)
-})
-
-// 辅助函数：读取 CSS 变量值，带 fallback
-function varToColor(varName, fallback) {
-  if (typeof getComputedStyle !== 'undefined') {
-    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback
+function getLogColor(text, dark) {
+  if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {
+    return dark ? '#ff6b6b' : '#c0392b'
+  } else if (text.includes('[Performance]')) {
+    return dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
+  } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {
+    return dark ? '#ffffff' : 'rgba(0,0,0,0.7)'
+  } else if (text.includes('[Warning]') || text.includes('警告')) {
+    return dark ? '#ffffff' : 'rgba(0,0,0,0.65)'
   }
-  return fallback
+  return dark ? '#ffffff' : 'rgba(0,0,0,0.75)'
 }
+
+function handleLogData(data) {
+  if (!terminalLogsEl.value) return
+  const logs = data.data?.logs || data.logs || []
+  const frag = document.createDocumentFragment()
+  const dark = isDark.value
+  
+  logs.forEach(log => {
+    const line = document.createElement('div')
+    const text = typeof log === 'string' ? log : JSON.stringify(log)
+    line.style.color = getLogColor(text, dark)
+    line.textContent = text
+    frag.appendChild(line)
+  })
+  
+  terminalLogsEl.value.appendChild(frag)
+  terminalLogsEl.value.scrollTop = terminalLogsEl.value.scrollHeight
+}
+
+useStream('terminal_log_stream', handleLogData, { autoRetry: false })
 </script>
 
 <template>
-  <div class="card">
-    <div class="header">
-      <div class="header-icon-box">
-        <TerminalIcon class="header-icon" />
-      </div>
-      <span class="header-title">终端日志</span>
-    </div>
+  <BaseCard title="终端日志">
+    <template #icon>
+      <TerminalIcon class="header-icon" />
+    </template>
     <div ref="terminalLogsEl" class="content-area"></div>
-  </div>
+  </BaseCard>
 </template>
 
 <style scoped>
-
-.card {
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--bg-card);
-  box-sizing: border-box;
-  border: 1px solid var(--border-default);
-  height: 100%;
-  max-height: 100%;
-  flex: 1;
-}
-
-.header {
-  height: 36px;
-  display: flex;
-  align-items: center;
-  background: var(--bg-card-header);
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--border-default);
-  display: flex;
-  padding-left: 6px;
-  gap: 5px;
-}
-
-.header-icon-box {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-}
-
 .header-icon {
   width: 16px;
   height: 16px;
   color: #F7BA1E;
 }
 
-.header-title {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1;
-}
-
-[data-theme="dark"] .header-title {
-  color: #ffffff;
-}
-
 .content-area {
-  flex: 1;
-  min-height: 0;
+  height: 100%;
   padding: 5px;
   overflow-y: auto;
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-log-normal);
-  background: var(--bg-card);
-}
-
-[data-theme="dark"] .content-area {
-  background: #1a1b1d;
-  color: #ffffff;
 }
 
 .content-area::-webkit-scrollbar {

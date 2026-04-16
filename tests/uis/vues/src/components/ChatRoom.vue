@@ -1,46 +1,16 @@
 <script setup>
-import {ref, onMounted, onUnmounted, nextTick} from 'vue'
-import {SendIcon, ChatIcon} from 'tdesign-icons-vue-next'
-import {Button} from 'tdesign-vue-next'
-
-const isDark = ref(false)
-const pw = window.pywebron
-const attributes = pw?.attributes || {}
-const stream = pw?.interfaces?.stream
-
-// 主题切换
-function applyTheme() {
-  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
-      || window.matchMedia?.('(prefers-color-scheme: dark)').matches
-}
-
-onMounted(() => {
-  applyTheme()
-  const observer = new MutationObserver(applyTheme)
-  observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})
-})
-
-function escapeHtml(str) {
-  if (!str) return ''
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
+import { ref, nextTick } from 'vue'
+import { SendIcon, ChatIcon } from 'tdesign-icons-vue-next'
+import BaseCard from './BaseCard.vue'
+import { useStream, useMessageDedup, escapeHtml, avatarCache, attributes } from '@/composables/usePywebron'
 
 const chatMessages = ref([])
 const chatInput = ref('')
 const chatMessagesEl = ref(null)
-const msgIds = new Set()
+const { isDuplicate } = useMessageDedup()
 const sentMsgs = new Set()
 
-const avatarCache = {
-  user: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user',
-  bot: 'https://api.dicebear.com/7.x/bottts/svg?seed=backend'
-}
-
-new Image().src = avatarCache.user
-new Image().src = avatarCache.bot
-
 let chatStream = null
-let retryTimer = null
 
 function displayMsg(data, isLocal = false) {
   const type = data.type || data.data?.type || 'message'
@@ -48,14 +18,7 @@ function displayMsg(data, isLocal = false) {
   if (!msg.trim()) return
 
   const id = type === 'system' ? `sys-${msg}` : `${isLocal ? 'local' : 'remote'}-${data.window_id || 'u'}-${msg}`
-  if (id && msgIds.has(id)) return
-  if (id) {
-    msgIds.add(id)
-    if (msgIds.size > 500) {
-      const iter = msgIds.values()
-      msgIds.delete(iter.next().value)
-    }
-  }
+  if (isDuplicate(id)) return
 
   chatMessages.value.push({
     id: Date.now() + Math.random(),
@@ -75,10 +38,12 @@ function displayMsg(data, isLocal = false) {
 function sendMsg() {
   const msg = chatInput.value.trim()
   if (!msg || !chatStream?.send) return
+  
   const sendId = `sent-${Date.now()}-${msg}`
   if (sentMsgs.has(sendId)) return
   sentMsgs.add(sendId)
-  displayMsg({type: 'message', message: msg, window_id: attributes?.window_id}, true)
+  
+  displayMsg({ type: 'message', message: msg, window_id: attributes?.window_id }, true)
   chatStream.send(msg)
   chatInput.value = ''
 }
@@ -87,38 +52,27 @@ function onKeydown(e) {
   if (e.key === 'Enter') sendMsg()
 }
 
-async function startChat() {
-  try {
-    chatStream = await stream('chat_room_stream')
-    chatStream.recv(displayMsg)
-  } catch (e) { /* noop */
-  }
-}
-
-onMounted(() => {
-  startChat()
-})
-
-onUnmounted(() => {
-  if (retryTimer) clearTimeout(retryTimer)
-})
+const { streamInstance } = useStream('chat_room_stream', displayMsg)
+chatStream = streamInstance
 </script>
 
 <template>
-  <div class="card">
-    <div class="header">
-      <div class="header-icon-box">
-        <ChatIcon class="header-icon"/>
-      </div>
-      <span class="header-title">聊天室</span>
-    </div>
-    <div class="body">
+  <BaseCard title="聊天室">
+    <template #icon>
+      <ChatIcon class="header-icon" />
+    </template>
+    
+    <div class="chat-body">
       <div ref="chatMessagesEl" class="message-list">
         <div
-            v-for="m in chatMessages"
-            :key="m.id"
-            class="message-item"
-            :class="{ 'message-system': m.type === 'system', 'message-self': m.isLocal && m.type !== 'system', 'message-other': !m.isLocal && m.type !== 'system' }"
+          v-for="m in chatMessages"
+          :key="m.id"
+          class="message-item"
+          :class="{ 
+            'message-system': m.type === 'system', 
+            'message-self': m.isLocal && m.type !== 'system', 
+            'message-other': !m.isLocal && m.type !== 'system' 
+          }"
         >
           <template v-if="m.type === 'system'">
             <div class="message-bubble" v-html="m.msg"></div>
@@ -138,82 +92,38 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
-    <div class="footer">
-      <t-input
+    
+    <template #footer>
+      <div class="chat-footer">
+        <t-input
           v-model="chatInput"
           placeholder="输入消息按回车发送..."
           :maxlength="200"
           @keydown="onKeydown"
-      />
-      <t-button class="send-button" variant="outline" @click="sendMsg" size="small">
-        <template #icon>
-          <SendIcon/>
-        </template>
-      </t-button>
-    </div>
-  </div>
+        />
+        <t-button class="send-button" variant="outline" @click="sendMsg" size="small">
+          <template #icon>
+            <SendIcon />
+          </template>
+        </t-button>
+      </div>
+    </template>
+  </BaseCard>
 </template>
 
 <style scoped>
-
-.card {
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-sizing: border-box;
-  border: 1px solid var(--border-default);
-  height: auto;
-  flex: 1;
-}
-
-.header {
-  height: 36px;
-  display: flex;
-  align-items: center;
-  background: var(--bg-card-header);
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--border-default);
-  padding-left: 6px;
-  gap: 5px;
-}
-
-.header-icon-box {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .header-icon {
   width: 16px;
   height: 16px;
   color: #00B42A;
 }
 
-.header-title {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1;
-}
-
-[data-theme="dark"] .header-title {
-  color: #ffffff;
-}
-
-.body {
-  flex: 1;
+.chat-body {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--bg-card);
-  min-height: 0;
-  overflow: hidden;
   padding: 0 6px;
-}
-
-[data-theme="dark"] .body {
-  background: #1a1b1d;
+  overflow: hidden;
 }
 
 .message-list {
@@ -234,18 +144,14 @@ onUnmounted(() => {
   border-radius: 5px;
 }
 
-.footer {
-  height: 36px;
+.chat-footer {
+  width: 100%;
   display: flex;
   align-items: center;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  border-top: 1px solid var(--border-default);
   padding: 5px;
   gap: 5px;
-  background: var(--bg-card);
+  box-sizing: border-box;
 }
-
 
 :deep(.t-input) {
   height: 26px;
@@ -273,20 +179,9 @@ onUnmounted(() => {
   height: 26px;
   width: 52px;
   flex-shrink: 0;
-  position: relative;
-  z-index: 2;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
 }
 
 .send-button:hover {
-  background: #06B6D4 !important;
-  color: #fff !important;
-  border-color: #06B6D4 !important;
-}
-
-[data-theme="dark"] .send-button:hover {
   background: #06B6D4 !important;
   color: #fff !important;
   border-color: #06B6D4 !important;
