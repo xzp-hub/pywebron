@@ -271,7 +271,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-
 .card {
   border-radius: 6px;
   display: flex;
@@ -287,31 +286,33 @@ onUnmounted(() => {
 .header {
   height: 36px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  background: var(--bg-card-header);
+  background: var(--bg-card);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
-  padding-left: 6px;
-  justify-content: space-between;
+  gap: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  font-size: 12px;
 }
 
 .header-icon-box {
-  width: 36px;
-  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
-  color: #8201f8;
+  width: 14px;
+  height: 14px;
+  color: #f80663;
 }
 
 .header-title {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
+  line-height: 1;
 }
 
 [data-theme="dark"] .header-title {
@@ -329,10 +330,6 @@ onUnmounted(() => {
   gap: 5px;
 }
 
-.header-item:nth-child(3) {
-  gap: 0;
-  margin-right: 5px;
-}
 
 .io-type-switch {
   position: relative;
@@ -361,14 +358,13 @@ onUnmounted(() => {
 
 .switch-thumb {
   position: absolute;
-  left: 2px;
-  top: 2px;
-  width: calc(50% - 4px);
-  height: calc(100% - 4px);
-  background: #F59E0B;
-  border-radius: 3px;
+  left: 4px;
+  top: 4px;
+  width: calc(50% - 5px);
+  height: calc(100% - 7px);
+  background: rgb(94 43 2);
+  border-radius: 4px;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .switch-thumb-right {
@@ -415,7 +411,7 @@ onUnmounted(() => {
 }
 
 .legend-text {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -462,7 +458,7 @@ onUnmounted(() => {
 
 .footer-item {
   flex: 1;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;

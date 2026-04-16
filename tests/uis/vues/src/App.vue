@@ -58,11 +58,10 @@ import TerminalLog from '@/components/TerminalLog.vue'
 }
 
 .window-top-content {
-  flex: 1;
+  height: 560px;
   display: flex;
   flex-direction: row;
   gap: 5px;
-  min-height: 0;
 }
 
 .window-left-content {

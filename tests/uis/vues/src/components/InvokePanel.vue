@@ -76,28 +76,28 @@ async function createNewWindowsAtRuntime() {
   height: 36px;
   display: flex;
   align-items: center;
-  background: var(--bg-card-header);
+  background: var(--bg-card);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
   gap: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
 .header-icon-box {
-  width: 30px;
-  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
-  color: #065e51;
+  width: 14px;
+  height: 14px;
+  color: #a750ff;
 }
 
 .header-title {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1;
 }

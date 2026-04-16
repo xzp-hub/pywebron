@@ -10,7 +10,7 @@ const stream = pw?.interfaces?.stream
 // 主题切换：监听系统偏好 + 手动切换
 function applyTheme() {
   isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'
-    || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+      || window.matchMedia?.('(prefers-color-scheme: dark)').matches
 }
 
 onMounted(() => {
@@ -25,9 +25,9 @@ onMounted(() => {
 })
 
 const monitors = [
-  {key: 'cpu', label: 'CPU 使用率', color: '#00D4FF'},
-  {key: 'ram', label: '内存使用率', color: '#00FF88'},
-  {key: 'vrm', label: '交换区使用率', color: '#FF6B6B'}
+  {key: 'cpu', label: 'CPU 使用率', color: '#FF6B6B'},
+  {key: 'ram', label: '内存使用率', color: '#06B6D4'},
+  {key: 'vrm', label: '交换区使用率', color: '#8B5CF6'}
 ]
 
 const gaugeData = reactive({
@@ -156,26 +156,25 @@ onUnmounted(() => {
   background: var(--bg-card);
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-default);
-  padding-left: 5px;
   gap: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
 .header-icon-box {
-  width: 36px;
-  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .header-icon {
-  width: 16px;
-  height: 16px;
-  color: #9a8600;
+  width: 14px;
+  height: 14px;
+  color: #f806d8;
 }
 
 .header-title {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1;
 }
