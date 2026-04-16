@@ -6,7 +6,8 @@ const props = defineProps({
   leftLabel: {type: String, default: '左'},
   rightLabel: {type: String, default: '右'},
   leftValue: {type: String, default: 'left'},
-  rightValue: {type: String, default: 'right'}
+  rightValue: {type: String, default: 'right'},
+  activeColor: {type: String, default: 'rgb(94 43 2)'}
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -20,7 +21,7 @@ function toggle() {
 </script>
 
 <template>
-  <div class="thumbs" :class="{right: isRight}" @click="toggle">
+  <div class="thumbs" :class="{right: isRight}" :style="{'--active-color': activeColor}" @click="toggle">
     <span class="slider" :class="{active: !isRight}">{{ leftLabel }}</span>
     <span class="slider" :class="{active: isRight}">{{ rightLabel }}</span>
   </div>
@@ -39,15 +40,17 @@ function toggle() {
   &::before {
     content: '';
     position: absolute;
-    inset: 3px auto 3px 3px;
-    width: calc(50% - 6px);
-    background: rgb(94 43 2);
+    top: 3.5px;
+    bottom: 3.5px;
+    left: 4px;
+    width: calc(50% - 8px);
+    background: var(--active-color, rgb(94 43 2));
     border-radius: 2px;
     transition: transform .25s ease;
   }
 
   &.right::before {
-    transform: translateX(calc(100% + 6px));
+    transform: translateX(calc(100% + 8px));
   }
 }
 
@@ -61,6 +64,7 @@ function toggle() {
   justify-content: center;
   position: relative;
   z-index: 1;
+  line-height: 1;
 
   &.active {
     color: #fff;
