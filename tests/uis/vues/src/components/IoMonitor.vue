@@ -246,22 +246,13 @@ onUnmounted(() => {
         <span class="legend-text">{{ ioPanel.legText2 }}</span>
       </div>
       <div class="header-item">
-        <t-button
-            class="io-type-btn"
-            :class="{ active: ioType === 'disk' }"
-            @click="ioType = 'disk'"
-            size="small"
-            variant="outline"
-        >磁盘IO
-        </t-button>
-        <t-button
-            class="io-type-btn"
-            :class="{ active: ioType === 'net' }"
-            @click="ioType = 'net'"
-            size="small"
-            variant="outline"
-        >网络IO
-        </t-button>
+        <div class="io-type-switch" @click="ioType = ioType === 'disk' ? 'net' : 'disk'">
+          <div class="switch-track">
+            <div class="switch-thumb" :class="{ 'switch-thumb-right': ioType === 'net' }"></div>
+          </div>
+          <span class="switch-label switch-label-left" :class="{ active: ioType === 'disk' }">磁盘IO</span>
+          <span class="switch-label switch-label-right" :class="{ active: ioType === 'net' }">网络IO</span>
+        </div>
       </div>
     </div>
     <div class="body">
@@ -340,34 +331,76 @@ onUnmounted(() => {
 }
 
 .header-item:nth-child(3) {
-  gap: 5px;
-}
-
-.io-type-btn {
-  flex: 1;
-  height: 26px;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.io-type-btn:last-child {
+  gap: 0;
   margin-right: 5px;
 }
 
-.io-type-btn:hover,
-.io-type-btn.active {
-  background: #F59E0B !important;
-  color: #fff !important;
-  border-color: #F59E0B !important;
+.io-type-switch {
+  position: relative;
+  width: 100px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
 }
 
+.switch-track {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  overflow: hidden;
+}
 
-[data-theme="dark"] .io-type-btn:hover,
-[data-theme="dark"] .io-type-btn.active:hover {
-  background: #F59E0B !important;
-  color: #fff !important;
-  border-color: #F59E0B !important;
+[data-theme="dark"] .switch-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.switch-thumb {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: calc(50% - 4px);
+  height: calc(100% - 4px);
+  background: #F59E0B;
+  border-radius: 3px;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.switch-thumb-right {
+  left: calc(50% + 2px);
+}
+
+.switch-label {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: color 0.3s;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2px;
+}
+
+.switch-label.active {
+  color: #fff;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .switch-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="dark"] .switch-label.active {
+  color: #fff;
 }
 
 .header-item:nth-child(2) {
