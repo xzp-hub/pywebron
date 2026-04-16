@@ -56,28 +56,27 @@ function toggle() {
 .thumbs::before {
   content: '';
   position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 2px;
-  width: calc(50% - 4px);
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 6px);
+  height: calc(100% - 6px);
   background: rgb(94 43 2);
   border-radius: 2px;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .thumbs.right::before {
-  transform: translateX(calc(100% + 4px));
+  transform: translateX(calc(100% + 6px));
 }
 
 .slider {
   flex: 1;
   font-size: 11px;
   color: var(--text-secondary);
-  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 2px;
   z-index: 1;
 }
 
