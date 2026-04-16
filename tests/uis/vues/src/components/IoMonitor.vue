@@ -46,29 +46,28 @@ const lastIoData = ref(null)
 
 const IO_MAX_POINTS = 5
 const IO_COLORS = {
-  disk: {read: '#00D4FF', write: '#FF6B6B'},
-  net: {upload: '#00FF88', download: '#FFB347'}
+  disk: {read: '#1c03ff', write: '#00ff22'},
+  net: {read: '#1c03ff', write: '#00ff22'}
 }
 
 const ioHistory = reactive({
   disk: {read: [], write: [], times: []},
-  net: {upload: [], download: [], times: []}
+  net: {read: [], write: [], times: []}
 })
 
 const ioPanel = reactive({
   label1: '总读取', label2: '总写入',
   val1: '0 MB', val2: '0 MB',
-  color1: '#00D4FF', color2: '#FF6B6B',
+  color1: '#1c03ff', color2: '#00ff22',
   legText1: '读取', legText2: '写入'
 })
-
 const chartOption = computed(() => {
   const type = ioType.value
   const history = ioHistory[type]
   const colors = IO_COLORS[type]
-  const keys = type === 'disk' ? ['read', 'write'] : ['upload', 'download']
+  const keys = type === 'disk' ? ['read', 'write'] : ['read', 'write']
   const labels = type === 'disk' ? ['读取', '写入'] : ['读取', '写入']
-  const colorKeys = type === 'disk' ? ['read', 'write'] : ['upload', 'download']
+  const colorKeys = type === 'disk' ? ['read', 'write'] : ['read', 'write']
   const dark = isDark.value
 
   const times = history.times.slice(-IO_MAX_POINTS)
@@ -176,17 +175,17 @@ function updateIoPanel(ios) {
     ioPanel.label2 = '总写入'
     ioPanel.val1 = formatTotal(ios.disk_io.read_total)
     ioPanel.val2 = formatTotal(ios.disk_io.write_total)
-    ioPanel.color1 = '#00D4FF';
-    ioPanel.color2 = '#FF6B6B'
+    ioPanel.color1 = '#1c03ff';
+    ioPanel.color2 = '#00ff22'
     ioPanel.legText1 = '读取';
     ioPanel.legText2 = '写入'
   } else {
-    ioPanel.label1 = '总读取';
-    ioPanel.label2 = '总接收'
-    ioPanel.val1 = formatTotal(ios.net_io.write_total)
-    ioPanel.val2 = formatTotal(ios.net_io.read_total)
-    ioPanel.color1 = '#00FF88';
-    ioPanel.color2 = '#FFB347'
+    ioPanel.label1 = '总下载';
+    ioPanel.label2 = '总上传'
+    ioPanel.val1 = formatTotal(ios.net_io.read_total)
+    ioPanel.val2 = formatTotal(ios.net_io.write_total)
+    ioPanel.color1 = '#1c03ff';
+    ioPanel.color2 = '#00ff22'
     ioPanel.legText1 = '读取';
     ioPanel.legText2 = '写入'
   }
@@ -201,8 +200,8 @@ function onIoUpdate(e) {
 
   ioHistory.disk.read.push(diskReadKB)
   ioHistory.disk.write.push(diskWriteKB)
-  ioHistory.net.upload.push(netWriteKB)
-  ioHistory.net.download.push(netReadKB)
+  ioHistory.net.read.push(netReadKB)
+  ioHistory.net.write.push(netWriteKB)
   ioHistory.disk.times.push(time)
   ioHistory.net.times.push(time)
 
