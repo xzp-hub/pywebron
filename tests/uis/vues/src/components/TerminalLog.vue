@@ -1,8 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { TerminalIcon } from 'tdesign-icons-vue-next'
 import BaseCard from './BaseCard.vue'
-import { useThemeDetect, useStream } from '@/composables/usePywebron'
+import { useThemeDetect } from '@/composables/usePywebron'
 
 const { isDark } = useThemeDetect()
 const terminalLogsEl = ref(null)
@@ -38,7 +38,22 @@ function handleLogData(data) {
   terminalLogsEl.value.scrollTop = terminalLogsEl.value.scrollHeight
 }
 
-useStream('terminal_log_stream', handleLogData, { autoRetry: false })
+async function startTerminalLog() {
+  try {
+    if (!window.pywebron?.interfaces?.stream) {
+      setTimeout(startTerminalLog, 100)
+      return
+    }
+    const terminalStream = await window.pywebron.interfaces.stream('terminal_log_stream')
+    terminalStream.recv(handleLogData)
+  } catch (e) {
+    console.error('Terminal log stream error:', e)
+  }
+}
+
+onMounted(() => {
+  startTerminalLog()
+})
 </script>
 
 <template>

@@ -1,8 +1,8 @@
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import { SendIcon, ChatIcon } from 'tdesign-icons-vue-next'
 import BaseCard from './BaseCard.vue'
-import { useStream, useMessageDedup, escapeHtml, avatarCache, attributes } from '@/composables/usePywebron'
+import { useMessageDedup, escapeHtml, avatarCache, attributes } from '@/composables/usePywebron'
 
 const chatMessages = ref([])
 const chatInput = ref('')
@@ -52,8 +52,22 @@ function onKeydown(e) {
   if (e.key === 'Enter') sendMsg()
 }
 
-const { streamInstance } = useStream('chat_room_stream', displayMsg)
-chatStream = streamInstance
+async function startChat() {
+  try {
+    if (!window.pywebron?.interfaces?.stream) {
+      setTimeout(startChat, 100)
+      return
+    }
+    chatStream = await window.pywebron.interfaces.stream('chat_room_stream')
+    chatStream.recv(displayMsg)
+  } catch (e) {
+    console.error('Chat stream error:', e)
+  }
+}
+
+onMounted(() => {
+  startChat()
+})
 </script>
 
 <template>
