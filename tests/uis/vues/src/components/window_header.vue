@@ -4,7 +4,7 @@
 <script setup>
 import {ref, onMounted} from 'vue'
 import {MinusIcon, FullscreenIcon, CloseIcon, BrightnessIcon, MoonIcon} from 'tdesign-icons-vue-next'
-import {useTheme} from '@/composables/useTheme'
+import {useTheme} from '@/composables/use_theme'
 
 const pw = window.pywebron
 const isMaximized = ref(false)

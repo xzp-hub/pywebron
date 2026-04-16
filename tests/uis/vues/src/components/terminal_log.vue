@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { TerminalIcon } from 'tdesign-icons-vue-next'
-import BaseCard from './BaseCard.vue'
-import { useThemeDetect } from '@/composables/usePywebron'
+import BaseCard from './base_card.vue'
+import { useThemeDetect } from '@/composables/use_pywebron'
 
 const { isDark } = useThemeDetect()
 const terminalLogsEl = ref(null)

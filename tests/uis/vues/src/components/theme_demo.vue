@@ -1,5 +1,5 @@
 <script setup>
-import { useTheme } from '@/composables/useTheme'
+import { useTheme } from '@/composables/use_theme'
 
 const { currentTheme, toggleTheme, setTheme } = useTheme()
 </script>

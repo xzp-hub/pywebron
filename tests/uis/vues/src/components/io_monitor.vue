@@ -1,8 +1,8 @@
 <script setup>
-import {ref, onMounted, onUnmounted, reactive, computed, watch} from 'vue'
+import {ref, onMounted, onUnmounted, reactive, computed} from 'vue'
 import VChart from 'vue-echarts'
 import {ChartLineDataIcon} from 'tdesign-icons-vue-next'
-import {Button} from 'tdesign-vue-next'
+import TypeSwitch from './type_switch.vue'
 
 const isDark = ref(false)
 
@@ -159,15 +159,7 @@ const chartOption = computed(() => {
   }
 })
 
-function switchIoType(type) {
-  if (lastIoData.value) {
-    updateIoPanel(lastIoData.value.ios)
-  }
-}
 
-watch(ioType, (val) => {
-  switchIoType(val)
-})
 
 function updateIoPanel(ios) {
   if (ioType.value === 'disk') {
@@ -245,13 +237,7 @@ onUnmounted(() => {
         <span class="legend-text">{{ ioPanel.legText2 }}</span>
       </div>
       <div class="header-item">
-        <div class="io-type-switch" @click="ioType = ioType === 'disk' ? 'net' : 'disk'">
-          <div class="switch-track">
-            <div class="switch-thumb" :class="{ 'switch-thumb-right': ioType === 'net' }"></div>
-          </div>
-          <span class="switch-label switch-label-left" :class="{ active: ioType === 'disk' }">磁盘IO</span>
-          <span class="switch-label switch-label-right" :class="{ active: ioType === 'net' }">网络IO</span>
-        </div>
+        <TypeSwitch v-model="ioType" left-label="磁盘IO" right-label="网络IO" left-value="disk" right-value="net"/>
       </div>
     </div>
     <div class="body">
@@ -328,74 +314,6 @@ onUnmounted(() => {
 
 .header-item:nth-child(1), .header-item:nth-child(2) {
   gap: 5px;
-}
-
-
-.io-type-switch {
-  position: relative;
-  width: 100px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
-}
-
-.switch-track {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-[data-theme="dark"] .switch-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.switch-thumb {
-  position: absolute;
-  left: 4px;
-  top: 4px;
-  width: calc(50% - 5px);
-  height: calc(100% - 7px);
-  background: rgb(94 43 2);
-  border-radius: 4px;
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.switch-thumb-right {
-  left: calc(50% + 2px);
-}
-
-.switch-label {
-  position: relative;
-  z-index: 1;
-  font-size: 11px;
-  color: var(--text-secondary);
-  transition: color 0.3s;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 2px;
-}
-
-.switch-label.active {
-  color: #fff;
-  font-weight: 500;
-}
-
-[data-theme="dark"] .switch-label {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme="dark"] .switch-label.active {
-  color: #fff;
 }
 
 .header-item:nth-child(2) {

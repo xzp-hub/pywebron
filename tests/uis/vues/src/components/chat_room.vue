@@ -1,8 +1,8 @@
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
 import { SendIcon, ChatIcon } from 'tdesign-icons-vue-next'
-import BaseCard from './BaseCard.vue'
-import { useMessageDedup, escapeHtml, avatarCache, attributes } from '@/composables/usePywebron'
+import BaseCard from './base_card.vue'
+import { useMessageDedup, escapeHtml, avatarCache, attributes } from '@/composables/use_pywebron'
 
 const chatMessages = ref([])
 const chatInput = ref('')
