@@ -113,7 +113,8 @@ function varToColor(varName, fallback) {
   background: var(--bg-card);
   box-sizing: border-box;
   border: 1px solid var(--border-default);
-  height: auto;
+  height: 100%;
+  max-height: 100%;
   flex: 1;
 }
 

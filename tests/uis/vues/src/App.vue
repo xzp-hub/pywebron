@@ -21,7 +21,9 @@ import TerminalLog from '@/components/TerminalLog.vue'
           <ChatRoom/>
         </div>
       </div>
-      <TerminalLog/>
+      <div class="terminal-log-wrapper">
+        <TerminalLog/>
+      </div>
     </div>
   </div>
 </template>
@@ -80,5 +82,14 @@ import TerminalLog from '@/components/TerminalLog.vue'
 .window-right-content > :last-child {
   flex: 1;
   min-height: 0;
+}
+
+.terminal-log-wrapper {
+  height: 200px;
+  min-height: 150px;
+  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>
