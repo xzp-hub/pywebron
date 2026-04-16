@@ -36,12 +36,9 @@ function toggle() {
 </script>
 
 <template>
-  <div class="io-type-switch" @click="toggle">
-    <div class="switch-track">
-      <div class="switch-thumb" :class="{ 'switch-thumb-right': isRight }"></div>
-    </div>
-    <div class="switch-label switch-label-left" :class="{ active: !isRight }">{{ leftLabel }}</div>
-    <div class="switch-label switch-label-right" :class="{ active: isRight }">{{ rightLabel }}</div>
+  <div class="io-type-switch" :class="{ 'switch-right': isRight }" @click="toggle">
+    <div class="switch-label" :class="{ active: !isRight }">{{ leftLabel }}</div>
+    <div class="switch-label" :class="{ active: isRight }">{{ rightLabel }}</div>
   </div>
 </template>
 
@@ -51,56 +48,52 @@ function toggle() {
   width: 100px;
   height: 26px;
   display: flex;
-  align-items: center;
   cursor: pointer;
   user-select: none;
-}
-
-.switch-track {
-  position: absolute;
-  width: 100%;
-  height: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: 3px;
   overflow: hidden;
 }
 
-[data-theme="dark"] .switch-track {
+[data-theme="dark"] .io-type-switch {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.switch-thumb {
+.io-type-switch::before {
+  content: '';
   position: absolute;
+  top: 3px;
   left: 4px;
-  top: 4px;
   width: calc(50% - 5px);
-  height: calc(100% - 7px);
+  height: calc(100% - 6px);
   background: rgb(94 43 2);
   border-radius: 2px;
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.switch-thumb-right {
-  left: calc(50% + 2px);
+.io-type-switch.switch-right::before {
+  transform: translateX(calc(100% + 2px));
 }
 
 .switch-label {
   position: relative;
   z-index: 1;
+  flex: 1;
   font-size: 11px;
   color: var(--text-secondary);
   transition: color 0.3s;
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  padding: 0;
-  line-height: 1;
+}
+
+.switch-label:first-child {
+  left: 2px;
+}
+
+.switch-label:last-child {
+  right: 1px;
 }
 
 .switch-label.active {
