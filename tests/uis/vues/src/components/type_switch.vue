@@ -2,43 +2,27 @@
 import {computed} from 'vue'
 
 const props = defineProps({
-  modelValue: {
-    type: String,
-    required: true
-  },
-  leftLabel: {
-    type: String,
-    default: '左'
-  },
-  rightLabel: {
-    type: String,
-    default: '右'
-  },
-  leftValue: {
-    type: String,
-    default: 'left'
-  },
-  rightValue: {
-    type: String,
-    default: 'right'
-  }
+  modelValue: {type: String, required: true},
+  leftLabel: {type: String, default: '左'},
+  rightLabel: {type: String, default: '右'},
+  leftValue: {type: String, default: 'left'},
+  rightValue: {type: String, default: 'right'}
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
-
 const isRight = computed(() => props.modelValue === props.rightValue)
 
 function toggle() {
-  const newValue = isRight.value ? props.leftValue : props.rightValue
-  emit('update:modelValue', newValue)
-  emit('change', newValue)
+  const val = isRight.value ? props.leftValue : props.rightValue
+  emit('update:modelValue', val)
+  emit('change', val)
 }
 </script>
 
 <template>
-  <div class="thumbs" :class="{ right: isRight }" @click="toggle">
-    <div class="slider" :class="{ active: !isRight }">{{ leftLabel }}</div>
-    <div class="slider" :class="{ active: isRight }">{{ rightLabel }}</div>
+  <div class="thumbs" :class="{right: isRight}" @click="toggle">
+    <span class="slider" :class="{active: !isRight}">{{ leftLabel }}</span>
+    <span class="slider" :class="{active: isRight}">{{ rightLabel }}</span>
   </div>
 </template>
 
@@ -51,49 +35,45 @@ function toggle() {
   border: 1px solid var(--border-default);
   border-radius: 3px;
   position: relative;
-}
 
-.thumbs::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 2px;
-  width: calc(50% - 4px);
-  background: rgb(94 43 2);
-  border-radius: 2px;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 3px auto 3px 3px;
+    width: calc(50% - 6px);
+    background: rgb(94 43 2);
+    border-radius: 2px;
+    transition: transform .25s ease;
+  }
 
-.thumbs.right::before {
-  transform: translateX(calc(100% + 4px));
+  &.right::before {
+    transform: translateX(calc(100% + 6px));
+  }
 }
 
 .slider {
   flex: 1;
   font-size: 11px;
   color: var(--text-secondary);
-  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color .25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 2px;
+  position: relative;
   z-index: 1;
+
+  &.active {
+    color: #fff;
+  }
 }
 
-.slider.active {
-  color: #fff;
-}
+[data-theme="dark"] {
+  .thumbs {
+    background: rgba(255, 255, 255, .05);
+  }
 
-[data-theme="dark"] .thumbs {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="dark"] .slider {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme="dark"] .slider.active {
-  color: #fff;
+  .slider {
+    color: rgba(255, 255, 255, .6);
+  }
 }
 </style>
