@@ -38,6 +38,8 @@ import TerminalLog from '@/components/TerminalLog.vue'
   background: #eeeeee;
   border-radius: 6px;
   border: 1px solid var(--border-default);
+  min-height: 0;
+  height: 100%;
 }
 
 [data-theme="dark"] .window {
@@ -85,9 +87,8 @@ import TerminalLog from '@/components/TerminalLog.vue'
 }
 
 .terminal-log-wrapper {
-  height: 200px;
-  min-height: 150px;
-  max-height: 300px;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
