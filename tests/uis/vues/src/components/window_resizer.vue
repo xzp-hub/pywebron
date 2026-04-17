@@ -1,3 +1,9 @@
+<script>
+export default {
+  name: 'window_resizer'
+}
+</script>
+
 <template>
   <div id="resize-area" class="window-resize-overlay">
     <div class="window-resize-corner-top-left"></div>

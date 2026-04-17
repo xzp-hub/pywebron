@@ -1,3 +1,9 @@
+<script>
+export default {
+  name: 'theme_showcase'
+}
+</script>
+
 <script setup>
 import { useTheme } from '@/composables/use_theme'
 

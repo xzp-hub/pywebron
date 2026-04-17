@@ -1,10 +1,10 @@
 <script setup>
-import WindowHeader from '@/components/window_header.vue'
-import SystemMonitor from '@/components/system_monitor.vue'
-import IoMonitor from '@/components/io_monitor.vue'
-import ChatRoom from '@/components/chat_room.vue'
-import InvokePanel from '@/components/invoke_panel.vue'
-import TerminalLog from '@/components/terminal_log.vue'
+import WindowHeader from '@/components/title_bar.vue'
+import SystemMonitor from '@/components/performance_chart.vue'
+import IoMonitor from '@/components/network_chart.vue'
+import ChatRoom from '@/components/message_panel.vue'
+import InvokePanel from '@/components/action_panel.vue'
+import TerminalLog from '@/components/console_viewer.vue'
 </script>
 
 <template>

@@ -1,8 +1,14 @@
+<script>
+export default {
+  name: 'network_chart'
+}
+</script>
+
 <script setup>
 import {ref, onMounted, onUnmounted, reactive, computed} from 'vue'
 import VChart from 'vue-echarts'
 import {ChartLineDataIcon} from 'tdesign-icons-vue-next'
-import TypeSwitch from './type_switch.vue'
+import TypeSwitch from './toggle_switch.vue'
 
 const isDark = ref(false)
 

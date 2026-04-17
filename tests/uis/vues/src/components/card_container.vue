@@ -1,3 +1,9 @@
+<script>
+export default {
+  name: 'card_container'
+}
+</script>
+
 <script setup>
 defineProps({
   title: String,

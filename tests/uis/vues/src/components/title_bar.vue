@@ -1,6 +1,12 @@
 
 
 
+<script>
+export default {
+  name: 'title_bar'
+}
+</script>
+
 <script setup>
 import {ref, onMounted} from 'vue'
 import {MinusIcon, FullscreenIcon, CloseIcon, BrightnessIcon, MoonIcon} from 'tdesign-icons-vue-next'

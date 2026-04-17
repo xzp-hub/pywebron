@@ -1,3 +1,9 @@
+<script>
+export default {
+  name: 'toggle_switch'
+}
+</script>
+
 <script setup>
 import {computed} from 'vue'
 

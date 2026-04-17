@@ -1,13 +1,18 @@
+<script>
+export default {
+  name: 'message_panel'
+}
+</script>
+
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
-import { SendIcon, ChatIcon } from 'tdesign-icons-vue-next'
-import BaseCard from './base_card.vue'
-import { useMessageDedup, escapeHtml, avatarCache, attributes } from '@/composables/use_pywebron'
+import {SendIcon, ChatIcon} from 'tdesign-icons-vue-next'
+import {ref, nextTick, onMounted} from 'vue'
+import {useMessageDedup, escapeHtml, avatarCache, attributes} from '@/composables/use_pywebron'
 
 const chatMessages = ref([])
 const chatInput = ref('')
 const chatMessagesEl = ref(null)
-const { isDuplicate } = useMessageDedup()
+const {isDuplicate} = useMessageDedup()
 const sentMsgs = new Set()
 
 let chatStream = null
@@ -38,12 +43,12 @@ function displayMsg(data, isLocal = false) {
 function sendMsg() {
   const msg = chatInput.value.trim()
   if (!msg || !chatStream?.send) return
-  
+
   const sendId = `sent-${Date.now()}-${msg}`
   if (sentMsgs.has(sendId)) return
   sentMsgs.add(sendId)
-  
-  displayMsg({ type: 'message', message: msg, window_id: attributes?.window_id }, true)
+
+  displayMsg({type: 'message', message: msg, window_id: attributes?.window_id}, true)
   chatStream.send(msg)
   chatInput.value = ''
 }
@@ -71,21 +76,23 @@ onMounted(() => {
 </script>
 
 <template>
-  <BaseCard title="聊天室">
-    <template #icon>
-      <ChatIcon class="header-icon" />
-    </template>
-    
-    <div class="chat-body">
+  <div class="card">
+    <div class="header">
+      <div class="header-icon-box">
+        <ChatIcon class="header-icon"/>
+      </div>
+      <span class="header-title">聊天室</span>
+    </div>
+    <div class="body">
       <div ref="chatMessagesEl" class="message-list">
         <div
-          v-for="m in chatMessages"
-          :key="m.id"
-          class="message-item"
-          :class="{ 
-            'message-system': m.type === 'system', 
-            'message-self': m.isLocal && m.type !== 'system', 
-            'message-other': !m.isLocal && m.type !== 'system' 
+            v-for="m in chatMessages"
+            :key="m.id"
+            class="message-item"
+            :class="{
+            'message-system': m.type === 'system',
+            'message-self': m.isLocal && m.type !== 'system',
+            'message-other': !m.isLocal && m.type !== 'system'
           }"
         >
           <template v-if="m.type === 'system'">
@@ -106,38 +113,81 @@ onMounted(() => {
         </div>
       </div>
     </div>
-    
-    <template #footer>
-      <div class="chat-footer">
-        <t-input
+    <div class="footer">
+      <t-input
           v-model="chatInput"
           placeholder="输入消息按回车发送..."
           :maxlength="200"
           @keydown="onKeydown"
-        />
-        <t-button class="send-button" variant="outline" @click="sendMsg" size="small">
-          <template #icon>
-            <SendIcon />
-          </template>
-        </t-button>
-      </div>
-    </template>
-  </BaseCard>
+      />
+      <t-button class="send-button" variant="outline" @click="sendMsg" size="small">
+        <template #icon>
+          <SendIcon/>
+        </template>
+      </t-button>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.header-icon {
-  width: 16px;
-  height: 16px;
-  color: #00B42A;
+.card {
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-sizing: border-box;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  height: 100%;
 }
 
-.chat-body {
-  height: 100%;
+.header {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-default);
+  gap: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.header-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-icon {
+  width: 14px;
+  height: 14px;
+  color: #b2d806;
+}
+
+.header-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+[data-theme="dark"] .header-title {
+  color: #ffffff;
+}
+
+.body {
+  flex: 1;
   display: flex;
   flex-direction: column;
   padding: 0 6px;
+  box-sizing: border-box;
+  background: var(--bg-card);
   overflow: hidden;
+}
+
+[data-theme="dark"] .body {
+  background: #1a1b1d;
 }
 
 .message-list {
@@ -158,13 +208,19 @@ onMounted(() => {
   border-radius: 5px;
 }
 
-.chat-footer {
+.footer {
   width: 100%;
   display: flex;
   align-items: center;
   padding: 5px;
   gap: 5px;
   box-sizing: border-box;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-default);
+}
+
+[data-theme="dark"] .footer {
+  background: #1a1b1d;
 }
 
 :deep(.t-input) {

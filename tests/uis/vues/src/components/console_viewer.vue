@@ -1,7 +1,13 @@
+<script>
+export default {
+  name: 'console_viewer'
+}
+</script>
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { TerminalIcon } from 'tdesign-icons-vue-next'
-import BaseCard from './base_card.vue'
+import BaseCard from './card_container.vue'
 import { useThemeDetect } from '@/composables/use_pywebron'
 
 const { isDark } = useThemeDetect()

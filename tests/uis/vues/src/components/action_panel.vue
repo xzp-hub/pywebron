@@ -1,3 +1,9 @@
+<script>
+export default {
+  name: 'action_panel'
+}
+</script>
+
 <script setup>
 import {SaveIcon, CpuIcon, WindowIcon, AddIcon} from 'tdesign-icons-vue-next'
 import {ref} from 'vue'
@@ -93,7 +99,7 @@ async function createNewWindowsAtRuntime() {
 .header-icon {
   width: 14px;
   height: 14px;
-  color: #a750ff;
+  color: #02b69b;
 }
 
 .header-title {

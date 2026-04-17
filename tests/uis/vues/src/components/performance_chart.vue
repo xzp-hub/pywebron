@@ -1,3 +1,9 @@
+<script>
+export default {
+  name: 'performance_chart'
+}
+</script>
+
 <script setup>
 import {ref, onMounted, onUnmounted, reactive, computed} from 'vue'
 import VChart from 'vue-echarts'
