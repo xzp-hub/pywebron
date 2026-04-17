@@ -298,7 +298,7 @@ onUnmounted(() => {
 .header-icon {
   width: 14px;
   height: 14px;
-  color: #f80663;
+  color: rgb(65 65 117 / 0.9);
 }
 
 .header-title {
