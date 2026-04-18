@@ -36,40 +36,41 @@ function toggle() {
 <style scoped>
 .thumbs {
   width: auto;
-  height: 26px;
-  gap: 3px;
+  height: 30px;
   display: flex;
   align-items: center;
-  padding: 0 3px;
+  padding: 0 4px;
+  gap: 2px;
   cursor: pointer;
   border-radius: 2px;
   border: 1px solid var(--border-default);
   overflow: hidden;
   position: relative;
-  left: 1px;
   background: #eeeeee;
-
+  box-sizing: border-box;
 
   &::before {
     content: '';
     position: absolute;
-    top: 3px;
-    height: 20px;
-    width: calc(50% - 4.5px);
-    background: rgb(237 146 28);
+    left: 4px;
+    height: 22px;
+    line-height: 22px;
+    width: calc(50% - 5px);
+    background: rgb(189 109 0);
     border-radius: 2px;
     transition: transform .25s ease;
+    text-align: center;
   }
 
   &.right::before {
-    transform: translateX(calc(100% + 3px));
+    transform: translateX(calc(100% + 2px));
+    box-sizing: border-box;
   }
 }
 
 .slider {
   flex: 1;
   height: 20px;
-  padding: 0 5px;
   border-radius: 2px;
   font-size: 10px;
   display: flex;
@@ -78,6 +79,9 @@ function toggle() {
   position: relative;
   z-index: 1;
   transition: color .25s ease;
+  box-sizing: border-box;
+  padding-left: 6px;
+  padding-right: 6px;
 
   &.active {
     color: #fff;
