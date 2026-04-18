@@ -27,50 +27,57 @@ function toggle() {
 </script>
 
 <template>
-  <div class="thumbs" :class="{right: isRight}" :style="{'--active-color': activeColor}" @click="toggle">
-    <span class="slider" :class="{active: !isRight}">{{ leftLabel }}</span>
-    <span class="slider" :class="{active: isRight}">{{ rightLabel }}</span>
+  <div class="thumbs" :class="{right: isRight}" @click="toggle">
+    <div class="slider" :class="{active: !isRight}">{{ leftLabel }}</div>
+    <div class="slider" :class="{active: isRight}">{{ rightLabel }}</div>
   </div>
 </template>
 
 <style scoped>
 .thumbs {
-  width: 100px;
+  width: auto;
   height: 26px;
+  gap: 3px;
   display: flex;
+  align-items: center;
+  padding: 0 3px;
   cursor: pointer;
+  border-radius: 2px;
   border: 1px solid var(--border-default);
-  border-radius: 3px;
+  overflow: hidden;
   position: relative;
+  left: 1px;
+  background: #eeeeee;
+
 
   &::before {
     content: '';
     position: absolute;
-    top: 3.5px;
-    bottom: 3.5px;
-    left: 4px;
-    width: calc(50% - 8px);
-    background: var(--active-color, rgb(94 43 2));
+    top: 3px;
+    height: 20px;
+    width: calc(50% - 4.5px);
+    background: rgb(237 146 28);
     border-radius: 2px;
     transition: transform .25s ease;
   }
 
   &.right::before {
-    transform: translateX(calc(100% + 8px));
+    transform: translateX(calc(100% + 3px));
   }
 }
 
 .slider {
   flex: 1;
-  font-size: 11px;
-  color: var(--text-secondary);
-  transition: color .25s ease;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 2px;
+  font-size: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   z-index: 1;
-  line-height: 1;
+  transition: color .25s ease;
 
   &.active {
     color: #fff;
@@ -79,11 +86,11 @@ function toggle() {
 
 [data-theme="dark"] {
   .thumbs {
-    background: rgba(255, 255, 255, .05);
+    background: rgba(255, 255, 255, .08);
   }
 
   .slider {
-    color: rgba(255, 255, 255, .6);
+    color: rgb(255 255 255);
   }
 }
 </style>

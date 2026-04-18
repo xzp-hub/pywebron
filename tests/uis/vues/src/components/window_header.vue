@@ -168,6 +168,7 @@ onMounted(async () => {
   line-height: 1 !important;
   border: none !important;
   background: transparent !important;
+  border-radius: 0 !important;
 }
 
 .window-header-btn > .t-button__content,
@@ -284,8 +285,7 @@ onMounted(async () => {
 }
 
 .window-header-btn-close {
-  border-top-right-radius: 5px !important;
-  border-bottom-right-radius: 5px !important;
+  border-radius: 0 !important;
   height: 26px;
   margin-right: 5px;
 }

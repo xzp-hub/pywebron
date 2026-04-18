@@ -34,7 +34,7 @@ defineProps({
 
 <style scoped>
 .base-card {
-  border-radius: 6px;
+  border-radius: 5px;
   display: flex;
   flex-direction: column;
   overflow: hidden;

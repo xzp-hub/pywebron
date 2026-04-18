@@ -152,6 +152,7 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  background: var(--bg-card);
   border: 1px solid var(--border-default);
 }
 

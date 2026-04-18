@@ -1,5 +1,5 @@
 <script setup>
-import WindowHeader from '@/components/title_bar.vue'
+import WindowHeader from '@/components/window_header.vue'
 import SystemMonitor from '@/components/performance_chart.vue'
 import IoMonitor from '@/components/network_chart.vue'
 import ChatRoom from '@/components/message_panel.vue'
