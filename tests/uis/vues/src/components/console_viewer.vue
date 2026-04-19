@@ -65,14 +65,14 @@ onMounted(() => {
 <template>
   <BaseCard title="终端日志">
     <template #icon>
-      <TerminalIcon class="header-icon" />
+      <TerminalIcon class="window-icon" />
     </template>
     <div ref="terminalLogsEl" class="content-area"></div>
   </BaseCard>
 </template>
 
 <style scoped>
-.header-icon {
+.window-icon {
   width: 16px;
   height: 16px;
   color: #F7BA1E;

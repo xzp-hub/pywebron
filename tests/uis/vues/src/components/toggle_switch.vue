@@ -5,19 +5,26 @@ export default {
 </script>
 
 <script setup>
-import {computed} from 'vue'
+import {computed, useSlots} from 'vue'
 
 const props = defineProps({
   modelValue: {type: String, required: true},
-  leftLabel: {type: String, default: '左'},
-  rightLabel: {type: String, default: '右'},
+  leftLabel: {type: String, default: ''},
+  rightLabel: {type: String, default: ''},
   leftValue: {type: String, default: 'left'},
   rightValue: {type: String, default: 'right'},
-  activeColor: {type: String, default: 'rgb(94 43 2)'}
+  activeColor: {type: String, default: 'rgb(94 43 2)'},
+  height: {type: Number, default: 30}
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
+const slots = useSlots()
 const isRight = computed(() => props.modelValue === props.rightValue)
+const hasLeftSlot = computed(() => !!slots.left)
+const hasRightSlot = computed(() => !!slots.right)
+
+const sliderH = computed(() => props.height - 8)
+const pad = computed(() => (props.height - sliderH.value) / 2)
 
 function toggle() {
   const val = isRight.value ? props.leftValue : props.rightValue
@@ -27,74 +34,87 @@ function toggle() {
 </script>
 
 <template>
-  <div class="thumbs" :class="{right: isRight}" @click="toggle">
-    <div class="slider" :class="{active: !isRight}">{{ leftLabel }}</div>
-    <div class="slider" :class="{active: isRight}">{{ rightLabel }}</div>
+  <div class="thumbs"
+       :style="{height: height + 'px'}"
+       @click="toggle">
+    <!-- 滑动块 -->
+    <div class="slider"
+         :class="{right: isRight}"
+         :style="{
+           width: sliderH + 'px',
+           height: sliderH + 'px',
+           top: pad + 'px',
+           background: activeColor,
+         }">
+      <!-- 左侧：优先插槽 -->
+      <slot v-if="hasLeftSlot" name="left"/>
+      <span v-else-if="!isRight">{{ leftLabel }}</span>
+      <!-- 右侧：优先插槽 -->
+      <slot v-if="hasRightSlot" name="right"/>
+      <span v-else-if="isRight">{{ rightLabel }}</span>
+    </div>
+
+    <!-- 未激活侧的文字（静态背景文字） -->
+    <span v-if="(hasLeftSlot || leftLabel) && isRight" class="label label-left">
+      <slot v-if="hasLeftSlot" name="left"/>
+      <template v-else>{{ leftLabel }}</template>
+    </span>
+    <span v-if="(hasRightSlot || rightLabel) && !isRight" class="label label-right">
+      <slot v-if="hasRightSlot" name="right"/>
+      <template v-else>{{ rightLabel }}</template>
+    </span>
   </div>
 </template>
 
 <style scoped>
 .thumbs {
-  width: auto;
-  height: 30px;
   display: flex;
   align-items: center;
-  padding: 0 4px;
-  gap: 2px;
+  position: relative;
   cursor: pointer;
   border-radius: 2px;
   border: 1px solid var(--border-default);
   overflow: hidden;
-  position: relative;
   background: #eeeeee;
   box-sizing: border-box;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 4px;
-    height: 22px;
-    line-height: 22px;
-    width: calc(50% - 5px);
-    background: rgb(189 109 0);
-    border-radius: 2px;
-    transition: transform .25s ease;
-    text-align: center;
-  }
-
-  &.right::before {
-    transform: translateX(calc(100% + 2px));
-    box-sizing: border-box;
-  }
 }
 
 .slider {
-  flex: 1;
-  height: 20px;
+  position: absolute;
+  left: 4px;
   border-radius: 2px;
-  font-size: 10px;
+  transition: transform .25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  z-index: 1;
-  transition: color .25s ease;
-  box-sizing: border-box;
-  padding-left: 6px;
-  padding-right: 6px;
+  z-index: 2;
 
-  &.active {
+  & > * {
     color: #fff;
   }
 }
 
-[data-theme="dark"] {
-  .thumbs {
-    background: rgba(255, 255, 255, .08);
-  }
+.slider.right {
+  transform: translateX(calc(100% + 2px));
+}
 
-  .slider {
-    color: rgb(255 255 255);
-  }
+.label {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  z-index: 1;
+}
+
+.label-left {
+  left: calc(50% - 5px);
+}
+
+.label-right {
+  right: calc(50% - 5px);
+}
+
+[data-theme="dark"] .thumbs {
+  background: rgba(255, 255, 255, .08);
 }
 </style>

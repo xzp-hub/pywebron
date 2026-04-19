@@ -231,7 +231,7 @@ onUnmounted(() => {
     <div class="header">
       <div class="header-item">
         <div class="header-icon-box">
-          <ChartLineDataIcon class="header-icon"/>
+          <ChartLineDataIcon class="window-icon"/>
         </div>
         <span class="header-title">IO 监控</span>
       </div>
@@ -295,7 +295,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.header-icon {
+.window-icon {
   width: 14px;
   height: 14px;
   color: rgb(65 65 117 / 0.9);

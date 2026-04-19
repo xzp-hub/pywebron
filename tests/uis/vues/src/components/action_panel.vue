@@ -37,7 +37,7 @@ async function createNewWindowsAtRuntime() {
   <div class="card">
     <div class="header">
       <div class="header-icon-box">
-        <WindowIcon class="header-icon"/>
+        <WindowIcon class="window-icon"/>
       </div>
       <span class="header-title">快捷操作</span>
     </div>
@@ -96,7 +96,7 @@ async function createNewWindowsAtRuntime() {
   justify-content: center;
 }
 
-.header-icon {
+.window-icon {
   width: 14px;
   height: 14px;
   color: #02b69b;

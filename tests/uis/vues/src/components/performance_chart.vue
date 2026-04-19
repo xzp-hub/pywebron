@@ -129,7 +129,7 @@ onUnmounted(() => {
   <div class="card">
     <div class="header">
       <div class="header-icon-box">
-        <DesktopIcon class="header-icon"/>
+        <DesktopIcon class="window-icon"/>
       </div>
       <span class="header-title">系统监控</span>
     </div>
@@ -174,7 +174,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.header-icon {
+.window-icon {
   width: 14px;
   height: 14px;
   color: #f806d8;

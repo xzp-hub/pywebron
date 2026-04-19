@@ -79,7 +79,7 @@ onMounted(() => {
   <div class="card">
     <div class="header">
       <div class="header-icon-box">
-        <ChatIcon class="header-icon"/>
+        <ChatIcon class="window-icon"/>
       </div>
       <span class="header-title">聊天室</span>
     </div>
@@ -160,7 +160,7 @@ onMounted(() => {
   justify-content: center;
 }
 
-.header-icon {
+.window-icon {
   width: 14px;
   height: 14px;
   color: #b2d806;
