@@ -18,11 +18,7 @@ const {currentTheme, toggleTheme} = useTheme()
 
 const themeValue = computed({
   get: () => currentTheme.value === 'dark' ? 'dark' : 'light',
-  set: (val) => {
-    if (val !== themeValue.value) {
-      toggleTheme()
-    }
-  }
+  set: () => toggleTheme()
 })
 
 const windowAction = async (type) => {
@@ -75,13 +71,13 @@ onMounted(async () => {
       <span class="window-title">{{ titleText }}</span>
     </div>
     <div class="window-control-buttons">
-      <ToggleSwitch v-model="themeValue" left-value="light" right-value="dark" :height="28" active-color="#8B5CF6"
+      <ToggleSwitch v-model="themeValue" inactive-value="light" active-value="dark" :height="22" active-color="#8B5CF6"
                     class="window-theme-switch">
-        <template #left>
-          <MoonIcon/>
-        </template>
-        <template #right>
+        <template #inactive>
           <BrightnessIcon/>
+        </template>
+        <template #active>
+          <MoonIcon/>
         </template>
       </ToggleSwitch>
       <t-button class="window-control-button" variant="outline" shape="square" title="最小化"
@@ -185,5 +181,10 @@ onMounted(async () => {
 .window-control-button:last-child:hover {
   background: #E34D59 !important;
   color: #fff !important;
+}
+
+.window-theme-switch :deep(.toggle-switch__core svg) {
+  width: 12px;
+  height: 12px;
 }
 </style>

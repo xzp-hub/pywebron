@@ -1,4 +1,3 @@
-from ..configs import INVOKE_HANDLES, STREAM_HANDLES
 from dataclasses import dataclass, asdict
 from inspect import Parameter, signature
 from typing import Callable
@@ -23,11 +22,11 @@ class Handle:
         self.window_id = window_id
 
     def _logger_(self, payload: dict, send_mode: str = None):
-        header = f"[Stream]-[{self.window_id}]-[{self.handle_id}]"
+        header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
         if send_mode:
-            print(f"[Stream]-{header}-[{send_mode}]: {payload}")
+            print(f"{header}-[{send_mode}]: {payload}")
         else:
-            print(f"[Invoke]-{header}: {payload}")
+            print(f"{header}: {payload}")
 
     @classmethod
     def _handler_(cls, func: Callable, alias: str | None):
@@ -54,9 +53,12 @@ class Handle:
         async def wrapper(req: dict):
             return await func(**dict(handle(req) for handle in handles))
 
+        name = alias or func.__name__
+
+        from ..configs import INVOKE_HANDLES, STREAM_HANDLES
         match cls.__name__:
             case 'Invoke':
-                INVOKE_HANDLES[alias or func.__name__] = wrapper
+                INVOKE_HANDLES[name] = wrapper
             case 'Stream':
-                STREAM_HANDLES[alias or func.__name__] = wrapper
+                STREAM_HANDLES[name] = wrapper
         return wrapper

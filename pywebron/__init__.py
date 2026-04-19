@@ -9,6 +9,7 @@ from .app.window import Window
 from .app.invoke import Invoke
 from .app.stream import Stream
 from .app.worker import Worker
+from .app.router import Router
 from typing import Dict
 from time import perf_counter
 
@@ -46,4 +47,4 @@ class App:
         return rust_get_handles()
 
 
-__all__ = ("App", "StreamSendModes")
+__all__ = ("App", "StreamSendModes", "Router")

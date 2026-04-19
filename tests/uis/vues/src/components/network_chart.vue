@@ -243,7 +243,7 @@ onUnmounted(() => {
         <span class="legend-text">{{ ioPanel.legText2 }}</span>
       </div>
       <div class="header-item">
-        <TypeSwitch v-model="ioType" left-label="磁盘IO" right-label="网络IO" left-value="disk" right-value="net"/>
+        <TypeSwitch v-model="ioType" inactive-text="磁盘IO" active-text="网络IO" inactive-value="disk" active-value="net"/>
       </div>
     </div>
     <div class="body">
