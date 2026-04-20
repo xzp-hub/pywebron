@@ -2,6 +2,7 @@ from dataclasses import dataclass, asdict
 from inspect import Parameter, signature
 from typing import Callable
 from .worker import Worker
+from .window import Window
 
 
 @dataclass
@@ -39,6 +40,8 @@ class Handle:
                     return lambda req: (param_name, cls(req['handle_id'], req['window_id']))
                 case 'Worker':
                     return lambda req: (param_name, Worker)
+                case 'Window':
+                    return lambda req: (param_name, Window)
                 case _ if hasattr(annot, '__annotations__'):
                     return lambda req: (param_name, annot(**{
                         ann: req['payload'].get(ann, getattr(annot, ann, None))

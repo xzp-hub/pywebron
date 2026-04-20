@@ -2,16 +2,16 @@ from asyncio import gather
 from time import time
 from traceback import format_exc
 
-from pywebron import Router, Invoke, Worker
+from pywebron import Router, Worker
 from pywebron.configs import PROJECT_ROOT_PATH
 from pywebron.utils import save_file_dialog
 from tools import cpu_task
 
-router = Router()
+router = Router(title="快捷操作")
 
 
 @router.invoke.handle("save_files_via_dialog_invoke")
-async def save_files_via_dialog(invoke: Invoke):
+async def save_files_via_dialog(invoke: router.invoke.server):
     try:
         source_path = f'{PROJECT_ROOT_PATH}/assets/pywebron.html'
         new_path = await save_file_dialog(str(source_path))
@@ -21,7 +21,7 @@ async def save_files_via_dialog(invoke: Invoke):
 
 
 @router.invoke.handle("execute_cpu_intensive_tasks_invoke")
-async def execute_cpu_intensive_tasks(invoke: Invoke, worker: Worker):
+async def execute_cpu_intensive_tasks(invoke: router.invoke.server, worker: Worker):
     try:
         start = time()
         task1, task2 = await gather(worker.run(cpu_task, 1), worker.run(cpu_task, 2))
@@ -31,6 +31,16 @@ async def execute_cpu_intensive_tasks(invoke: Invoke, worker: Worker):
         return await invoke.json_response(False, "cpu 任务测试失败", format_exc())
 
 
-def create_shortcut_router():
-    """快捷操作分组：文件保存、CPU任务测试等"""
-    return router
+@router.invoke.handle("create_new_windows_at_runtime_invoke")
+async def create_new_windows_at_runtime(invoke: router.invoke.server, window: router.invoke.window):
+    try:
+        res = window.register_window(
+            title="运行时创建窗口",
+            width=1200,
+            height=1200,
+            show_title_bar=False,
+            dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
+        )
+        return await invoke.json_response(True, f"运行时创建窗口成功：{res}", res)
+    except Exception:
+        return await invoke.json_response(False, "运行时创建窗口失败", format_exc())

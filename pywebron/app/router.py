@@ -1,6 +1,7 @@
 from typing import Callable
 from .invoke import Invoke
 from .stream import Stream
+from .window import Window
 
 
 class Router:
@@ -10,18 +11,19 @@ class Router:
         router = Router()
 
         @router.invoke.handle("window_controls")
-        async def window_controls(invoke: router.invoke, struct: WindowControlsStruct):
+        async def window_controls(invoke: router.invoke.server, struct: WindowControlsStruct):
             ...
 
         @router.stream.handle("system_monitoring")
-        async def system_monitoring(stream: router.stream):
+        async def system_monitoring(stream: router.stream.server):
             ...
 
         # 在主应用中注册
         app.include_router(router)
     """
 
-    def __init__(self):
+    def __init__(self, title: str = ""):
+        self.title = title
         self._pending_invoke: list[tuple[str, Callable]] = []
         self._pending_stream: list[tuple[str, Callable]] = []
         self.invoke = _InvokeRouter(self)
@@ -30,6 +32,9 @@ class Router:
 
 class _InvokeRouter:
     """Invoke 路由器辅助类"""
+    server = Invoke  # 类型注解用：invoke: router.invoke.server
+    window = Window  # 窗口操作：router.invoke.window
+
     def __init__(self, router: Router):
         self._router = router
         self.struct = Invoke.struct  # 添加 struct 属性
@@ -46,6 +51,8 @@ class _InvokeRouter:
 
 class _StreamRouter:
     """Stream 路由器辅助类"""
+    server = Stream  # 类型注解用：stream: router.stream.server
+
     def __init__(self, router: Router):
         self._router = router
         self.struct = Stream.struct  # 添加 struct 属性

@@ -43,6 +43,10 @@ class App:
         for wid in window_ids:
             print(f"[Window] 注册窗口 ID: {wid}")
 
+    def register_window(self, **kwargs) -> bool:
+        """注册窗口，参数同 Window.register_window"""
+        return Window.register_window(**kwargs)
+
     def run(self):
         t_start = perf_counter()
         print(f"[Performance] App.run 开始，准备启动事件循环")
