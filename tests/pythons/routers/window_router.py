@@ -1,6 +1,6 @@
 from traceback import format_exc
 
-from pywebron import Router, Window
+from pywebron import Router, Window, Invoke
 from pywebron.configs import PROJECT_ROOT_PATH
 
 router = Router()
@@ -15,7 +15,7 @@ class SetupDragRegionStruct(router.invoke.struct):
 
 
 @router.invoke.handle("setup_drag_region_invoke")
-async def setup_drag_region(invoke: router.invoke, struct: SetupDragRegionStruct):
+async def setup_drag_region(invoke: Invoke, struct: SetupDragRegionStruct):
     try:
         selector = struct.selector
         res = Window.dragdrop_window(invoke.window_id, selector)
@@ -25,7 +25,7 @@ async def setup_drag_region(invoke: router.invoke, struct: SetupDragRegionStruct
 
 
 @router.invoke.handle("window_controls_invoke")
-async def window_controls(invoke: router.invoke, struct: WindowControlsStruct):
+async def window_controls(invoke: Invoke, struct: WindowControlsStruct):
     control_type, res = None, None
     try:
         match control_type := struct.control_type:
@@ -43,7 +43,7 @@ async def window_controls(invoke: router.invoke, struct: WindowControlsStruct):
 
 
 @router.invoke.handle("create_new_windows_at_runtime_invoke")
-async def create_new_windows_at_runtime(invoke: router.invoke):
+async def create_new_windows_at_runtime(invoke: Invoke):
     try:
         res = Window.register_window(
             title="运行时创建窗口",
