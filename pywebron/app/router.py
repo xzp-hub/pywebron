@@ -9,12 +9,12 @@ class Router:
     用法:
         router = Router()
 
-        @router.invoke("window_controls")
-        async def window_controls(invoke: invoke, struct: WindowControlsStruct):
+        @router.invoke.handle("window_controls")
+        async def window_controls(invoke: Invoke, struct: WindowControlsStruct):
             ...
 
-        @router.stream()
-        async def system_monitoring(stream: app.stream):
+        @router.stream.handle("system_monitoring")
+        async def system_monitoring(stream: Stream):
             ...
 
         # 在主应用中注册
@@ -24,21 +24,35 @@ class Router:
     def __init__(self):
         self._pending_invoke: list[tuple[str, Callable]] = []
         self._pending_stream: list[tuple[str, Callable]] = []
+        self.invoke = _InvokeRouter(self)
+        self.stream = _StreamRouter(self)
 
-    def invoke(self, alias: str = None):
+
+class _InvokeRouter:
+    """Invoke 路由器辅助类"""
+    def __init__(self, router: Router):
+        self._router = router
+
+    def handle(self, alias: str = None):
         """注册 Invoke 处理器到路由组。alias 为空时使用函数名。"""
         def decorator(func):
             name = alias or func.__name__
             wrapper = Invoke._handler_(func, name)
-            self._pending_invoke.append((name, wrapper))
+            self._router._pending_invoke.append((name, wrapper))
             return wrapper
         return decorator
 
-    def stream(self, alias: str = None):
+
+class _StreamRouter:
+    """Stream 路由器辅助类"""
+    def __init__(self, router: Router):
+        self._router = router
+
+    def handle(self, alias: str = None):
         """注册 Stream 处理器到路由组。alias 为空时使用函数名。"""
         def decorator(func):
             name = alias or func.__name__
             wrapper = Stream._handler_(func, name)
-            self._pending_stream.append((name, wrapper))
+            self._router._pending_stream.append((name, wrapper))
             return wrapper
         return decorator
