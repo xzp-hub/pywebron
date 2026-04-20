@@ -39,7 +39,7 @@ async def create_new_windows_at_runtime(invoke: router.invoke.server, window: ro
             width=1200,
             height=1200,
             show_title_bar=False,
-            dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/vues/dist",
+            link_content="http://localhost:5173/",
         )
         return await invoke.json_response(True, f"运行时创建窗口成功：{res}", res)
     except Exception:
