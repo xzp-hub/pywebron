@@ -34,11 +34,17 @@ class Handle:
 
         def maker(param_name):
             annot, default = (param_proxy := params[param_name]).annotation, param_proxy.default
-            match getattr(annot, '__name__', None):
+            annot_name = getattr(annot, '__name__', None)
+            annot_class_name = getattr(annot.__class__, '__name__', None)
+            
+            match annot_name:
                 case 'Invoke' | 'Stream':
                     return lambda req: (param_name, cls(req['handle_id'], req['window_id']))
                 case 'Worker':
                     return lambda req: (param_name, Worker)
+                case _ if annot_class_name in ('_InvokeRouter', '_StreamRouter'):
+                    # 处理 router.invoke 和 router.stream 类型注解
+                    return lambda req: (param_name, cls(req['handle_id'], req['window_id']))
                 case _ if hasattr(annot, '__annotations__'):
                     return lambda req: (param_name, annot(**{
                         ann: req['payload'].get(ann, getattr(annot, ann, None))

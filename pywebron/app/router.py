@@ -10,11 +10,11 @@ class Router:
         router = Router()
 
         @router.invoke.handle("window_controls")
-        async def window_controls(invoke: router.invoke, struct: WindowControlsStruct):
+        async def window_controls(invoke: router.invoke.server, struct: WindowControlsStruct):
             ...
 
         @router.stream.handle("system_monitoring")
-        async def system_monitoring(stream: router.stream):
+        async def system_monitoring(stream: router.stream.server):
             ...
 
         # 在主应用中注册
@@ -32,7 +32,8 @@ class _InvokeRouter:
     """Invoke 路由器辅助类"""
     def __init__(self, router: Router):
         self._router = router
-        self.struct = Invoke.struct  # 添加 struct 属性
+        self.struct = Invoke.struct  # 数据结构
+        self.server = Invoke  # 服务端类型
 
     def handle(self, alias: str = None):
         """注册 Invoke 处理器到路由组。alias 为空时使用函数名。"""
@@ -48,7 +49,8 @@ class _StreamRouter:
     """Stream 路由器辅助类"""
     def __init__(self, router: Router):
         self._router = router
-        self.struct = Stream.struct  # 添加 struct 属性
+        self.struct = Stream.struct  # 数据结构
+        self.server = Stream  # 服务端类型
 
     def handle(self, alias: str = None):
         """注册 Stream 处理器到路由组。alias 为空时使用函数名。"""

@@ -1,7 +1,7 @@
 from asyncio import sleep as asyncio_sleep
 from traceback import format_exc
 
-from pywebron import Router, Stream, Worker, App, StreamSendModes
+from pywebron import Router, Worker, App, StreamSendModes
 from tools import cpu_task
 
 router = Router()
@@ -12,7 +12,7 @@ class ChatRoomStruct(router.stream.struct):
 
 
 @router.stream.handle("chat_room_stream")
-async def chat_room(stream: Stream, worker: Worker, struct: ChatRoomStruct):
+async def chat_room(stream: router.stream.server, worker: Worker, struct: ChatRoomStruct):
     try:
         await stream.send(200, "欢迎加入聊天室", {"type": "system"})
         while True:

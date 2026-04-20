@@ -1,14 +1,14 @@
 from asyncio import sleep as asyncio_sleep
 from traceback import format_exc
 
-from pywebron import Router, Stream, StreamSendModes
+from pywebron import Router, StreamSendModes
 from tools import SystemMonitoring, TerminalLogger
 
 router = Router()
 
 
 @router.stream.handle("system_monitoring_stream")
-async def system_monitoring(stream: Stream):
+async def system_monitoring(stream: router.stream.server):
     try:
         res = await SystemMonitoring.run(fast_mode=True)
         await stream.send(200, "监控数据获取成功", res, send_mode=StreamSendModes.BROADCAST)
@@ -25,7 +25,7 @@ async def system_monitoring(stream: Stream):
 
 
 @router.stream.handle("terminal_log_stream")
-async def terminal_log(stream: Stream):
+async def terminal_log(stream: router.stream.server):
     try:
         with TerminalLogger.pause():
             await stream.send(200, "历史日志", {"logs": TerminalLogger.get_history_logs()})
