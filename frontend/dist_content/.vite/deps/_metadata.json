@@ -1,0 +1,66 @@
+{
+  "hash": "aa4dc73d",
+  "configHash": "1d77a527",
+  "lockfileHash": "329a0042",
+  "browserHash": "a835cd85",
+  "optimized": {
+    "echarts/charts": {
+      "src": "../../node_modules/echarts/charts.js",
+      "file": "echarts_charts.js",
+      "fileHash": "dc7d29de",
+      "needsInterop": false
+    },
+    "echarts/components": {
+      "src": "../../node_modules/echarts/components.js",
+      "file": "echarts_components.js",
+      "fileHash": "85aaf5f9",
+      "needsInterop": false
+    },
+    "echarts/core": {
+      "src": "../../node_modules/echarts/core.js",
+      "file": "echarts_core.js",
+      "fileHash": "ecb27c50",
+      "needsInterop": false
+    },
+    "echarts/renderers": {
+      "src": "../../node_modules/echarts/renderers.js",
+      "file": "echarts_renderers.js",
+      "fileHash": "fee8231a",
+      "needsInterop": false
+    },
+    "tdesign-vue-next": {
+      "src": "../../node_modules/tdesign-vue-next/es/index.mjs",
+      "file": "tdesign-vue-next.js",
+      "fileHash": "fe8305db",
+      "needsInterop": false
+    },
+    "vue": {
+      "src": "../../node_modules/vue/dist/vue.runtime.esm-bundler.js",
+      "file": "vue.js",
+      "fileHash": "fdd02e3f",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "Axis--lthWc4Q": {
+      "file": "Axis--lthWc4Q.js",
+      "isDynamicEntry": false
+    },
+    "CoordinateSystem-65XaTzbp": {
+      "file": "CoordinateSystem-65XaTzbp.js",
+      "isDynamicEntry": false
+    },
+    "createSeriesData-BewE4TyZ": {
+      "file": "createSeriesData-BewE4TyZ.js",
+      "isDynamicEntry": false
+    },
+    "graphic-Bd3Ikl7D": {
+      "file": "graphic-Bd3Ikl7D.js",
+      "isDynamicEntry": false
+    },
+    "vue.runtime.esm-bundler-DewitlPc": {
+      "file": "vue.runtime.esm-bundler-DewitlPc.js",
+      "isDynamicEntry": false
+    }
+  }
+}

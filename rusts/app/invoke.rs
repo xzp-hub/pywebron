@@ -12,6 +12,34 @@ type HandleCache = std::collections::HashMap<String, Py<PyAny>>;
 static HANDLE_CACHE: LazyLock<parking_lot::RwLock<HandleCache>> =
     LazyLock::new(|| parking_lot::RwLock::new(HandleCache::with_capacity(32)));
 
+/// 从 HANDLES 字典中按 handle_id 和 handler_type 查找 handler
+/// HANDLES 结构: { group_name: [ {"name": str, "type": "invoke"|"stream", "handler": callable}, ... ] }
+fn find_handler<'py>(
+    py: Python<'py>,
+    handle_id: &str,
+    handler_type: &str,
+) -> PyResult<Option<Bound<'py, PyAny>>> {
+    let configs = py.import("pywebron.configs")?;
+    let handles = configs.getattr("HANDLES")?;
+    let groups = handles.try_iter()?;
+    for group_result in groups {
+        let group = group_result?;
+        // group 是 (key, value) 元组中的 value（List[Dict]）
+        let (_, handler_list) = group.extract::<(String, Bound<'_, PyAny>)>()?;
+        let items = handler_list.try_iter()?;
+        for item_result in items {
+            let item = item_result?;
+            let name: String = item.getattr("name")?.extract()?;
+            let htype: String = item.getattr("type")?.extract()?;
+            if name == handle_id && htype == handler_type {
+                let handler = item.getattr("handler")?;
+                return Ok(Some(handler));
+            }
+        }
+    }
+    Ok(None)
+}
+
 // === 统一的 IPC 处理线程池 ===
 // 所有 IPC 请求（invoke + stream）都在这个线程池中处理
 
@@ -107,11 +135,7 @@ fn process_invoke_request(request: IpcRequest) {
                 h.bind(py).to_owned()
             } else {
                 drop(cache);
-                let configs = py.import("pywebron.configs")?;
-                let invoke_handles = configs.getattr("INVOKE_HANDLES")?;
-
-                if let Ok(h) = invoke_handles.get_item(&handle_id) {
-                    let h: Bound<'_, PyAny> = h.to_owned();
+                if let Some(h) = find_handler(py, &handle_id, "invoke")? {
                     HANDLE_CACHE
                         .write()
                         .insert(handle_id.clone(), h.clone().unbind());
@@ -212,11 +236,7 @@ fn process_stream_request(request: IpcRequest) {
                 h.bind(py).to_owned()
             } else {
                 drop(cache);
-                let configs = py.import("pywebron.configs")?;
-                let stream_handles = configs.getattr("STREAM_HANDLES")?;
-
-                if let Ok(h) = stream_handles.get_item(&handle_id) {
-                    let h: Bound<'_, PyAny> = h.to_owned();
+                if let Some(h) = find_handler(py, &handle_id, "stream")? {
                     HANDLE_CACHE
                         .write()
                         .insert(handle_id.clone(), h.clone().unbind());
@@ -344,18 +364,24 @@ pub fn get_handles(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
     let stream_dict = pyo3::types::PyDict::new(py);
 
     let configs_module = py.import("pywebron.configs")?;
-    let invoke_handles = configs_module.getattr("INVOKE_HANDLES")?;
-    for item in invoke_handles.try_iter()? {
-        let (key, value): (String, Py<PyAny>) = item?.extract()?;
-        let name = value.bind(py).getattr("__name__")?.extract::<String>()?;
-        invoke_dict.set_item(key, name)?;
-    }
-
-    let stream_handles = configs_module.getattr("STREAM_HANDLES")?;
-    for item in stream_handles.try_iter()? {
-        let (key, value): (String, Py<PyAny>) = item?.extract()?;
-        let name = value.bind(py).getattr("__name__")?.extract::<String>()?;
-        stream_dict.set_item(key, name)?;
+    let handles = configs_module.getattr("HANDLES")?;
+    let groups = handles.try_iter()?;
+    for group_result in groups {
+        let group = group_result?;
+        let (_, handler_list) = group.extract::<(String, Bound<'_, PyAny>)>()?;
+        let items = handler_list.try_iter()?;
+        for item_result in items {
+            let item = item_result?;
+            let name: String = item.getattr("name")?.extract()?;
+            let htype: String = item.getattr("type")?.extract()?;
+            let handler = item.getattr("handler")?;
+            let handler_name = handler.getattr("__name__")?.extract::<String>()?;
+            if htype == "invoke" {
+                invoke_dict.set_item(name, handler_name)?;
+            } else {
+                stream_dict.set_item(name, handler_name)?;
+            }
+        }
     }
 
     result_dict.set_item("invoke", invoke_dict)?;

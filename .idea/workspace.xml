@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="cc2fdbcc-12e8-44b4-b3a3-86909359b2b6" name="更改" comment="终极完美版">
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pywebron/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/pywebron/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pywebron/app/handle.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pywebron/app/invoke.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pywebron/app/router.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pywebron/app/stream.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pywebron/app/window.py" beforeDir="false" afterPath="$PROJECT_DIR$/pywebron/app/window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pywebron/configs.py" beforeDir="false" afterPath="$PROJECT_DIR$/pywebron/configs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rusts/app/invoke.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rusts/app/invoke.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/pythons/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/pythons/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/routers/online_chatbox.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/routers/online_chatbox.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/routers/quick_shortcut.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/routers/quick_shortcut.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/routers/system_monitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/routers/system_monitor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/routers/window_control.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/routers/window_control.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="PUSH_AUTO_UPDATE" value="true" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;xzp-hub&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/xzp-hub/pywebron.git&quot;,
+    &quot;accountId&quot;: &quot;0f87ae1b-a326-448d-afc1-76888044fd2c&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3C6NWKsNmhDE3s0LeklTAYbI5Nd" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;E:/works/pywebron&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;npm.build.executor&quot;: &quot;Run&quot;,
+    &quot;npm.dev (1).executor&quot;: &quot;Run&quot;,
+    &quot;npm.dev.executor&quot;: &quot;Run&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;settings.sync&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;D:\\jetbrains\\apps\\pycharm\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="E:\works\pywebron\frontend\html_content" />
+      <recent name="E:\works\pywebron\tests" />
+      <recent name="E:\works\pywebron\tests\pythons\routers" />
+      <recent name="E:\works\pywebron\frontend" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.main">
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pywebron" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tests/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="dev" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/frontend/dist_content/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="dev" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.main" />
+        <item itemvalue="npm.dev" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-PY-261.22158.340" />
+        <option value="bundled-python-sdk-b63d5a1f7c97-b61e75351b1f-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.22158.340" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="cc2fdbcc-12e8-44b4-b3a3-86909359b2b6" name="更改" comment="自定义app协议完美版" />
+      <created>1775702092775</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1775702092775</updated>
+      <workItem from="1775702092778" duration="124000" />
+      <workItem from="1775724925640" duration="414000" />
+      <workItem from="1775727540518" duration="2135000" />
+      <workItem from="1775782598791" duration="15874000" />
+      <workItem from="1775806323965" duration="6020000" />
+      <workItem from="1775812380457" duration="2904000" />
+      <workItem from="1775870927489" duration="1262000" />
+      <workItem from="1775873078684" duration="2642000" />
+      <workItem from="1775876616693" duration="228000" />
+      <workItem from="1775876970493" duration="2237000" />
+      <workItem from="1775879978528" duration="6360000" />
+      <workItem from="1775890903902" duration="8828000" />
+      <workItem from="1776042038145" duration="21983000" />
+      <workItem from="1776072800076" duration="75000" />
+      <workItem from="1776072892842" duration="83000" />
+      <workItem from="1776073012778" duration="192000" />
+      <workItem from="1776073275994" duration="1870000" />
+      <workItem from="1776128364165" duration="4296000" />
+      <workItem from="1776135836100" duration="1522000" />
+      <workItem from="1776137586068" duration="9144000" />
+      <workItem from="1776152428783" duration="5714000" />
+      <workItem from="1776158608675" duration="2786000" />
+      <workItem from="1776214877203" duration="14395000" />
+      <workItem from="1776240281135" duration="112000" />
+      <workItem from="1776318055824" duration="6483000" />
+      <workItem from="1776388032458" duration="2366000" />
+      <workItem from="1776413510894" duration="582000" />
+      <workItem from="1776414147415" duration="1113000" />
+      <workItem from="1776419601227" duration="403000" />
+      <workItem from="1776657359028" duration="24320000" />
+    </task>
+    <task id="LOCAL-00001" summary="超级完美版">
+      <option name="closed" value="true" />
+      <created>1775705603059</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1775705603061</updated>
+    </task>
+    <task id="LOCAL-00002" summary="超级完美版">
+      <option name="closed" value="true" />
+      <created>1775729401288</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1775729401288</updated>
+    </task>
+    <task id="LOCAL-00003" summary="功能完善版处理中">
+      <option name="closed" value="true" />
+      <created>1775801325828</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1775801325828</updated>
+    </task>
+    <task id="LOCAL-00004" summary="功能完善版处理中">
+      <option name="closed" value="true" />
+      <created>1775803764591</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1775803764591</updated>
+    </task>
+    <task id="LOCAL-00005" summary="功能完善版">
+      <option name="closed" value="true" />
+      <created>1775804603339</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1775804603339</updated>
+    </task>
+    <task id="LOCAL-00006" summary="功能完善版">
+      <option name="closed" value="true" />
+      <created>1775805748367</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1775805748367</updated>
+    </task>
+    <task id="LOCAL-00007" summary="功能完善版">
+      <option name="closed" value="true" />
+      <created>1775808040067</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1775808040067</updated>
+    </task>
+    <task id="LOCAL-00008" summary="超级完美版">
+      <option name="closed" value="true" />
+      <created>1775815169640</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1775815169641</updated>
+    </task>
+    <task id="LOCAL-00009" summary="超级完美版1111">
+      <option name="closed" value="true" />
+      <created>1775877802742</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1775877802743</updated>
+    </task>
+    <task id="LOCAL-00010" summary="超级完美版1111">
+      <option name="closed" value="true" />
+      <created>1775890138620</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1775890138620</updated>
+    </task>
+    <task id="LOCAL-00011" summary="超级完美版1111">
+      <option name="closed" value="true" />
+      <created>1775890148395</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1775890148395</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1775890267324</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1775890267324</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1775891851349</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1775891851350</updated>
+    </task>
+    <task id="LOCAL-00014" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1775895492925</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1775895492925</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776048214622</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1776048214622</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776060438500</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1776060438500</updated>
+    </task>
+    <task id="LOCAL-00017" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776067653069</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1776067653069</updated>
+    </task>
+    <task id="LOCAL-00018" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776068516827</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1776068516827</updated>
+    </task>
+    <task id="LOCAL-00019" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776069065529</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1776069065529</updated>
+    </task>
+    <task id="LOCAL-00020" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776071315258</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1776071315258</updated>
+    </task>
+    <task id="LOCAL-00021" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776072067835</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1776072067835</updated>
+    </task>
+    <task id="LOCAL-00022" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776073824175</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1776073824175</updated>
+    </task>
+    <task id="LOCAL-00023" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776074454406</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1776074454407</updated>
+    </task>
+    <task id="LOCAL-00024" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776134458421</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1776134458421</updated>
+    </task>
+    <task id="LOCAL-00025" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776134512451</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1776134512451</updated>
+    </task>
+    <task id="LOCAL-00026" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776136912968</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1776136912969</updated>
+    </task>
+    <task id="LOCAL-00027" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776149120912</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1776149120912</updated>
+    </task>
+    <task id="LOCAL-00028" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776150176925</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1776150176925</updated>
+    </task>
+    <task id="LOCAL-00029" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776153672832</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1776153672832</updated>
+    </task>
+    <task id="LOCAL-00030" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776156454854</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1776156454854</updated>
+    </task>
+    <task id="LOCAL-00031" summary="Merge remote-tracking branch 'github/master'">
+      <option name="closed" value="true" />
+      <created>1776215286107</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1776215286108</updated>
+    </task>
+    <task id="LOCAL-00032" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776225622963</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1776225622963</updated>
+    </task>
+    <task id="LOCAL-00033" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776226630635</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1776226630635</updated>
+    </task>
+    <task id="LOCAL-00034" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776231401297</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1776231401297</updated>
+    </task>
+    <task id="LOCAL-00035" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776318934745</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1776318934745</updated>
+    </task>
+    <task id="LOCAL-00036" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776320791258</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1776320791258</updated>
+    </task>
+    <task id="LOCAL-00037" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776321581842</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1776321581842</updated>
+    </task>
+    <task id="LOCAL-00038" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776321590403</created>
+      <option name="number" value="00038" />
+      <option name="presentableId" value="LOCAL-00038" />
+      <option name="project" value="LOCAL" />
+      <updated>1776321590403</updated>
+    </task>
+    <task id="LOCAL-00039" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776325275178</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1776325275178</updated>
+    </task>
+    <task id="LOCAL-00040" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776333090237</created>
+      <option name="number" value="00040" />
+      <option name="presentableId" value="LOCAL-00040" />
+      <option name="project" value="LOCAL" />
+      <updated>1776333090237</updated>
+    </task>
+    <task id="LOCAL-00041" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776419900329</created>
+      <option name="number" value="00041" />
+      <option name="presentableId" value="LOCAL-00041" />
+      <option name="project" value="LOCAL" />
+      <updated>1776419900330</updated>
+    </task>
+    <task id="LOCAL-00042" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776657673847</created>
+      <option name="number" value="00042" />
+      <option name="presentableId" value="LOCAL-00042" />
+      <option name="project" value="LOCAL" />
+      <updated>1776657673847</updated>
+    </task>
+    <task id="LOCAL-00043" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776664026718</created>
+      <option name="number" value="00043" />
+      <option name="presentableId" value="LOCAL-00043" />
+      <option name="project" value="LOCAL" />
+      <updated>1776664026718</updated>
+    </task>
+    <task id="LOCAL-00044" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776670374182</created>
+      <option name="number" value="00044" />
+      <option name="presentableId" value="LOCAL-00044" />
+      <option name="project" value="LOCAL" />
+      <updated>1776670374182</updated>
+    </task>
+    <task id="LOCAL-00045" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776742712533</created>
+      <option name="number" value="00045" />
+      <option name="presentableId" value="LOCAL-00045" />
+      <option name="project" value="LOCAL" />
+      <updated>1776742712533</updated>
+    </task>
+    <task id="LOCAL-00046" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776752744510</created>
+      <option name="number" value="00046" />
+      <option name="presentableId" value="LOCAL-00046" />
+      <option name="project" value="LOCAL" />
+      <updated>1776752744510</updated>
+    </task>
+    <option name="localTasksCounter" value="47" />
+    <servers />
+  </component>
+  <component name="TerminalProjectNonSharedOptionsProvider">
+    <envs>
+      <env key="TERM" value="dumb" />
+    </envs>
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="功能完善版处理中" />
+    <MESSAGE value="功能完善版" />
+    <MESSAGE value="超级完美版" />
+    <MESSAGE value="超级完美版1111" />
+    <MESSAGE value="Merge remote-tracking branch 'github/master'" />
+    <MESSAGE value="终极完美版" />
+    <option name="LAST_COMMIT_MESSAGE" value="终极完美版" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/pywebron$main.coverage" NAME="main 覆盖结果" MODIFIED="1776765250093" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+  </component>
+</project>

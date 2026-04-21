@@ -8,6 +8,7 @@ from pywebron import App
 
 def main():
     app = App(prewarm_webview=False)
+    # 显式注册路由
     app.router.register_routers(wc.router, sm.router, oc.router, qs.router)
     main_win = app.window.register_window(
         title="PYWEBRON测试面板",

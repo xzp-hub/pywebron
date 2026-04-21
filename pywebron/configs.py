@@ -1,5 +1,5 @@
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from typing import Dict, Callable
+from typing import Dict, Callable, List
 from enum import StrEnum, IntEnum
 from pathlib import Path
 
@@ -22,11 +22,12 @@ class DwmCorners(IntEnum):
     LITTLE_ROUND = 3  # 小圆角
 
 
-# 调用处理器注册表
-INVOKE_HANDLES: Dict[str, Callable] = {}
-
-# 流式处理器注册表
-STREAM_HANDLES: Dict[str, Callable] = {}
+# 统一的处理器注册表
+# 结构: {
+#     'app': [{'name': 'handler_name', 'type': 'invoke'|'stream', 'handler': <function>}],
+#     'router_title': [{'name': 'handler_name', 'type': 'invoke'|'stream', 'handler': <function>}],
+# }
+HANDLES: Dict[str, List[Dict[str, str | Callable]]] = {}
 
 # 工作任务池（进程池或线程池）
 WORKER_POOL: ProcessPoolExecutor | ThreadPoolExecutor | None = None

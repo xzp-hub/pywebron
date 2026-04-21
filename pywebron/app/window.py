@@ -14,12 +14,11 @@ if TYPE_CHECKING:
 
 
 class Window:
-    def __init__(self, app: 'App' = None):
-        self._app = app
-        self._window_ids: list[int] = []
+    _window_ids: list[int] = []
     
+    @classmethod
     def register_window(
-            self,
+            cls,
             title: str = "PyWebron App",
             html_content: str = None,
             link_content: str = None,
@@ -59,10 +58,11 @@ class Window:
             is_main=is_main,
         )
     
-    def register_windows(self, *window_ids):
+    @classmethod
+    def register_windows(cls, *window_ids):
         """注册一个或多个窗口"""
         for wid in window_ids:
-            self._window_ids.append(wid)
+            cls._window_ids.append(wid)
             print(f"[Window] 注册窗口 ID: {wid}")
 
     @staticmethod
