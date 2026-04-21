@@ -51,6 +51,9 @@ class _InvokeRouter:
 
 
 class _StreamRouter:
+
+
+
     """Stream 路由器辅助类"""
     server = Stream  # 类型注解用：stream: router.stream.server
 

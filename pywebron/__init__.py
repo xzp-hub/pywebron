@@ -28,7 +28,7 @@ class App:
         
         self._routers: List[Router] = []
 
-    def include_router(self, *routers: Router):
+    def register_routes(self, *routers: Router):
         """注册一个或多个路由器"""
         for router in routers:
             self._routers.append(router)
@@ -38,12 +38,12 @@ class App:
             for name, handler in router._pending_stream:
                 print(f"[Router] 注册 Stream 处理器: {name}")
 
-    def include_window(self, *window_ids):
+    def include_windows(self, *window_ids):
         """注册一个或多个窗口"""
         for wid in window_ids:
             print(f"[Window] 注册窗口 ID: {wid}")
 
-    def register_window(self, **kwargs) -> bool:
+    def register_window(self, **kwargs) -> int:
         """注册窗口，参数同 Window.register_window"""
         return Window.register_window(**kwargs)
 

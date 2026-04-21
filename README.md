@@ -86,11 +86,13 @@ from pywebron import App
 
 app = App()
 
+
 @app.invoke.handle("greet")
 async def greet(invoke: app.invoke):
     return await invoke.json_response(200, "Hello!", {"message": "Hello, PyWebron!"})
 
-app.window.register_window(
+
+app.window.main(
     title="My First App",
     width=800,
     height=600,
@@ -108,10 +110,12 @@ from pywebron.utils import save_file_dialog
 
 app = App()
 
+
 # ---- 自定义参数结构体 ----
 class MyStruct(app.invoke.struct):
     name: str
     age: int = 0
+
 
 # ---- Invoke: 请求-响应模式 ----
 @app.invoke.handle("get_user_info")
@@ -119,6 +123,7 @@ async def get_user_info(invoke: app.invoke, struct: MyStruct):
     return await invoke.json_response(
         200, "查询成功", {"name": struct.name, "age": struct.age}
     )
+
 
 # ---- Stream: 双向流式通信 ----
 @app.stream.handle("chat_stream")
@@ -137,20 +142,22 @@ async def chat_stream(stream: app.stream):
                     send_mode=StreamSendModes.UNITYCAST,
                 )
 
+
 # ---- Worker: CPU 密集任务 ----
 @app.invoke.handle("heavy_task")
 async def heavy_task(invoke: app.invoke, worker: app.worker):
     result = await worker.run(my_cpu_func, arg1, arg2)
     return await invoke.json_response(200, "完成", result)
 
+
 # ---- 注册窗口并运行 ----
-app.window.register_window(
+app.window.main(
     title="PyWebron App",
     width=1200,
     height=900,
-    show_title_bar=False,       # 无边框窗口
-    window_radius=5,            # 圆角半径
-    enable_resizable=True,      # 可调整大小
+    show_title_bar=False,  # 无边框窗口
+    window_radius=5,  # 圆角半径
+    enable_resizable=True,  # 可调整大小
     dwm_corner=DwmCorners.LITTLE_ROUND,  # Windows DWM 圆角
     # 三种内容模式（三选一）：
     # html_content="/path/to/index.html",        # 加载 HTML 文件
@@ -337,7 +344,7 @@ window.pywebron.attributes.enable_resizable // 是否可调整大小
 直接加载 HTML 文件，适合简单页面：
 
 ```python
-app.window.register_window(
+app.window.main(
     html_content="/path/to/index.html",
 )
 ```
@@ -347,7 +354,7 @@ app.window.register_window(
 加载 URL，适合 Vite 等开发服务器热重载开发：
 
 ```python
-app.window.register_window(
+app.window.main(
     link_content="http://localhost:5173/",
 )
 ```
@@ -357,7 +364,7 @@ app.window.register_window(
 通过自定义 `app://` 协议加载前端构建产物，适合生产部署：
 
 ```python
-app.window.register_window(
+app.window.main(
     dist_content="/path/to/vue-app/dist",
 )
 ```

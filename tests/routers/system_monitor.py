@@ -2,7 +2,7 @@ from asyncio import sleep as asyncio_sleep
 from traceback import format_exc
 
 from pywebron import Router, StreamSendModes
-from tools import SystemMonitoring, TerminalLogger
+from .tools import SystemMonitoring, TerminalLogger
 
 router = Router(title="系统监控")
 

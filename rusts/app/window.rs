@@ -61,6 +61,8 @@ static MAIN_EVENT_PROXY: once_cell::sync::Lazy<
 // 待创建的窗口队列
 static PENDING_WINDOWS: Lazy<Mutex<HashMap<u64, WindowConfig>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+// 主窗口 ID 存储（只允许一个主窗口）
+static MAIN_WINDOW_ID: Lazy<Mutex<Option<u64>>> = Lazy::new(|| Mutex::new(None));
 // 存储 webview 对象（WebView 包含非 Send 的原始指针，需要 unsafe wrapper）
 struct WebViewWrapper(std::sync::Arc<Mutex<Option<wry::WebView>>>);
 unsafe impl Send for WebViewWrapper {}
@@ -1010,10 +1012,27 @@ pub struct WindowConfig {
     pub enable_resizable: bool,
     pub enable_devtools: bool,
     pub dwm_corner: u32,
+    pub is_main: bool,
 }
 
 fn create_window(config: WindowConfig) -> PyResult<u64> {
     let window_id = generate_window_id();
+
+    // 检查是否尝试创建第二个主窗口
+    if config.is_main {
+        let mut main_id = MAIN_WINDOW_ID.lock().map_err(|e| {
+            pyo3::exceptions::PyRuntimeError::new_err(format!("无法获取主窗口锁: {}", e))
+        })?;
+        
+        if main_id.is_some() {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "主窗口已存在，不能创建第二个主窗口"
+            ));
+        }
+        
+        // 设置主窗口 ID
+        *main_id = Some(window_id);
+    }
 
     // 存储配置，让主事件循环可以创建窗口
     if let Ok(mut configs) = PENDING_WINDOWS.lock() {
@@ -1308,7 +1327,7 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, html_content, link_content, dist_content, icon_path, show_title_bar, window_radius, enable_resizable, enable_devtools, dwm_corner=0))]
+#[pyo3(signature = (title, width, height, html_content, link_content, dist_content, icon_path, show_title_bar, window_radius, enable_resizable, enable_devtools, dwm_corner=0, is_main=false))]
 pub fn register_window(
     title: String,
     width: u32,
@@ -1322,7 +1341,8 @@ pub fn register_window(
     enable_resizable: bool,
     enable_devtools: bool,
     dwm_corner: u32,
-) -> PyResult<bool> {
+    is_main: bool,
+) -> PyResult<u64> {
     let config = WindowConfig {
         title: title.clone(),
         width,
@@ -1336,9 +1356,10 @@ pub fn register_window(
         enable_resizable,
         enable_devtools,
         dwm_corner,
+        is_main,
     };
 
-    // 直接创建窗口
+    // 创建窗口并返回 window_id
     let window_id = create_window(config.clone())?;
 
     // 存储配置供 get_windows() 查询
@@ -1346,7 +1367,7 @@ pub fn register_window(
         configs.insert(window_id, config);
     }
 
-    Ok(true)
+    Ok(window_id)
 }
 
 // 存储窗口配置，用于 get_windows 返回
@@ -1414,9 +1435,31 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
                 }
             }
             Event::UserEvent(UserEvent::CloseWindow(window_id)) => {
-                cleanup_window(*window_id);
-                if WINDOWS.is_empty() {
+                // 检查是否是主窗口
+                let is_main_window = if let Ok(main_id) = MAIN_WINDOW_ID.lock() {
+                    main_id.as_ref() == Some(window_id)
+                } else {
+                    false
+                };
+
+                if is_main_window {
+                    // 关闭主窗口：清理所有窗口并退出应用
+                    let all_window_ids: Vec<u64> = WINDOWS.iter().map(|entry| *entry.key()).collect();
+                    for id in all_window_ids {
+                        cleanup_window(id);
+                    }
+                    // 清除主窗口 ID
+                    if let Ok(mut main_id) = MAIN_WINDOW_ID.lock() {
+                        *main_id = None;
+                    }
                     *flow = ControlFlow::Exit;
+                } else {
+                    // 关闭普通窗口：只清理该窗口
+                    cleanup_window(*window_id);
+                    // 如果所有窗口都关闭了，退出应用
+                    if WINDOWS.is_empty() {
+                        *flow = ControlFlow::Exit;
+                    }
                 }
             }
             Event::WindowEvent {
@@ -1432,11 +1475,34 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
                         None
                     }
                 });
+                
                 if let Some(id) = internal_id {
-                    cleanup_window(id);
-                }
-                if WINDOWS.is_empty() {
-                    *flow = ControlFlow::Exit;
+                    // 检查是否是主窗口
+                    let is_main_window = if let Ok(main_id) = MAIN_WINDOW_ID.lock() {
+                        main_id.as_ref() == Some(&id)
+                    } else {
+                        false
+                    };
+
+                    if is_main_window {
+                        // 关闭主窗口：清理所有窗口并退出应用
+                        let all_window_ids: Vec<u64> = WINDOWS.iter().map(|entry| *entry.key()).collect();
+                        for window_id in all_window_ids {
+                            cleanup_window(window_id);
+                        }
+                        // 清除主窗口 ID
+                        if let Ok(mut main_id) = MAIN_WINDOW_ID.lock() {
+                            *main_id = None;
+                        }
+                        *flow = ControlFlow::Exit;
+                    } else {
+                        // 关闭普通窗口：只清理该窗口
+                        cleanup_window(id);
+                        // 如果所有窗口都关闭了，退出应用
+                        if WINDOWS.is_empty() {
+                            *flow = ControlFlow::Exit;
+                        }
+                    }
                 }
             }
             Event::UserEvent(UserEvent::EvaluateScript { window_id, script }) => {

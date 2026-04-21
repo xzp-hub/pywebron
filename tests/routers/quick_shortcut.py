@@ -5,7 +5,7 @@ from traceback import format_exc
 from pywebron import Router, Worker
 from pywebron.configs import PROJECT_ROOT_PATH
 from pywebron.utils import save_file_dialog
-from tools import cpu_task
+from .tools import cpu_task
 
 router = Router(title="快捷操作")
 
@@ -13,7 +13,7 @@ router = Router(title="快捷操作")
 @router.invoke.handle("save_files_via_dialog_invoke")
 async def save_files_via_dialog(invoke: router.invoke.server):
     try:
-        source_path = f'{PROJECT_ROOT_PATH}/assets/pywebron.html'
+        source_path = f'{PROJECT_ROOT_PATH}/builtins/pywebron.html'
         new_path = await save_file_dialog(str(source_path))
         return await invoke.json_response(True, "文件保存成功", new_path)
     except Exception:
@@ -34,7 +34,7 @@ async def execute_cpu_intensive_tasks(invoke: router.invoke.server, worker: Work
 @router.invoke.handle("create_new_windows_at_runtime_invoke")
 async def create_new_windows_at_runtime(invoke: router.invoke.server, window: router.invoke.window):
     try:
-        res = window.register_window(
+        res = window.main(
             title="运行时创建窗口",
             width=1200,
             height=1200,
