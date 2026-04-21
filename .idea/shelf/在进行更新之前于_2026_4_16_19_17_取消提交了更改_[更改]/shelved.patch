@@ -1,0 +1,83 @@
+Index: tests/uis/vues/src/components/TerminalLog.vue
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><script setup>\r\nimport { ref, onMounted, onUnmounted } from 'vue'\r\nimport { TerminalIcon } from 'tdesign-icons-vue-next'\r\n\r\nconst isDark = ref(false)\r\nconst pw = window.pywebron\r\nconst stream = pw?.interfaces?.stream\r\n\r\n// 主题切换\r\nfunction applyTheme() {\r\n  isDark.value = document.documentElement.getAttribute('data-theme') === 'dark'\r\n    || window.matchMedia?.('(prefers-color-scheme: dark)').matches\r\n  \r\n  // 更新已存在的日志颜色\r\n  if (terminalLogsEl.value) {\r\n    const dark = isDark.value\r\n    const lines = terminalLogsEl.value.children\r\n    for (let i = 0; i < lines.length; i++) {\r\n      const line = lines[i]\r\n      const text = line.textContent || ''\r\n      if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {\r\n        line.style.color = dark ? '#ff6b6b' : '#c0392b'\r\n      } else if (text.includes('[Performance]')) {\r\n        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'\r\n      } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {\r\n        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.7)'\r\n      } else if (text.includes('[Warning]') || text.includes('警告')) {\r\n        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.65)'\r\n      } else {\r\n        line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'\r\n      }\r\n    }\r\n  }\r\n}\r\n\r\nonMounted(() => {\r\n  applyTheme()\r\n  const observer = new MutationObserver(applyTheme)\r\n  observer.observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']})\r\n})\r\n\r\nconst terminalLogsEl = ref(null)\r\nlet retryTimer = null\r\n\r\nasync function startTerminalLog() {\r\n  try {\r\n    const terminalStream = await stream('terminal_log_stream')\r\n    terminalStream.recv((data) => {\r\n      if (!terminalLogsEl.value) return\r\n      const logs = data.data?.logs || data.logs || []\r\n      const frag = document.createDocumentFragment()\r\n      // 每次接收日志时都检查当前主题\r\n      const dark = document.documentElement.getAttribute('data-theme') === 'dark'\r\n      logs.forEach(log => {\r\n        const line = document.createElement('div')\r\n        let text = typeof log === 'string' ? log : JSON.stringify(log)\r\n        if (text.includes('[Error]') || text.includes('[error]') || text.includes('Exception') || text.includes('Traceback')) {\r\n          line.style.color = dark ? '#ff6b6b' : '#c0392b'\r\n        } else if (text.includes('[Performance]')) {\r\n          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'\r\n        } else if (text.includes('[Window]') || text.includes('[IPC]') || text.includes('[Stream]') || text.includes('[Invoke]') || text.includes('[Timing]')) {\r\n          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.7)'\r\n        } else if (text.includes('[Warning]') || text.includes('警告')) {\r\n          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.65)'\r\n        } else {\r\n          line.style.color = dark ? '#ffffff' : 'rgba(0,0,0,0.75)'\r\n        }\r\n        line.textContent = text\r\n        frag.appendChild(line)\r\n      })\r\n      terminalLogsEl.value.appendChild(frag)\r\n      terminalLogsEl.value.scrollTop = terminalLogsEl.value.scrollHeight\r\n    })\r\n  } catch (e) { /* noop */ }\r\n}\r\n\r\nonMounted(() => {\r\n  startTerminalLog()\r\n})\r\n\r\nonUnmounted(() => {\r\n  if (retryTimer) clearTimeout(retryTimer)\r\n})\r\n\r\n// 辅助函数：读取 CSS 变量值，带 fallback\r\nfunction varToColor(varName, fallback) {\r\n  if (typeof getComputedStyle !== 'undefined') {\r\n    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback\r\n  }\r\n  return fallback\r\n}\r\n</script>\r\n\r\n<template>\r\n  <div class=\"card\">\r\n    <div class=\"header\">\r\n      <div class=\"header-icon-box\">\r\n        <TerminalIcon class=\"header-icon\" />\r\n      </div>\r\n      <span class=\"header-title\">终端日志</span>\r\n    </div>\r\n    <div ref=\"terminalLogsEl\" class=\"content-area\"></div>\r\n  </div>\r\n</template>\r\n\r\n<style scoped>\r\n\r\n.card {\r\n  border-radius: 6px;\r\n  display: flex;\r\n  flex-direction: column;\r\n  overflow: hidden;\r\n  background: var(--bg-card);\r\n  box-sizing: border-box;\r\n  border: 1px solid var(--border-default);\r\n  height: auto;\r\n  flex: 1;\r\n}\r\n\r\n.header {\r\n  height: 36px;\r\n  display: flex;\r\n  align-items: center;\r\n  background: var(--bg-card-header);\r\n  box-sizing: border-box;\r\n  border-bottom: 1px solid var(--border-default);\r\n  display: flex;\r\n  padding-left: 6px;\r\n  gap: 5px;\r\n}\r\n\r\n.header-icon-box {\r\n  width: 36px;\r\n  height: 36px;\r\n  display: flex;\r\n  align-items: center;\r\n  justify-content: center;\r\n  width: auto;\r\n}\r\n\r\n.header-icon {\r\n  width: 16px;\r\n  height: 16px;\r\n  color: #F7BA1E;\r\n}\r\n\r\n.header-title {\r\n  font-size: 14px;\r\n  color: var(--text-secondary);\r\n  line-height: 1;\r\n}\r\n\r\n[data-theme=\"dark\"] .header-title {\r\n  color: #ffffff;\r\n}\r\n\r\n.content-area {\r\n  flex: 1;\r\n  min-height: 0;\r\n  padding: 5px;\r\n  overflow-y: auto;\r\n  font-family: 'Consolas', 'Monaco', monospace;\r\n  font-size: 12px;\r\n  line-height: 1.5;\r\n  color: var(--text-log-normal);\r\n  background: var(--bg-card);\r\n}\r\n\r\n[data-theme=\"dark\"] .content-area {\r\n  background: #1a1b1d;\r\n  color: #ffffff;\r\n}\r\n\r\n.content-area::-webkit-scrollbar {\r\n  width: 4px;\r\n}\r\n\r\n.content-area::-webkit-scrollbar-thumb {\r\n  background: var(--log-scrollbar);\r\n  border-radius: 5px;\r\n}\r\n</style>\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/tests/uis/vues/src/components/TerminalLog.vue b/tests/uis/vues/src/components/TerminalLog.vue
+--- a/tests/uis/vues/src/components/TerminalLog.vue	(revision 323503a352627cf8ecd54b744944d64257001036)
++++ b/tests/uis/vues/src/components/TerminalLog.vue	(date 1776265492197)
+@@ -113,8 +113,6 @@
+   background: var(--bg-card);
+   box-sizing: border-box;
+   border: 1px solid var(--border-default);
+-  height: auto;
+-  flex: 1;
+ }
+ 
+ .header {
+@@ -155,8 +153,6 @@
+ }
+ 
+ .content-area {
+-  flex: 1;
+-  min-height: 0;
+   padding: 5px;
+   overflow-y: auto;
+   font-family: 'Consolas', 'Monaco', monospace;
+Index: tests/uis/vues/src/App.vue
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><script setup>\r\nimport WindowHeader from '@/components/WindowHeader.vue'\r\nimport SystemMonitor from '@/components/SystemMonitor.vue'\r\nimport IoMonitor from '@/components/IoMonitor.vue'\r\nimport ChatRoom from '@/components/ChatRoom.vue'\r\nimport InvokePanel from '@/components/InvokePanel.vue'\r\nimport TerminalLog from '@/components/TerminalLog.vue'\r\n</script>\r\n\r\n<template>\r\n  <div class=\"window\">\r\n    <WindowHeader/>\r\n    <div class=\"window-content\">\r\n      <div class=\"window-top-content\">\r\n        <div class=\"window-left-content\">\r\n          <SystemMonitor/>\r\n          <IoMonitor/>\r\n        </div>\r\n        <div class=\"window-right-content\">\r\n          <InvokePanel/>\r\n          <ChatRoom/>\r\n        </div>\r\n      </div>\r\n      <TerminalLog/>\r\n    </div>\r\n  </div>\r\n</template>\r\n\r\n<style scoped>\r\n.window {\r\n  display: flex;\r\n  flex-direction: column;\r\n  flex: 1;\r\n  gap: 5px;\r\n  padding: 5px;\r\n  background: #eeeeee;\r\n  border-radius: 6px;\r\n  border: 1px solid var(--border-default);\r\n}\r\n\r\n[data-theme=\"dark\"] .window {\r\n  background: #393b40;\r\n}\r\n\r\n.window-content {\r\n  border-radius: 5px;\r\n  flex: 1;\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 5px;\r\n  box-sizing: border-box;\r\n  min-height: 0;\r\n  overflow: hidden;\r\n}\r\n\r\n.window-top-content {\r\n  flex: 1;\r\n  display: flex;\r\n  flex-direction: row;\r\n  gap: 5px;\r\n  min-height: 0;\r\n}\r\n\r\n.window-left-content {\r\n  width: 50%;\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 5px;\r\n  min-height: 0;\r\n}\r\n\r\n.window-right-content {\r\n  flex: 1;\r\n  display: flex;\r\n  flex-direction: column;\r\n  gap: 5px;\r\n  min-height: 0;\r\n}\r\n\r\n.window-right-content > :last-child {\r\n  flex: 1;\r\n  min-height: 0;\r\n}\r\n</style>\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/tests/uis/vues/src/App.vue b/tests/uis/vues/src/App.vue
+--- a/tests/uis/vues/src/App.vue	(revision 323503a352627cf8ecd54b744944d64257001036)
++++ b/tests/uis/vues/src/App.vue	(date 1776264417099)
+@@ -54,11 +54,10 @@
+ }
+ 
+ .window-top-content {
+-  flex: 1;
++  height: 560px;
+   display: flex;
+   flex-direction: row;
+   gap: 5px;
+-  min-height: 0;
+ }
+ 
+ .window-left-content {
+Index: pywebron/app/stream.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from .._pywebron_ import rust_stream_send, rust_stream_recv\r\nfrom ..configs import StreamSendModes\r\nfrom .handle import Handle\r\nfrom typing import Any\r\n\r\n\r\nclass Stream(Handle):\r\n    _log_count = {}\r\n    _limited_streams = {'system_monitoring_stream'}\r\n\r\n    @classmethod\r\n    def handle(cls, alias: str = None):\r\n        def decorator(func):\r\n            return cls._handler_(func, alias)\r\n\r\n        return decorator\r\n\r\n    async def send(\r\n            self,\r\n            code: int,\r\n            mssg: str,\r\n            data: Any,\r\n            send_mode: StreamSendModes = StreamSendModes.BROADCAST,\r\n            mcast_win_ids: list[int] = None,\r\n    ) -> bool:\r\n        payload, window_ids = {\"code\": code, \"mssg\": mssg, \"data\": data}, None\r\n        if self.handle_id in Stream._limited_streams:\r\n            count = Stream._log_count.get(self.handle_id, 0)\r\n            if count < 3:\r\n                self._logger_(payload, send_mode)\r\n                Stream._log_count[self.handle_id] = count + 1\r\n        else:\r\n            self._logger_(payload, send_mode)\r\n        match send_mode:\r\n            case StreamSendModes.BROADCAST:\r\n                window_ids = None\r\n            case StreamSendModes.MULTICAST:\r\n                window_ids = mcast_win_ids\r\n            case StreamSendModes.UNITYCAST:\r\n                window_ids = [self.window_id]\r\n        return await rust_stream_send(\r\n            payload=payload,\r\n            handle_id=self.handle_id,\r\n            send_mode=send_mode,\r\n            window_ids=window_ids,\r\n        )\r\n\r\n    async def recv(self) -> Any:\r\n        if (res := await rust_stream_recv(self.handle_id)) is not None:\r\n            return res[\"payload\"]\r\n        return res\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/pywebron/app/stream.py b/pywebron/app/stream.py
+--- a/pywebron/app/stream.py	(revision 323503a352627cf8ecd54b744944d64257001036)
++++ b/pywebron/app/stream.py	(date 1776264958248)
+@@ -24,13 +24,14 @@
+             mcast_win_ids: list[int] = None,
+     ) -> bool:
+         payload, window_ids = {"code": code, "mssg": mssg, "data": data}, None
+-        if self.handle_id in Stream._limited_streams:
+-            count = Stream._log_count.get(self.handle_id, 0)
+-            if count < 3:
+-                self._logger_(payload, send_mode)
+-                Stream._log_count[self.handle_id] = count + 1
+-        else:
+-            self._logger_(payload, send_mode)
++        # if self.handle_id in Stream._limited_streams:
++        #     count = Stream._log_count.get(self.handle_id, 0)
++        #     if count < 3:
++        #         self._logger_(payload, send_mode)
++        #         Stream._log_count[self.handle_id] = count + 1
++        # else:
++        #     self._logger_(payload, send_mode)
++        self._logger_(payload, send_mode)
+         match send_mode:
+             case StreamSendModes.BROADCAST:
+                 window_ids = None

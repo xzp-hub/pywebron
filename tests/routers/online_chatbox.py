@@ -2,7 +2,7 @@ from asyncio import sleep as asyncio_sleep
 from traceback import format_exc
 
 from pywebron import Router, Worker, App, StreamSendModes
-from .tools import cpu_task
+from tests.utills.tools import cpu_task
 
 router = Router(title="聊天室")
 stream = router.stream

@@ -5,7 +5,7 @@ from traceback import format_exc
 from pywebron import Router, Worker, Window
 from pywebron.configs import PROJECT_ROOT_PATH
 from pywebron.utils import save_file_dialog
-from .tools import cpu_task
+from tests.utills.tools import cpu_task
 
 router = Router(title="快捷操作")
 invoke = router.invoke
@@ -19,7 +19,7 @@ class QuickShortcutStruct(invoke.struct):
 @invoke.handle("save_files_via_dialog_invoke")
 async def save_files_via_dialog(server: invoke.server):
     try:
-        source_path = f'{PROJECT_ROOT_PATH}/builtins/pywebron.html'
+        source_path = f'{PROJECT_ROOT_PATH}/builtins/pywebron.png'
         new_path = await save_file_dialog(source_path)
         return await server.json_response(True, "文件保存成功", new_path)
     except Exception:
