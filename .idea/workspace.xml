@@ -3,10 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="cc2fdbcc-12e8-44b4-b3a3-86909359b2b6" name="更改" comment="终极完美版">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pywebron/app/handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/pywebron/app/handler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rusts/app/invoke.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rusts/app/invoke.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rusts/app/stream.rs" beforeDir="false" afterPath="$PROJECT_DIR$/rusts/app/stream.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/routers/system_monitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/routers/system_monitor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/builtins/pywebron.js" beforeDir="false" afterPath="$PROJECT_DIR$/builtins/pywebron.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/html_content/pywebron.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/html_content/pywebron.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/main copy.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/main copy.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,6 +41,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main copy.executor": "Run",
     "Python.main.executor": "Run",
     "Python.test.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -56,7 +56,7 @@
     "npm.dev (1).executor": "Run",
     "npm.dev.executor": "Run",
     "settings.editor.selected.configurable": "settings.sync",
-    "ts.external.directory.path": "D:\\jetbrains\\apps\\pycharm\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
+    "ts.external.directory.path": "A:\\jetbrains\\apps\\pycharm\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -69,7 +69,32 @@
       <recent name="E:\works\pywebron\frontend" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.test">
+  <component name="RunManager" selected="Python.main">
+    <configuration name="main copy" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="pywebron" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tests/main copy.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="pywebron" />
       <option name="ENV_FILES" value="" />
@@ -143,11 +168,13 @@
     <list>
       <item itemvalue="npm.build" />
       <item itemvalue="npm.dev" />
+      <item itemvalue="Python.main copy" />
       <item itemvalue="Python.test" />
       <item itemvalue="Python.main" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.main copy" />
         <item itemvalue="Python.main" />
         <item itemvalue="npm.dev" />
         <item itemvalue="Python.test" />
@@ -585,7 +612,15 @@
       <option name="project" value="LOCAL" />
       <updated>1776775282767</updated>
     </task>
-    <option name="localTasksCounter" value="49" />
+    <task id="LOCAL-00049" summary="终极完美版">
+      <option name="closed" value="true" />
+      <created>1776778379392</created>
+      <option name="number" value="00049" />
+      <option name="presentableId" value="LOCAL-00049" />
+      <option name="project" value="LOCAL" />
+      <updated>1776778379392</updated>
+    </task>
+    <option name="localTasksCounter" value="50" />
     <servers />
   </component>
   <component name="TerminalProjectNonSharedOptionsProvider">
@@ -617,7 +652,8 @@
     <option name="LAST_COMMIT_MESSAGE" value="终极完美版" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/pywebron$main.coverage" NAME="main 覆盖结果" MODIFIED="1776777936395" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/pywebron$main_copy.coverage" NAME="main copy 覆盖结果" MODIFIED="1776783133385" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/pywebron$main.coverage" NAME="main 覆盖结果" MODIFIED="1776782271717" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/pywebron$test.coverage" NAME="test 覆盖结果" MODIFIED="1776774664107" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/routers" />
   </component>
 </project>
