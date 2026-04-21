@@ -4,7 +4,7 @@ from traceback import format_exc
 from pywebron import Router, Worker, App, StreamSendModes
 from tools import cpu_task
 
-router = Router()
+router = Router(title="聊天室")
 
 
 class ChatRoomStruct(router.stream.struct):
@@ -46,8 +46,3 @@ async def chat_room(stream: router.stream.server, worker: Worker, struct: ChatRo
                         )
     except Exception:
         await stream.send(500, "聊天室错误", format_exc())
-
-
-def create_chat_router():
-    """聊天室分组"""
-    return router

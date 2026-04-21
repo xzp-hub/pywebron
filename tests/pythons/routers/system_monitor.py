@@ -4,7 +4,7 @@ from traceback import format_exc
 from pywebron import Router, StreamSendModes
 from tools import SystemMonitoring, TerminalLogger
 
-router = Router()
+router = Router(title="系统监控")
 
 
 @router.stream.handle("system_monitoring_stream")
@@ -39,8 +39,3 @@ async def terminal_log(stream: router.stream.server):
                 await stream.send(500, "终端日志错误", format_exc())
     except Exception:
         await stream.send(500, "终端日志错误", format_exc())
-
-
-def create_monitor_router():
-    """系统监控分组：系统监控、终端日志"""
-    return router
