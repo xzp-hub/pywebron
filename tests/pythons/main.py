@@ -19,9 +19,9 @@ def main():
         enable_resizable=True,
         window_radius=6,
         dwm_corner=DwmCorners.LITTLE_ROUND,
-        link_content="http://localhost:5173/",
+        # link_content="http://localhost:5173/",
         # html_content=f"{PROJECT_ROOT_PATH}/assets/pywebron.html",
-        # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/dist_content/dist",
+        dist_content=f"{PROJECT_ROOT_PATH}/forntend/dist_content/dist",
         # icon_path=f"{PROJECT_ROOT_PATH}/assets/pywebron.png",
     )
     app.window.register_windows(main_win)

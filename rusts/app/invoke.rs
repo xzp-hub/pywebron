@@ -21,22 +21,38 @@ fn find_handler<'py>(
 ) -> PyResult<Option<Bound<'py, PyAny>>> {
     let configs = py.import("pywebron.configs")?;
     let handles = configs.getattr("HANDLES")?;
-    let groups = handles.try_iter()?;
+    eprintln!("[DEBUG-RUST] 开始查找 handler: {} (type={})", handle_id, handler_type);
+    // 使用 .items() 方法来遍历字典的键值对
+    let items_method = handles.getattr("items")?;
+    let items = items_method.call0()?;
+    let groups = items.try_iter()?;
     for group_result in groups {
         let group = group_result?;
-        // group 是 (key, value) 元组中的 value（List[Dict]）
-        let (_, handler_list) = group.extract::<(String, Bound<'_, PyAny>)>()?;
-        let items = handler_list.try_iter()?;
-        for item_result in items {
-            let item = item_result?;
-            let name: String = item.getattr("name")?.extract()?;
-            let htype: String = item.getattr("type")?.extract()?;
-            if name == handle_id && htype == handler_type {
-                let handler = item.getattr("handler")?;
-                return Ok(Some(handler));
+        eprintln!("[DEBUG-RUST] group type: {:?}", group.get_type().name());
+        // group 是 (key, value) 元组
+        let extracted: Result<(String, Bound<'_, PyAny>), _> = group.extract();
+        match extracted {
+            Ok((key, handler_list)) => {
+                eprintln!("[DEBUG-RUST] 遍历组: {}", key);
+                let items = handler_list.try_iter()?;
+                for item_result in items {
+                    let item = item_result?;
+                    let name: String = item.get_item("name")?.extract()?;
+                    let htype: String = item.get_item("type")?.extract()?;
+                    if name == handle_id && htype == handler_type {
+                        let handler = item.get_item("handler")?;
+                        eprintln!("[DEBUG-RUST] 找到 handler: {}", handle_id);
+                        return Ok(Some(handler));
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("[DEBUG-RUST] 提取失败: {}", e);
+                return Err(e);
             }
         }
     }
+    eprintln!("[DEBUG-RUST] 未找到 handler: {}", handle_id);
     Ok(None)
 }
 
@@ -121,10 +137,10 @@ fn process_invoke_request(request: IpcRequest) {
     let payload = request.payload.clone();
 
     let t_total = std::time::Instant::now();
-    // eprintln!(
-    //     "[Invoke] >>> 开始调用 | handle={} | wid={} | req_id={:?}",
-    //     handle_id, window_id, request_id
-    // );
+    eprintln!(
+        "[Invoke] >>> 开始调用 | handle={} | wid={} | req_id={:?}",
+        handle_id, window_id, request_id
+    );
 
     // 获取 Python GIL，执行 handler
     let mut result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
@@ -162,9 +178,9 @@ fn process_invoke_request(request: IpcRequest) {
 
         // 使用 asyncio.run() 运行协程
         let asyncio = py.import("asyncio")?;
-        // eprintln!("[Invoke]     调用 asyncio.run() | handle={}", handle_id);
+        eprintln!("[Invoke]     调用 asyncio.run() | handle={}", handle_id);
         let py_result = asyncio.call_method1("run", (coroutine,))?;
-        // eprintln!("[Invoke]     协程执行完毕 | handle={}", handle_id);
+        eprintln!("[Invoke]     协程执行完毕 | handle={}", handle_id);
 
         // 解析结果
         let value: Value = pythonize::depythonize(&py_result)?;
@@ -173,7 +189,7 @@ fn process_invoke_request(request: IpcRequest) {
     .map_err(|e| e.to_string());
 
     let _elapsed = t_total.elapsed();
-    // eprintln!("[Invoke] 全流程耗时：{:?} | handle={}", elapsed, handle_id);
+    eprintln!("[Invoke] 全流程耗时：{:?} | handle={}", _elapsed, handle_id);
 
     // 根据模式处理结果
     if let Some(tx) = request.result_tx {
@@ -219,10 +235,10 @@ fn process_stream_request(request: IpcRequest) {
     let request_id = request.request_id.clone();
     let payload = request.payload.clone();
 
-    // eprintln!(
-    //     "[Stream] >>> 开始调用 | handle={} | wid={} | req_id={:?}",
-    //     handle_id, window_id, request_id
-    // );
+    eprintln!(
+        "[Stream] >>> 开始调用 | handle={} | wid={} | req_id={:?}",
+        handle_id, window_id, request_id
+    );
 
     // 注册订阅关系
     crate::app::stream::register_stream_window(&handle_id, window_id);
@@ -273,7 +289,7 @@ fn process_stream_request(request: IpcRequest) {
     .map_err(|e| e.to_string());
 
     if let Err(_e) = result {
-        // eprintln!("[Stream] Handler 错误：{} | handle={}", _e, handle_id);
+        eprintln!("[Stream] Handler 错误：{} | handle={}", _e, handle_id);
     }
 }
 
@@ -365,16 +381,19 @@ pub fn get_handles(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
 
     let configs_module = py.import("pywebron.configs")?;
     let handles = configs_module.getattr("HANDLES")?;
-    let groups = handles.try_iter()?;
+    // 使用 .items() 方法来遍历字典的键值对
+    let items_method = handles.getattr("items")?;
+    let items = items_method.call0()?;
+    let groups = items.try_iter()?;
     for group_result in groups {
         let group = group_result?;
         let (_, handler_list) = group.extract::<(String, Bound<'_, PyAny>)>()?;
         let items = handler_list.try_iter()?;
         for item_result in items {
             let item = item_result?;
-            let name: String = item.getattr("name")?.extract()?;
-            let htype: String = item.getattr("type")?.extract()?;
-            let handler = item.getattr("handler")?;
+            let name: String = item.get_item("name")?.extract()?;
+            let htype: String = item.get_item("type")?.extract()?;
+            let handler = item.get_item("handler")?;
             let handler_name = handler.getattr("__name__")?.extract::<String>()?;
             if htype == "invoke" {
                 invoke_dict.set_item(name, handler_name)?;
