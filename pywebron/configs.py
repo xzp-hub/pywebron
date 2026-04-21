@@ -25,7 +25,7 @@ class DwmCorners(IntEnum):
 # 调用处理器注册表
 INVOKE_HANDLES: Dict[str, Callable] = {}
 
-# 流处理器注册表
+# 流式处理器注册表
 STREAM_HANDLES: Dict[str, Callable] = {}
 
 # 工作任务池（进程池或线程池）

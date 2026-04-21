@@ -7,11 +7,19 @@ from .._pywebron_ import (
     rust_shutdown_window,
     rust_dragdrop_window,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .. import App
 
 
 class Window:
-    @staticmethod
+    def __init__(self, app: 'App' = None):
+        self._app = app
+        self._window_ids: list[int] = []
+    
     def register_window(
+            self,
             title: str = "PyWebron App",
             html_content: str = None,
             link_content: str = None,
@@ -24,8 +32,9 @@ class Window:
             enable_resizable: bool = True,
             enable_devtools: bool = True,
             dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
-            is_main: bool = False,  # 新增：是否为主窗口
-    ) -> int:  # 返回 window_id
+            is_main: bool = False,
+    ) -> int:
+        """注册窗口，返回 window_id"""
         pather = lambda name: fr"{PROJECT_ROOT_PATH}\builtins\{name}"
 
         if sum(map(bool, (html_content, link_content, dist_content))) > 1:
@@ -34,25 +43,27 @@ class Window:
         if not tuple(filter(None, (html_content, link_content, dist_content))):
             html_content = pather("pywebron.html")
 
-        try:
-            return rust_register_window(
-                title=title,
-                width=width,
-                height=height,
-                html_content=html_content,
-                link_content=link_content,
-                dist_content=dist_content,
-                icon_path=icon_path or pather("pywebron.png"),
-                show_title_bar=show_title_bar,
-                window_radius=window_radius,
-                enable_resizable=enable_resizable,
-                enable_devtools=enable_devtools,
-                dwm_corner=dwm_corner,
-                is_main=is_main,  # 传递给 Rust
-            )
-        except Exception as e:
-            # Rust 抛出的错误会在这里被捕获
-            raise RuntimeError(f"Failed to register window: {e}")
+        return rust_register_window(
+            title=title,
+            width=width,
+            height=height,
+            html_content=html_content,
+            link_content=link_content,
+            dist_content=dist_content,
+            icon_path=icon_path or pather("pywebron.png"),
+            show_title_bar=show_title_bar,
+            window_radius=window_radius,
+            enable_resizable=enable_resizable,
+            enable_devtools=enable_devtools,
+            dwm_corner=dwm_corner,
+            is_main=is_main,
+        )
+    
+    def register_windows(self, *window_ids):
+        """注册一个或多个窗口"""
+        for wid in window_ids:
+            self._window_ids.append(wid)
+            print(f"[Window] 注册窗口 ID: {wid}")
 
     @staticmethod
     def minimize_window(window_id: int) -> bool:

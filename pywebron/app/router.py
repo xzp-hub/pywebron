@@ -1,4 +1,8 @@
-from typing import Callable
+from typing import Callable, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .. import App
+
 from .invoke import Invoke
 from .stream import Stream
 from .window import Window
@@ -19,15 +23,27 @@ class Router:
             ...
 
         # 在主应用中注册
-        app.include_router(router)
+        app.router.register_routers(router)
     """
 
-    def __init__(self, title: str = ""):
+    def __init__(self, title: str = "", app: 'App' = None):
         self.title = title
+        self._app = app
+        self._routers: List['Router'] = []
         self._pending_invoke: list[tuple[str, Callable]] = []
         self._pending_stream: list[tuple[str, Callable]] = []
         self.invoke = _InvokeRouter(self)
         self.stream = _StreamRouter(self)
+    
+    def register_routers(self, *routers: 'Router'):
+        """注册一个或多个路由器"""
+        for router in routers:
+            self._routers.append(router)
+            # 注册路由器中的所有 invoke 和 stream 处理器
+            for name, handler in router._pending_invoke:
+                print(f"[Router] 注册 Invoke 处理器: {name}")
+            for name, handler in router._pending_stream:
+                print(f"[Router] 注册 Stream 处理器: {name}")
 
 
 class _InvokeRouter:
