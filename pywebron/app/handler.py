@@ -37,7 +37,8 @@ class Stream(Handle):
 
     async def recv(self) -> Any:
         from .._pywebron_ import rust_stream_recv
-        return (res := await rust_stream_recv(self.handle_id))["payload"] if res else None
+        res = await rust_stream_recv(self.handle_id)
+        return res["payload"] if res else None
 
 
 class Router:

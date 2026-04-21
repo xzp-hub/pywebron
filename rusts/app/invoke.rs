@@ -243,6 +243,10 @@ fn process_stream_request(request: IpcRequest) {
     // 注册订阅关系
     crate::app::stream::register_stream_window(&handle_id, window_id);
 
+    // 标记 handler 为活跃状态
+    let active_handlers = crate::app::stream::get_active_handlers();
+    active_handlers.write().insert(handle_id.clone());
+
     // 获取 Python GIL，执行 handler
     let result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
         // 优先从缓存获取 handler，避免重复 Python import
@@ -283,10 +287,13 @@ fn process_stream_request(request: IpcRequest) {
         let _ = asyncio.call_method1("run", (coroutine,))?;
 
         // Stream handler 通常不会返回（无限循环）
-        // eprintln!("[Stream]     协程已结束（意外）| handle={}", handle_id);
+        // eprintln!("[Stream]     协程已结束（意外） | handle={}", handle_id);
         Ok(serde_json::json!({"started": true}))
     })
     .map_err(|e| e.to_string());
+
+    // handler 结束后，移除活跃状态
+    active_handlers.write().remove(&handle_id);
 
     if let Err(_e) = result {
         eprintln!("[Stream] Handler 错误：{} | handle={}", _e, handle_id);

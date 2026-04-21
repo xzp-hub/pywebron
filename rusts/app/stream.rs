@@ -20,7 +20,7 @@ static RECV_QUEUES: OnceLock<Arc<RwLock<RecvQueues>>> = OnceLock::new();
 static ACTIVE_HANDLERS: OnceLock<Arc<RwLock<HashSet<String>>>> = OnceLock::new();
 
 #[inline]
-fn get_active_handlers() -> &'static Arc<RwLock<HashSet<String>>> {
+pub(crate) fn get_active_handlers() -> &'static Arc<RwLock<HashSet<String>>> {
     ACTIVE_HANDLERS.get_or_init(|| Arc::new(RwLock::new(HashSet::with_capacity(16))))
 }
 
