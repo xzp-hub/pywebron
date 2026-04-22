@@ -9,12 +9,12 @@ class Router:
         self.handlers: List[tuple] = []
         self.invoke = SimpleNamespace(
             server=Invoke,
-            struct=Handle.Struct,
+            struct=Handle.struct,
             handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'invoke')), f)[1]
         )
         self.stream = SimpleNamespace(
             server=Stream,
-            struct=Handle.Struct,
+            struct=Handle.struct,
             handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'stream')), f)[1]
         )
 
@@ -30,7 +30,7 @@ class Router:
             for name, func, htype in router.handlers:
                 print(f"[DEBUG]   - {htype}: {name} (func={func.__name__})")
                 handler_class = Invoke if htype == 'invoke' else Stream
-                wrapper = Handle._create_wrapper_(handler_class, func)
+                wrapper = handler_class._create_wrapper_(func)
                 handlers_to_register.append({'name': name, 'type': htype, 'handler': wrapper})
 
             HANDLES.setdefault(router.title, []).extend(handlers_to_register)

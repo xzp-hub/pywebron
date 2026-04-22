@@ -8,9 +8,15 @@ from ..configs import StreamSendModes
 from .._pywebron_ import rust_stream_recv
 
 class Handle:
-    Struct = SimpleNamespace
-    struct = Struct
+    struct = SimpleNamespace
     __slots__ = ("handle_id", "window_id")
+
+    _BUILTIN_INJECTORS = {
+        'Invoke': lambda req, hc: hc(req['handle_id'], req['window_id']),
+        'Stream': lambda req, hc: hc(req['handle_id'], req['window_id']),
+        'Worker': lambda req, _: Worker,
+        'Window': lambda req, _: Window,
+    }
 
     def __init__(self, handle_id: str, window_id: int):
         self.handle_id = handle_id
@@ -20,70 +26,43 @@ class Handle:
         header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
         print(f"{header}-[{send_mode}]: {payload}" if send_mode else f"{header}: {payload}")
 
-    @staticmethod
-    def _create_wrapper_(handler_class: type, func: Callable):
+    @classmethod
+    def _create_wrapper_(cls, func: Callable):
         params = signature(func).parameters
-        print(f"[DEBUG] 创建 wrapper for {func.__name__}, handler_class={handler_class.__name__}")
-        print(f"[DEBUG] 参数列表: {list(params.keys())}")
 
         def maker(param_name):
             p = params[param_name]
             annot, default = p.annotation, p.default
 
-            print(f"[DEBUG]   参数 '{param_name}': annotation={annot}, default={default}")
-
-            # 如果没有类型注解，跳过
             if annot is Parameter.empty:
-                print(f"[DEBUG]   -> 无类型注解，从 payload 获取")
                 return lambda req, pn=param_name, d=default: (pn,
                                                               req['payload'].get(pn, d) if d is not Parameter.empty else
                                                               req['payload'][pn])
 
             type_name = getattr(annot, '__name__', None)
-            print(f"[DEBUG]   -> type_name={type_name}")
 
-            if type_name in ('Invoke', 'Stream'):
-                print(f"[DEBUG]   -> 创建 {type_name} 实例")
-                return lambda req, pn=param_name: (pn, handler_class(req['handle_id'], req['window_id']))
-            elif type_name == 'Worker':
-                print(f"[DEBUG]   -> 返回 Worker 类")
-                return lambda req, pn=param_name: (pn, Worker)
-            elif type_name == 'Window':
-                print(f"[DEBUG]   -> 返回 Window 类")
-                return lambda req, pn=param_name: (pn, Window)
-            elif hasattr(annot, '__annotations__'):
-                print(f"[DEBUG]   -> 创建结构体实例")
+            if type_name in Handle._BUILTIN_INJECTORS:
+                inject = Handle._BUILTIN_INJECTORS[type_name]
+                return lambda req, pn=param_name: (pn, inject(req, cls))
+
+            if hasattr(annot, '__annotations__'):
                 return lambda req, a=annot, pn=param_name: (pn, a(
                     **{k: req['payload'].get(k, getattr(a, k, None)) for k in a.__annotations__}))
-            else:
-                print(f"[DEBUG]   -> 从 payload 获取")
-                return lambda req, pn=param_name, d=default: (pn,
-                                                              req['payload'].get(pn, d) if d is not Parameter.empty else
-                                                              req['payload'][pn])
+
+            return lambda req, pn=param_name, d=default: (pn,
+                                                          req['payload'].get(pn, d) if d is not Parameter.empty else
+                                                          req['payload'][pn])
 
         handles = [maker(p) for p in params]
-        print(f"[DEBUG] Wrapper 创建完成，共 {len(handles)} 个参数处理器\n")
 
         async def wrapper(req: dict):
-            print(
-                f"[DEBUG] 调用 wrapper: func={func.__name__}, handle_id={req.get('handle_id')}, window_id={req.get('window_id')}")
-            print(f"[DEBUG] 请求 payload: {req.get('payload')}")
             try:
                 kwargs = dict(h(req) for h in handles)
-                print(f"[DEBUG] 解析后的参数: {kwargs}")
-                print(f"[DEBUG] 开始调用 handler 函数...")
                 result = await func(**kwargs)
-                print(f"[DEBUG] 执行成功，返回: {result} (type={type(result)})")
-                # Stream handler 不应返回值（它们是无限循环）
-                if handler_class == Stream:
-                    print(f"[DEBUG] Stream handler 返回 None")
+                if cls is Stream:
                     return None
-                print(f"[DEBUG] Invoke handler 返回结果")
                 return result
-            except Exception as e:
-                print(f"[ERROR] 执行失败: {type(e).__name__}: {e}")
-                import traceback
-                traceback.print_exc()
+            except Exception:
                 raise
 
         return wrapper
