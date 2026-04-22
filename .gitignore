@@ -10,3 +10,6 @@ __pycache__/
 .Python
 /.vscode/settings.json
 /.idea/pywebron.iml
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/vcs.xml
