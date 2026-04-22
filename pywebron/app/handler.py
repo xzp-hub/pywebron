@@ -5,6 +5,7 @@ from .worker import Worker
 from .window import Window
 from .._pywebron_ import rust_stream_send
 from ..configs import StreamSendModes
+from .._pywebron_ import rust_stream_recv
 
 Struct = SimpleNamespace
 
@@ -52,10 +53,8 @@ class Stream(Handle):
         )
 
     async def recv(self) -> Any:
-        from .._pywebron_ import rust_stream_recv
-        res = await rust_stream_recv(self.handle_id)
-        if res:
-            self.window_id = res.get("window_id", self.window_id)
+        if res := await rust_stream_recv(self.handle_id):
+            self.window_id = re['window_id']
             return res["payload"]
         return None
 
