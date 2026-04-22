@@ -2,8 +2,6 @@ import { createApp } from 'vue'
 import TDesign from 'tdesign-vue-next'
 import 'tdesign-vue-next/es/style/index.css'
 import App from './app.vue'
-// 引入主题系统（包含 CSS 变量 + 全局基础样式）
-import './assets/main.css'
 // 引入主题切换功能
 import { useTheme } from './composables/use_theme'
 

@@ -28,6 +28,39 @@ import TerminalLog from '@/components/console_viewer.vue'
   </div>
 </template>
 
+<style>
+@import './assets/themes/variables.css';
+
+* {
+  font-family: "Noto Sans SC", "Microsoft YaHei", "微软雅黑", sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  border: 1px solid transparent;
+}
+
+body {
+  border: 1px solid var(--window-outer-border);
+}
+
+#app {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+</style>
+
 <style scoped>
 .window {
   display: flex;
@@ -39,6 +72,7 @@ import TerminalLog from '@/components/console_viewer.vue'
   border: 1px solid var(--border-default);
   min-height: 0;
   height: 100%;
+  background: var(--bg-base);
 }
 
 [data-theme="dark"] .window {
