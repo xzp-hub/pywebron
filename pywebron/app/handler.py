@@ -54,7 +54,7 @@ class Stream(Handle):
 
     async def recv(self) -> Any:
         if res := await rust_stream_recv(self.handle_id):
-            self.window_id = re['window_id']
+            self.window_id = res['window_id']
             return res["payload"]
         return None
 
