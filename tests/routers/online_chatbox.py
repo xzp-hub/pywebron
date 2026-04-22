@@ -27,7 +27,7 @@ async def chat_room(server: stream.server, worker: Worker, struct: ChatRoomStruc
                         "组播功能测试",
                         {"type": "chat"},
                         send_mode=StreamSendModes.MULTICAST,
-                        mcast_win_ids=wids[0:1],
+                        mcast_wids=wids[0:1],
                     )
                 case "worker_test":
                     res = await worker.run(cpu_task, n := struct.n)
