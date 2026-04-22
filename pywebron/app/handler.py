@@ -3,7 +3,7 @@ from typing import Callable, Any, List
 from inspect import Parameter, signature
 from .worker import Worker
 from .window import Window
-
+from .._pywebron_ import rust_stream_send
 
 Struct = SimpleNamespace
 
@@ -28,9 +28,9 @@ class Invoke(Handle):
 
 
 class Stream(Handle):
-    async def send(self, code: int, mssg: str, data: Any, send_mode: str = "broadcast", mcast_win_ids: list[int] = None, save_history: bool = False) -> bool:
-        from .._pywebron_ import rust_stream_send
-        payload = {"code": code, "mssg": mssg, "data": data}
+    async def send(self, stat: bool, mssg: str, data: Any, send_mode: str = "broadcast", mcast_win_ids: list[int] = None, save_history: bool = False) -> bool:
+        
+        payload = {"stat": stat, "mssg": mssg, "data": data}
         self._logger_(payload, send_mode)
         # broadcast / unitycast 传 None，由 Rust 端决定目标窗口
         # unitycast 目标由 Rust 端 LAST_SOURCE_WINDOWS 根据最近 recv 来源自动路由

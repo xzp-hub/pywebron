@@ -15,7 +15,7 @@ class ChatRoomStruct(stream.struct):
 @stream.handle("chat_room_stream")
 async def chat_room(server: stream.server, worker: Worker, struct: ChatRoomStruct):
     try:
-        await server.send(200, "欢迎加入聊天室", {"type": "system"}, save_history=True)
+        await server.send(True, "欢迎加入聊天室", {"type": "system"}, save_history=True)
         while True:
             match res := await server.recv():
                 case None | {}:
@@ -23,7 +23,7 @@ async def chat_room(server: stream.server, worker: Worker, struct: ChatRoomStruc
                 case "multicast_test":
                     (wids := list(App.get_windows().keys())).remove(server.window_id)
                     await server.send(
-                        200,
+                        True,
                         "组播功能测试",
                         {"type": "chat"},
                         send_mode=StreamSendModes.MULTICAST,
@@ -32,7 +32,7 @@ async def chat_room(server: stream.server, worker: Worker, struct: ChatRoomStruc
                 case "worker_test":
                     res = await worker.run(cpu_task, n := struct.n)
                     await server.send(
-                        200,
+                        True,
                         f"Worker 任务完成，n: {n}, result: {res}",
                         {"type": "chat", "result": res, "n": n},
                         send_mode=StreamSendModes.UNITYCAST,
@@ -40,10 +40,10 @@ async def chat_room(server: stream.server, worker: Worker, struct: ChatRoomStruc
                 case _:
                     if res:
                         await server.send(
-                            200,
+                            True,
                             f"收到 {res}",
                             {"type": "chat"},
                             send_mode=StreamSendModes.UNITYCAST,
                         )
     except Exception:
-        await server.send(500, "聊天室错误", format_exc())
+        await server.send(False, "聊天室错误", format_exc())
