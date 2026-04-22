@@ -10,12 +10,16 @@ class Router:
         self.invoke = SimpleNamespace(
             server=Invoke,
             struct=Handle.struct,
-            handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'invoke')), f)[1]
+            handle=lambda a=None: lambda f: (
+                self.handlers.append((a or f.__name__, Invoke._create_wrapper_(f), 'invoke')), f
+            )[1]
         )
         self.stream = SimpleNamespace(
             server=Stream,
             struct=Handle.struct,
-            handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'stream')), f)[1]
+            handle=lambda a=None: lambda f: (
+                self.handlers.append((a or f.__name__, Stream._create_wrapper_(f), 'stream')), f
+            )[1]
         )
 
     @classmethod
@@ -27,10 +31,8 @@ class Router:
             print(f"[DEBUG] 处理器数量: {len(router.handlers)}")
 
             handlers_to_register = []
-            for name, func, htype in router.handlers:
-                print(f"[DEBUG]   - {htype}: {name} (func={func.__name__})")
-                handler_class = Invoke if htype == 'invoke' else Stream
-                wrapper = handler_class._create_wrapper_(func)
+            for name, wrapper, htype in router.handlers:
+                print(f"[DEBUG]   - {htype}: {name}")
                 handlers_to_register.append({'name': name, 'type': htype, 'handler': wrapper})
 
             HANDLES.setdefault(router.title, []).extend(handlers_to_register)

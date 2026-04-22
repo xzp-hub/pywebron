@@ -16,7 +16,25 @@ class Handle:
         'Stream': lambda req, hc: hc(req['handle_id'], req['window_id']),
         'Worker': lambda req, _: Worker,
         'Window': lambda req, _: Window,
+        'Struct': lambda req, a: a(
+            **{k: req['payload'].get(k, getattr(a, k, None)) for k in a.__annotations__}),
     }
+
+    @classmethod
+    def _get_injector(cls, a):
+        tn = getattr(a, '__name__', None)
+        return (cls._BUILTIN_INJECTORS[tn], cls) if tn in cls._BUILTIN_INJECTORS else \
+               (cls._BUILTIN_INJECTORS['Struct'], a) if hasattr(a, '__annotations__') else (None, None)
+
+    @classmethod
+    def _resolve(cls, pn, p):
+        a, d = p.annotation, p.default
+        _get = lambda req, k=pn, dv=d: (k, req['payload'][k] if dv is Parameter.empty else req['payload'].get(k, dv))
+        if a is not Parameter.empty:
+            inj, tgt = cls._get_injector(a)
+            if inj:
+                return lambda req, k=pn: (k, inj(req, tgt))
+        return _get
 
     def __init__(self, handle_id: str, window_id: int):
         self.handle_id = handle_id
@@ -28,32 +46,7 @@ class Handle:
 
     @classmethod
     def _create_wrapper_(cls, func: Callable):
-        params = signature(func).parameters
-
-        def maker(param_name):
-            p = params[param_name]
-            annot, default = p.annotation, p.default
-
-            if annot is Parameter.empty:
-                return lambda req, pn=param_name, d=default: (pn,
-                                                              req['payload'].get(pn, d) if d is not Parameter.empty else
-                                                              req['payload'][pn])
-
-            type_name = getattr(annot, '__name__', None)
-
-            if type_name in Handle._BUILTIN_INJECTORS:
-                inject = Handle._BUILTIN_INJECTORS[type_name]
-                return lambda req, pn=param_name: (pn, inject(req, cls))
-
-            if hasattr(annot, '__annotations__'):
-                return lambda req, a=annot, pn=param_name: (pn, a(
-                    **{k: req['payload'].get(k, getattr(a, k, None)) for k in a.__annotations__}))
-
-            return lambda req, pn=param_name, d=default: (pn,
-                                                          req['payload'].get(pn, d) if d is not Parameter.empty else
-                                                          req['payload'][pn])
-
-        handles = [maker(p) for p in params]
+        handles = [cls._resolve(pn, p) for pn, p in signature(func).parameters.items()]
 
         async def wrapper(req: dict):
             try:
