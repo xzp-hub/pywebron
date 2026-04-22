@@ -35,7 +35,6 @@ import TerminalLog from '@/components/console_viewer.vue'
   flex: 1;
   gap: 5px;
   padding: 5px;
-  background: #eeeeee;
   border-radius: 6px;
   border: 1px solid var(--border-default);
   min-height: 0;

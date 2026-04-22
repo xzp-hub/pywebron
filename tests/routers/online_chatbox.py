@@ -15,7 +15,7 @@ class ChatRoomStruct(stream.struct):
 @stream.handle("chat_room_stream")
 async def chat_room(server: stream.server, worker: Worker, struct: ChatRoomStruct):
     try:
-        await server.send(200, "欢迎加入聊天室", {"type": "system"})
+        await server.send(200, "欢迎加入聊天室", {"type": "system"}, save_history=True)
         while True:
             match res := await server.recv():
                 case None | {}:

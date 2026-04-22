@@ -24,7 +24,8 @@ class _TerminalCapture:
         if text and text.strip():
             if not getattr(_terminal_capturing, 'active', False):
                 with _terminal_log_lock:
-                    _terminal_log_queue.append(text)
+                    from pywebron.configs import CURRENT_WINDOW_ID
+                    _terminal_log_queue.append((CURRENT_WINDOW_ID.get(), text))
         self.original.write(text)
 
     def flush(self):
@@ -40,21 +41,24 @@ class TerminalLogger:
 
     @classmethod
     def get_history_logs(cls):
-        """获取历史日志（首次调用）"""
+        """获取历史日志（首次调用），返回纯文本列表"""
         with _terminal_log_lock:
             history = list(_terminal_log_queue)
         cls._sent_count = len(history)
-        return history
+        return [text for _, text in history]
 
     @classmethod
     def get_current(cls):
-        """获取新增日志"""
+        """获取新增日志，按窗口分组返回 {window_id: [texts], ...}"""
         with _terminal_log_lock:
             current = list(_terminal_log_queue)
         if len(current) > cls._sent_count:
-            current_logs = current[cls._sent_count:]
+            new_items = current[cls._sent_count:]
             cls._sent_count = len(current)
-            return current_logs
+            per_window = {}
+            for win_id, text in new_items:
+                per_window.setdefault(win_id, []).append(text)
+            return per_window
         return None
 
     @classmethod

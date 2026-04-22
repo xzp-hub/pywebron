@@ -16,6 +16,7 @@ def main():
         show_title_bar=False,
         enable_resizable=True,
         window_radius=6,
+        is_main=True,
         dwm_corner=DwmCorners.LITTLE_ROUND,
         link_content="http://localhost:5173/",
         # html_content=f"{PROJECT_ROOT_PATH}/builtins/pywebron.html",
