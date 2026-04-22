@@ -7,10 +7,8 @@ from .._pywebron_ import rust_stream_send
 from ..configs import StreamSendModes
 from .._pywebron_ import rust_stream_recv
 
-Struct = SimpleNamespace
-
-
 class Handle:
+    Struct = SimpleNamespace
     struct = Struct
     __slots__ = ("handle_id", "window_id")
 
@@ -65,12 +63,12 @@ class Router:
         self.handlers: List[tuple] = []
         self.invoke = SimpleNamespace(
             server=Invoke,
-            struct=Struct,
+            struct=Handle.Struct,
             handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'invoke')), f)[1]
         )
         self.stream = SimpleNamespace(
             server=Stream,
-            struct=Struct,
+            struct=Handle.Struct,
             handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'stream')), f)[1]
         )
 
