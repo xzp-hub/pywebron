@@ -1065,6 +1065,7 @@ fn handle_ipc_message(
 
 
     let body = request.body();
+    eprintln!("[IPC] 收到消息: {}", &body[..body.len().min(200)]);
 
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(body) {
         if let Some(obj) = value.as_object() {

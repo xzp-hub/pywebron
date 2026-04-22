@@ -37,7 +37,8 @@ class Stream(Handle):
 
     async def recv(self) -> Any:
         from .._pywebron_ import rust_stream_recv
-        return (res := await rust_stream_recv(self.handle_id))["payload"] if res else None
+        res = await rust_stream_recv(self.handle_id)
+        return res["payload"] if res else None
 
 
 class Router:
@@ -100,11 +101,17 @@ class Router:
             try:
                 kwargs = dict(h(req) for h in handles)
                 print(f"[DEBUG] 解析后的参数: {kwargs}")
+                print(f"[DEBUG] 开始调用 handler 函数...")
                 result = await func(**kwargs)
-                print(f"[DEBUG] 执行成功，返回: {result}")
+                print(f"[DEBUG] 执行成功，返回: {result} (type={type(result)})")
+                # Stream handler 不应返回值（它们是无限循环）
+                if handler_class == Stream:
+                    print(f"[DEBUG] Stream handler 返回 None")
+                    return None
+                print(f"[DEBUG] Invoke handler 返回结果")
                 return result
             except Exception as e:
-                print(f"[ERROR] 执行失败: {e}")
+                print(f"[ERROR] 执行失败: {type(e).__name__}: {e}")
                 import traceback
                 traceback.print_exc()
                 raise
