@@ -1,6 +1,6 @@
 use crate::app::load_js_api;
 use crate::configs::UserEvent;
-use crate::utils::{generate_win_icon, generate_window_id};
+use crate::utils::generate_win_icon;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use pyo3::ffi::{PyEval_RestoreThread, PyEval_SaveThread};
@@ -1015,8 +1015,7 @@ pub struct WindowConfig {
     pub is_main: bool,
 }
 
-fn create_window(config: WindowConfig) -> PyResult<u64> {
-    let window_id = generate_window_id();
+fn create_window(window_id: u64, config: WindowConfig) -> PyResult<u64> {
 
     // 检查是否尝试创建第二个主窗口
     if config.is_main {
@@ -1254,7 +1253,7 @@ fn handle_ipc_message(
                 "stream" => {
                     use crate::app::stream::{
                         is_handler_active, is_stream_active, push_stream_data,
-                        register_stream_window,
+                        register_stream_window, send_history_to_window,
                     };
 
                     // Stream 处理：区分"启动"和"数据"消息
@@ -1262,8 +1261,9 @@ fn handle_ipc_message(
                         // 该窗口已订阅：直接投递数据到队列
                         push_stream_data(&handle_id, window_id, payload);
                     } else if is_handler_active(&handle_id) {
-                        // handler 已活跃：注册新窗口订阅并推送数据
+                        // handler 已活跃：注册新窗口订阅、发送历史消息、推送数据
                         register_stream_window(&handle_id, window_id);
+                        send_history_to_window(&handle_id, window_id);
                         push_stream_data(&handle_id, window_id, payload);
                     } else {
                         // handler 未启动：提交到 stream 线程池启动
@@ -1328,7 +1328,7 @@ fn prewarm_webview2() {
 }
 
 #[pyfunction(name = "rust_register_window")]
-#[pyo3(signature = (title, width, height, html_content, link_content, dist_content, icon_path, show_title_bar, window_radius, enable_resizable, enable_devtools, dwm_corner=0, is_main=false))]
+#[pyo3(signature = (title, width, height, html_content, link_content, dist_content, icon_path, show_title_bar, window_radius, enable_resizable, enable_devtools, window_id, dwm_corner=0, is_main=false))]
 pub fn register_window(
     title: String,
     width: u32,
@@ -1341,6 +1341,7 @@ pub fn register_window(
     window_radius: u32,
     enable_resizable: bool,
     enable_devtools: bool,
+    window_id: u64,
     dwm_corner: u32,
     is_main: bool,
 ) -> PyResult<u64> {
@@ -1361,7 +1362,7 @@ pub fn register_window(
     };
 
     // 创建窗口并返回 window_id
-    let window_id = create_window(config.clone())?;
+    let window_id = create_window(window_id, config.clone())?;
 
     // 存储配置供 get_windows() 查询
     if let Ok(mut configs) = WINDOW_CONFIGS.write() {

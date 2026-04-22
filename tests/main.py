@@ -22,7 +22,7 @@ def main():
         # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/dist_content/dist",
         # icon_path=f"{PROJECT_ROOT_PATH}/builtins/pywebron.png",
     )
-    app.window.register_windows(main_win)
+    app.window.register_windows(main_win)  # pyright: ignore[reportUnknownMemberType]
     app.run()
 
 

@@ -1,5 +1,19 @@
 from ._pywebron_ import rust_save_file_dialog
 import sys
+import time
+import threading
+
+_window_id_counter = 0
+_window_id_lock = threading.Lock()
+
+
+def generate_window_id() -> int:
+    global _window_id_counter
+    ns = time.perf_counter_ns()
+    with _window_id_lock:
+        _window_id_counter += 1
+        counter = _window_id_counter
+    return ns * 1000 + (counter % 1000)
 
 
 def get_gil_status():

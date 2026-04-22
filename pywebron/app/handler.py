@@ -28,17 +28,33 @@ class Invoke(Handle):
 
 
 class Stream(Handle):
+    def __init__(self, handle_id: str, window_id: int):
+        self.handle_id = handle_id
+        self.window_id = window_id
+        self._last_source_window_id = window_id
+
     async def send(self, code: int, mssg: str, data: Any, send_mode: str = "broadcast", mcast_win_ids: list[int] = None) -> bool:
         from .._pywebron_ import rust_stream_send
-        payload, window_ids = {"code": code, "mssg": mssg, "data": data}, None
+        payload = {"code": code, "mssg": mssg, "data": data}
         self._logger_(payload, send_mode)
-        window_ids = None if send_mode == "broadcast" else (mcast_win_ids if send_mode == "multicast" else [self.window_id])
+        if send_mode == "broadcast":
+            window_ids = None
+        elif send_mode == "subscribedcast":
+            window_ids = None  # Rust 端根据 handle_id 的订阅列表自动路由
+        elif send_mode == "multicast":
+            window_ids = mcast_win_ids
+        else:  # unitycast: 回复给最后收到消息的窗口
+            window_ids = [self._last_source_window_id]
         return await rust_stream_send(payload=payload, handle_id=self.handle_id, send_mode=send_mode, window_ids=window_ids)
 
     async def recv(self) -> Any:
         from .._pywebron_ import rust_stream_recv
         res = await rust_stream_recv(self.handle_id)
-        return res["payload"] if res else None
+        if res:
+            # 记录消息来源窗口 ID，用于 UNITYCAST 定向回复
+            self._last_source_window_id = res.get("source_window_id", self._last_source_window_id)
+            return res["payload"]
+        return None
 
 
 class Router:

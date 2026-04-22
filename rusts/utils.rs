@@ -1,10 +1,7 @@
 #[cfg(target_os = "windows")]
 use crate::configs::WindowCorners;
 use image::open;
-use std::{
-    path::Path,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::path::Path;
 use tao::window::Icon;
 
 #[cfg(target_os = "windows")]
@@ -20,8 +17,6 @@ use windows::Win32::{
         WNDPROC,
     },
 };
-
-static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(target_os = "windows")]
 unsafe extern "system" fn frameless_proc(
@@ -82,16 +77,6 @@ pub fn make_window_frameless_but_resizable(hwnd: HWND) {
     }
 }
 
-pub fn generate_window_id() -> u64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64;
-    (timestamp % 1000000000000) * 1000 + (counter % 1000)
-}
-
 pub fn generate_win_icon(path: String) -> Option<Icon> {
     let p = &path;
     if p.is_empty() || !Path::new(p).exists() {
@@ -127,7 +112,7 @@ pub fn set_window_corner(hwnd: HWND, pref: WindowCorners) -> Result<(), String> 
     }
 }
 
-/// 设置进程 DPI 意识（Windows）
+/// Set process DPI awareness (Windows)
 #[cfg(target_os = "windows")]
 pub fn setup_dpi_awareness() {
     unsafe {
@@ -158,7 +143,7 @@ pub fn setup_dpi_awareness() {
     }
 }
 
-/// 设置进程 DPI 意识（非 Windows 平台）
+/// Set process DPI awareness (non-Windows platforms)
 #[cfg(not(target_os = "windows"))]
 pub fn setup_dpi_awareness() {
     std::env::set_var("GDK_SCALE", "1");

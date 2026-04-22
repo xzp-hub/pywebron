@@ -1,4 +1,5 @@
 from ..configs import PROJECT_ROOT_PATH, DwmCorners
+from ..utils import generate_window_id
 from .._pywebron_ import (
     rust_register_window,
     rust_minimize_window,
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 class Window:
     _window_ids: list[int] = []
-    
+
     @classmethod
     def register_window(
             cls,
@@ -32,6 +33,7 @@ class Window:
             enable_devtools: bool = True,
             dwm_corner: DwmCorners = DwmCorners.SYSTEM_ROUND,
             is_main: bool = False,
+            window_id: int = None,
     ) -> int:
         """注册窗口，返回 window_id"""
         pather = lambda name: fr"{PROJECT_ROOT_PATH}\builtins\{name}"
@@ -41,6 +43,9 @@ class Window:
 
         if not tuple(filter(None, (html_content, link_content, dist_content))):
             html_content = pather("pywebron.html")
+
+        if window_id is None:
+            window_id = generate_window_id()
 
         return rust_register_window(
             title=title,
@@ -56,6 +61,7 @@ class Window:
             enable_devtools=enable_devtools,
             dwm_corner=dwm_corner,
             is_main=is_main,
+            window_id=window_id,
         )
     
     @classmethod

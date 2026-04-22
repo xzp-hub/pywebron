@@ -9,9 +9,10 @@ PROJECT_ROOT_PATH = str(Path(__file__).parents[1])
 
 # 流消息发送模式
 class StreamSendModes(StrEnum):
-    UNITYCAST = "unitycast"  # 单播：仅发送到当前窗口
+    UNITYCAST = "unitycast"  # 单播：仅发送到消息来源窗口
     MULTICAST = "multicast"  # 组播：发送到指定的多个窗口
     BROADCAST = "broadcast"  # 广播：发送到所有窗口
+    SUBSCRIBEDCAST = "subscribedcast"  # 订阅播：发送到所有订阅了该 handle 的窗口
 
 
 # Windows DWM 窗口圆角模式（对应 DWM_WINDOW_CORNER_PREFERENCE）
@@ -27,7 +28,7 @@ class DwmCorners(IntEnum):
 #     'app': [{'name': 'handler_name', 'type': 'invoke'|'stream', 'handler': <function>}],
 #     'router_title': [{'name': 'handler_name', 'type': 'invoke'|'stream', 'handler': <function>}],
 # }
-HANDLES: Dict[str, List[Dict[str, str | Callable]]] = {}
+HANDLES: Dict[str, List[Dict[str, str | Callable]]] = {}  # pyright: ignore[reportUnknownVariableType, reportDeprecated, reportMissingTypeArgument]
 
 # 工作任务池（进程池或线程池）
 WORKER_POOL: ProcessPoolExecutor | ThreadPoolExecutor | None = None
