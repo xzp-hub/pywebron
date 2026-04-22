@@ -6,7 +6,8 @@ from ._pywebron_ import (
     rust_get_handles,
 )
 from .app.window import Window
-from .app.handler import Invoke, Stream, Router
+from .app.handler import Invoke, Stream
+from .app.router import Router
 from .app.worker import Worker
 from typing import Dict
 from time import perf_counter

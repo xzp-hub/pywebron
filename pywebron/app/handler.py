@@ -20,58 +20,6 @@ class Handle:
         header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
         print(f"{header}-[{send_mode}]: {payload}" if send_mode else f"{header}: {payload}")
 
-
-class Invoke(Handle):
-    async def json_response(self, stat: bool, mssg: str, data: Any = None):
-        self._logger_(payload := {'stat': stat, 'mssg': mssg, 'data': data})
-        return {'window_id': self.window_id, 'handle_id': self.handle_id, 'payload': payload}
-
-
-class Stream(Handle):
-    async def send(
-            self, stat: bool, mssg: str, data: Any,
-            send_mode: str = StreamSendModes.BROADCAST,
-            mcast_wids: list[int] = None,
-            save_history: bool = False
-    ) -> bool:
-        self._logger_(pld := {"stat": stat, "mssg": mssg, "data": data}, send_mode)
-        match send_mode:
-            case StreamSendModes.UNITYCAST:
-                wids = [self.window_id]
-            case StreamSendModes.MULTICAST:
-                wids = mcast_wids
-            case _:
-                wids = None
-        return await rust_stream_send(
-            payload=pld,
-            handle_id=self.handle_id,
-            send_mode=send_mode,
-            window_ids=wids,
-            save_history=save_history
-        )
-
-    async def recv(self) -> Any:
-        if res := await rust_stream_recv(self.handle_id):
-            self.window_id = res['window_id']
-            return res["payload"]
-        return None
-
-
-class Router:
-    def __init__(self, title: str = ""):
-        self.title = title
-        self.handlers: List[tuple] = []
-        self.invoke = SimpleNamespace(
-            server=Invoke,
-            struct=Handle.Struct,
-            handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'invoke')), f)[1]
-        )
-        self.stream = SimpleNamespace(
-            server=Stream,
-            struct=Handle.Struct,
-            handle=lambda a=None: lambda f: (self.handlers.append((a or f.__name__, f, 'stream')), f)[1]
-        )
-
     @staticmethod
     def _create_wrapper_(handler_class: type, func: Callable):
         params = signature(func).parameters
@@ -140,27 +88,38 @@ class Router:
 
         return wrapper
 
-    @classmethod
-    def register_routers(cls, *routers: 'Router'):
-        from ..configs import HANDLES
-        print(f"\n[DEBUG] ========== 开始注册路由 ==========")
-        for router in routers:
-            print(f"[DEBUG] 注册路由组: '{router.title}'")
-            print(f"[DEBUG] 处理器数量: {len(router.handlers)}")
 
-            handlers_to_register = []
-            for name, func, htype in router.handlers:
-                print(f"[DEBUG]   - {htype}: {name} (func={func.__name__})")
-                handler_class = Invoke if htype == 'invoke' else Stream
-                wrapper = cls._create_wrapper_(handler_class, func)
-                handlers_to_register.append({'name': name, 'type': htype, 'handler': wrapper})
+class Invoke(Handle):
+    async def json_response(self, stat: bool, mssg: str, data: Any = None):
+        self._logger_(payload := {'stat': stat, 'mssg': mssg, 'data': data})
+        return {'window_id': self.window_id, 'handle_id': self.handle_id, 'payload': payload}
 
-            HANDLES.setdefault(router.title, []).extend(handlers_to_register)
-            print(f"[Router] ✓ '{router.title}': {len(router.handlers)} 个处理器")
 
-        print(f"[DEBUG] ========== 注册完成 ==========\n")
-        print(f"[DEBUG] HANDLES 总览:")
-        for group, handlers in HANDLES.items():
-            print(f"[DEBUG]   [{group}]: {len(handlers)} 个处理器")
-            for h in handlers:
-                print(f"[DEBUG]     - {h['type']}: {h['name']}")
+class Stream(Handle):
+    async def send(
+            self, stat: bool, mssg: str, data: Any,
+            send_mode: str = StreamSendModes.BROADCAST,
+            mcast_wids: list[int] = None,
+            save_history: bool = False
+    ) -> bool:
+        self._logger_(pld := {"stat": stat, "mssg": mssg, "data": data}, send_mode)
+        match send_mode:
+            case StreamSendModes.UNITYCAST:
+                wids = [self.window_id]
+            case StreamSendModes.MULTICAST:
+                wids = mcast_wids
+            case _:
+                wids = None
+        return await rust_stream_send(
+            payload=pld,
+            handle_id=self.handle_id,
+            send_mode=send_mode,
+            window_ids=wids,
+            save_history=save_history
+        )
+
+    async def recv(self) -> Any:
+        if res := await rust_stream_recv(self.handle_id):
+            self.window_id = res['window_id']
+            return res["payload"]
+        return None
