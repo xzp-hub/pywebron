@@ -34,12 +34,8 @@ async def terminal_log(server: stream.server):
         while True:
             try:
                 if new_logs := TerminalLogger.get_current():
-                    # 合并所有窗口的日志,统一广播到所有窗口
-                    all_logs = []
-                    for logs in new_logs.values():
-                        all_logs.extend(logs)
                     with TerminalLogger.pause():
-                        await server.send(True, "终端日志", {"logs": all_logs},
+                        await server.send(True, "终端日志", {"logs": new_logs},
                                           send_mode=StreamSendModes.BROADCAST)
                 await asyncio_sleep(0.3)
             except Exception:

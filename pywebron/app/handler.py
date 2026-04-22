@@ -53,13 +53,9 @@ class Stream(Handle):
 
     async def recv(self) -> Any:
         from .._pywebron_ import rust_stream_recv
-        from ..configs import CURRENT_WINDOW_ID
         res = await rust_stream_recv(self.handle_id)
         if res:
-            # 更新 window_id 为消息来源窗口，UNITYCAST 自动定向回复
-            self.window_id = res.get("source_window_id", self.window_id)
-            # 设置窗口上下文，让后续 stdout 归属到来源窗口（用于终端日志路由）
-            CURRENT_WINDOW_ID.set(self.window_id)
+            self.window_id = res.get("window_id", self.window_id)
             return res["payload"]
         return None
 
@@ -124,12 +120,9 @@ class Router:
         print(f"[DEBUG] Wrapper 创建完成，共 {len(handles)} 个参数处理器\n")
 
         async def wrapper(req: dict):
-            from ..configs import CURRENT_WINDOW_ID
             print(
                 f"[DEBUG] 调用 wrapper: func={func.__name__}, handle_id={req.get('handle_id')}, window_id={req.get('window_id')}")
             print(f"[DEBUG] 请求 payload: {req.get('payload')}")
-            # 设置窗口上下文，让 handler 中的 stdout 归属到触发窗口（用于终端日志路由）
-            token = CURRENT_WINDOW_ID.set(req.get('window_id'))
             try:
                 kwargs = dict(h(req) for h in handles)
                 print(f"[DEBUG] 解析后的参数: {kwargs}")
@@ -147,8 +140,6 @@ class Router:
                 import traceback
                 traceback.print_exc()
                 raise
-            finally:
-                CURRENT_WINDOW_ID.reset(token)
 
         return wrapper
 

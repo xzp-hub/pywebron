@@ -130,7 +130,7 @@ pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'p
                 "handle_id": hid,
                 "handle_type": "stream",
                 "request_id": null,
-                "source_window_id": source_window_id,
+                "window_id": source_window_id,
                 "payload": payload
             });
 

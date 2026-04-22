@@ -1,5 +1,4 @@
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from contextvars import ContextVar
 from typing import Dict, Callable, List
 from enum import StrEnum, IntEnum
 from pathlib import Path
@@ -7,9 +6,6 @@ from pathlib import Path
 # 项目根目录路径
 PROJECT_ROOT_PATH = str(Path(__file__).parents[1])
 
-
-# 当前 handler 执行的窗口 ID（用于终端日志按窗口归属路由）
-CURRENT_WINDOW_ID: ContextVar[int | None] = ContextVar('CURRENT_WINDOW_ID', default=None)
 
 # 流消息发送模式
 class StreamSendModes(StrEnum):
