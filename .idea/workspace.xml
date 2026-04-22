@@ -2,9 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="99d7352b-7638-4d36-b54a-979906cb0286" name="更改" comment="无敌完美版">
-      <change beforePath="$PROJECT_DIR$/pywebron/app/handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/pywebron/app/handler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/routers/online_chatbox.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/routers/online_chatbox.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/routers/system_monitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/routers/system_monitor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/dist_content/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/dist_content/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/dist_content/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/dist_content/src/App.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -16,15 +17,30 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.main.executor": "Run",
     "git-widget-placeholder": "master",
+    "npm.dev.executor": "Run",
     "ts.external.directory.path": "D:\\jetbrains\\apps\\pycharm\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external"
   }
 }]]></component>
   <component name="TaskManager">
+    <task id="LOCAL-00001" summary="无敌完美版">
+      <option name="closed" value="true" />
+      <created>1776844731534</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1776844731534</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="无敌完美版" />
+    <option name="LAST_COMMIT_MESSAGE" value="无敌完美版" />
+  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/pywebron$main.coverage" NAME="main 覆盖结果" MODIFIED="1776843817748" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
+    <SUITE FILE_PATH="coverage/pywebron$main.coverage" NAME="main 覆盖结果" MODIFIED="1776846047689" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/pywebron$main_copy.coverage" NAME="main copy 覆盖结果" MODIFIED="1776825495226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests" />
     <SUITE FILE_PATH="coverage/pywebron$test.coverage" NAME="test 覆盖结果" MODIFIED="1776774664107" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/tests/routers" />
   </component>
