@@ -11,15 +11,6 @@ from .window import Window
 class Handle:
     __slots__ = ("handle_id", "window_id")
     struct = SimpleNamespace
-
-    def __init__(self, handle_id: str, window_id: int):
-        self.handle_id = handle_id
-        self.window_id = window_id
-
-    def _logger_(self, payload: dict):
-        header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
-        print(f"{header}: {payload}")
-
     __TYPE_INJECTORS = {
         'Invoke': lambda req, klass: klass(req['handle_id'], req['window_id']),
         'Stream': lambda req, klass: klass(req['handle_id'], req['window_id']),
@@ -29,6 +20,14 @@ class Handle:
             ann, getattr(klass, ann, None)) for ann in klass.__annotations__
         })
     }
+
+    def __init__(self, handle_id: str, window_id: int):
+        self.handle_id = handle_id
+        self.window_id = window_id
+
+    def _logger_(self, payload: dict):
+        header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
+        print(f"{header}: {payload}")
 
     @classmethod
     def _maker_(cls, func: Callable):
