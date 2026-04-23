@@ -8,7 +8,14 @@
     let _reqCounter = 0;
 
     const config = window.pywebron || {};
-    const { window_id, show_title_bar, window_radius, enable_resizable } = config;
+    const {
+        window_id,
+        show_title_bar,
+        window_radius,
+        enable_resizable,
+        toast_success = false,
+        toast_error = true
+    } = config;
 
     if (!show_title_bar) {
         const radiusStyle = `html,body{border-radius:${window_radius}px!important;overflow:hidden!important;background:transparent!important;margin:0!important;padding:0!important;width:100%!important;height:100%!important;box-sizing:border-box!important}html{border:1px solid transparent!important}body{border:1px solid var(--border-color)!important}#app,#app>[id='app'],.app,main{border-radius:${window_radius}px!important}`;
@@ -105,9 +112,9 @@
 
     interceptors.response.push((response) => {
         if (response && response.stat === false) {
-            if (response.mssg) showMessage(response.mssg, false);
+            if (toast_error && response.mssg) showMessage(response.mssg, false);
             if (response.data) console.error(response.data);
-        } else if (response && response.stat === true && response.mssg) {
+        } else if (toast_success && response && response.stat === true && response.mssg) {
             showMessage(response.mssg, true);
         }
     });
@@ -118,6 +125,8 @@
         if (handle_type === 'invoke') {
             const h = pending.get(request_id);
             if (h) {
+                pending.delete(request_id);
+                if (h.timerId) clearTimeout(h.timerId);
                 if (payload && payload.stat === false) {
                     handleError(new Error(payload.mssg || payload.data));
                     h.reject(new Error(payload.mssg || payload.data));
@@ -125,13 +134,18 @@
                     handleResponse(payload);
                     h.resolve(payload);
                 }
-                pending.delete(request_id);
             }
         } else if (handle_type === 'stream') {
             const s = streams.get(handle_id);
             if (s && s.onData) {
+                if (payload && payload.__history_batch__ && Array.isArray(payload.messages)) {
+                    for (let i = 0; i < payload.messages.length; i++) s.onData(payload.messages[i]);
+                    return;
+                }
                 if (payload && payload.stat !== undefined && payload.mssg) {
+                    if ((payload.stat && toast_success) || (payload.stat === false && toast_error)) {
                     showMessage(payload.mssg, payload.stat, handle_id);
+                    }
                 }
                 s.onData(payload);
             }
@@ -157,10 +171,16 @@
                     if (pending.size > 1000) {
                         const oldest = pending.keys().next().value;
                         const dropped = oldest !== undefined ? pending.get(oldest) : null;
-                        if (oldest !== undefined) pending.delete(oldest);
+                        if (oldest !== undefined) {
+                            pending.delete(oldest);
+                            if (dropped?.timerId) clearTimeout(dropped.timerId);
+                        }
                         dropped?.reject?.(new Error('Pending queue overflow'));
                     }
-                    pending.set(request_id, { resolve, reject });
+                    const timerId = setTimeout(() => {
+                        if (pending.delete(request_id)) reject(new Error('Timeout'));
+                    }, timeout);
+                    pending.set(request_id, { resolve, reject, timerId });
 
                     ipcSend({
                         window_id,
@@ -169,10 +189,6 @@
                         request_id,
                         payload
                     });
-
-                    setTimeout(() => {
-                        if (pending.delete(request_id)) reject(new Error('Timeout'));
-                    }, timeout);
                 });
             },
 

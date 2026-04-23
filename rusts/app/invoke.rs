@@ -1,31 +1,32 @@
 use crossbeam::channel;
 use once_cell::sync::Lazy;
 use pyo3::prelude::*;
-use pyo3::types::PyAny;
+use pyo3::types::{PyAny, PyDict};
 use pyo3_async_runtimes::TaskLocals;
 use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{LazyLock, OnceLock};
 use tao::event_loop::EventLoopProxy;
+use tokio::sync::oneshot;
 
 use crate::configs::UserEvent;
 
-// === Handler 缓存 ===
 type HandleCache = std::collections::HashMap<String, Py<PyAny>>;
 static HANDLE_CACHE: LazyLock<parking_lot::RwLock<HandleCache>> =
     LazyLock::new(|| parking_lot::RwLock::new(HandleCache::with_capacity(32)));
 
-#[inline]
-fn cache_key(handle_id: &str, handler_type: &str) -> String {
-    format!("{}:{}", handler_type, handle_id)
-}
-
 type HandlerFuture = Pin<Box<dyn Future<Output = Result<Value, String>> + Send>>;
 
 static PYTHON_HANDLER_RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+    let worker_threads = std::env::var("PYWEBRON_PY_ASYNC_THREADS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .map(|value| value.clamp(1, 4))
+        .unwrap_or(2);
+
     tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(2)
+        .worker_threads(worker_threads)
         .enable_all()
         .thread_name("pywebron-pyasync")
         .build()
@@ -35,47 +36,59 @@ static PYTHON_HANDLER_RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
 static PYTHON_TASK_LOCALS: LazyLock<Result<TaskLocals, String>> =
     LazyLock::new(init_python_task_locals);
 
-/// 从 HANDLES 字典中按 handle_id 和 handler_type 查找 handler
-/// HANDLES 结构: { group_name: [ {"name": str, "type": "invoke"|"stream", "handler": callable}, ... ] }
+static LOG_DEBUG: LazyLock<bool> = LazyLock::new(|| {
+    matches!(
+        std::env::var("PYWEBRON_LOG_LEVEL")
+            .unwrap_or_else(|_| "error".to_string())
+            .trim()
+            .to_ascii_lowercase()
+            .as_str(),
+        "debug"
+    )
+});
+
+#[inline]
+fn debug_log(message: impl FnOnce() -> String) {
+    if *LOG_DEBUG {
+        eprintln!("{}", message());
+    }
+}
+
+#[inline]
+fn cache_key(handle_id: &str, handler_type: &str) -> String {
+    format!("{}:{}", handler_type, handle_id)
+}
+
+#[inline]
+fn queue_capacity(env_key: &str, default: usize) -> usize {
+    std::env::var(env_key)
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .map(|value| value.max(1))
+        .unwrap_or(default)
+}
+
+#[inline]
+fn thread_count(env_key: &str, default: usize, min: usize, max: usize) -> usize {
+    std::env::var(env_key)
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .map(|value| value.clamp(min, max))
+        .unwrap_or(default.clamp(min, max))
+}
+
 fn find_handler<'py>(
     py: Python<'py>,
     handle_id: &str,
     handler_type: &str,
 ) -> PyResult<Option<Bound<'py, PyAny>>> {
     let configs = py.import("pywebron.configs")?;
-    let handles = configs.getattr("HANDLES")?;
-    eprintln!("[DEBUG-RUST] 开始查找 handler: {} (type={})", handle_id, handler_type);
-    // 使用 .items() 方法来遍历字典的键值对
-    let items_method = handles.getattr("items")?;
-    let items = items_method.call0()?;
-    let groups = items.try_iter()?;
-    for group_result in groups {
-        let group = group_result?;
-        eprintln!("[DEBUG-RUST] group type: {:?}", group.get_type().name());
-        // group 是 (key, value) 元组
-        let extracted: Result<(String, Bound<'_, PyAny>), _> = group.extract();
-        match extracted {
-            Ok((key, handler_list)) => {
-                eprintln!("[DEBUG-RUST] 遍历组: {}", key);
-                let items = handler_list.try_iter()?;
-                for item_result in items {
-                    let item = item_result?;
-                    let name: String = item.get_item("name")?.extract()?;
-                    let htype: String = item.get_item("type")?.extract()?;
-                    if name == handle_id && htype == handler_type {
-                        let handler = item.get_item("handler")?;
-                        eprintln!("[DEBUG-RUST] 找到 handler: {}", handle_id);
-                        return Ok(Some(handler));
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("[DEBUG-RUST] 提取失败: {}", e);
-                return Err(e);
-            }
-        }
+    let handle_index = configs.getattr("HANDLE_INDEX")?;
+    let mapping = handle_index.call_method1("__getitem__", (handler_type,))?;
+    let mapping = mapping.cast::<PyDict>()?;
+    if mapping.contains(handle_id)? {
+        return Ok(Some(mapping.call_method1("__getitem__", (handle_id,))?));
     }
-    eprintln!("[DEBUG-RUST] 未找到 handler: {}", handle_id);
     Ok(None)
 }
 
@@ -86,16 +99,16 @@ fn get_handler<'py>(
 ) -> PyResult<Bound<'py, PyAny>> {
     let handler_cache_key = cache_key(handle_id, handler_type);
     let cache = HANDLE_CACHE.read();
-    if let Some(h) = cache.get(&handler_cache_key) {
-        return Ok(h.bind(py).to_owned());
+    if let Some(handler) = cache.get(&handler_cache_key) {
+        return Ok(handler.bind(py).to_owned());
     }
-
     drop(cache);
-    if let Some(h) = find_handler(py, handle_id, handler_type)? {
+
+    if let Some(handler) = find_handler(py, handle_id, handler_type)? {
         HANDLE_CACHE
             .write()
-            .insert(handler_cache_key, h.clone().unbind());
-        Ok(h)
+            .insert(handler_cache_key, handler.clone().unbind());
+        Ok(handler)
     } else {
         Err(pyo3::exceptions::PyValueError::new_err(format!(
             "{} handler not found: {}",
@@ -156,7 +169,9 @@ fn python_task_locals() -> Result<TaskLocals, String> {
 }
 
 pub fn warm_python_runtime() -> PyResult<()> {
-    python_task_locals().map(|_| ()).map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    python_task_locals()
+        .map(|_| ())
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 fn make_handler_future(
@@ -169,13 +184,11 @@ fn make_handler_future(
     let locals = python_task_locals()?;
     let future = Python::attach(|py| -> PyResult<_> {
         let handler = get_handler(py, &handle_id, handler_type)?;
-        let request_obj = serde_json::json!({
-            "window_id": window_id,
-            "handle_id": &handle_id,
-            "request_id": &request_id,
-            "payload": payload
-        });
-        let py_request = pythonize::pythonize(py, &request_obj)?;
+        let py_request = PyDict::new(py);
+        py_request.set_item("window_id", window_id)?;
+        py_request.set_item("handle_id", &handle_id)?;
+        py_request.set_item("request_id", &request_id)?;
+        py_request.set_item("payload", pythonize::pythonize(py, &payload)?)?;
         let coroutine = handler.call1((py_request,))?;
         pyo3_async_runtimes::into_future_with_locals(&locals, coroutine)
     })
@@ -190,46 +203,34 @@ fn make_handler_future(
     }))
 }
 
-// === 统一的 IPC 处理线程池 ===
-// 所有 IPC 请求（invoke + stream）都在这个线程池中处理
-
-/// IPC 请求统一结构
 pub struct IpcRequest {
     pub handle_id: String,
     pub window_id: u64,
     pub request_id: Option<String>,
     pub payload: Value,
-    /// IPC 模式：通过事件循环将结果发送到前端
     pub proxy: Option<EventLoopProxy<UserEvent>>,
-    /// Python 调用模式：通过 channel 将结果返回给调用方
-    pub result_tx: Option<channel::Sender<Result<Value, String>>>,
-    /// 是否为 stream handler
-    pub is_stream: bool,
+    pub result_tx: Option<oneshot::Sender<Result<Value, String>>>,
 }
 
-// Invoke 线程池（用于处理 invoke 请求）
 static INVOKE_TX: OnceLock<channel::Sender<IpcRequest>> = OnceLock::new();
-
-// Stream 线程池（用于处理 stream 请求，独立避免阻塞 invoke）
 static STREAM_TX: OnceLock<channel::Sender<IpcRequest>> = OnceLock::new();
 
-/// 确保 invoke 线程池已初始化
 fn ensure_invoke_pool() -> &'static channel::Sender<IpcRequest> {
     INVOKE_TX.get_or_init(|| {
-        let (tx, rx) = channel::unbounded::<IpcRequest>();
-        let num_threads = std::thread::available_parallelism()
-            .map(|n| n.get().max(2))
+        let capacity = queue_capacity("PYWEBRON_INVOKE_QUEUE_CAPACITY", 256);
+        let (tx, rx) = channel::bounded::<IpcRequest>(capacity);
+        let parallelism = std::thread::available_parallelism()
+            .map(|n| n.get())
             .unwrap_or(4);
+        let num_threads = thread_count("PYWEBRON_INVOKE_THREADS", parallelism.clamp(2, 4), 1, 8);
 
-
-        for i in 0..num_threads {
+        for index in 0..num_threads {
             let rx = rx.clone();
             std::thread::Builder::new()
-                .name(format!("pywebron-invoke-{}", i))
-                .spawn(move || loop {
-                    match rx.recv() {
-                        Ok(req) => process_invoke_request(req),
-                        Err(_) => break,
+                .name(format!("pywebron-invoke-{}", index))
+                .spawn(move || {
+                    while let Ok(request) = rx.recv() {
+                        process_invoke_request(request);
                     }
                 })
                 .expect("Failed to spawn invoke worker");
@@ -239,23 +240,22 @@ fn ensure_invoke_pool() -> &'static channel::Sender<IpcRequest> {
     })
 }
 
-/// 确保 stream 线程池已初始化
 fn ensure_stream_pool() -> &'static channel::Sender<IpcRequest> {
     STREAM_TX.get_or_init(|| {
-        let (tx, rx) = channel::unbounded::<IpcRequest>();
-        // Stream handler 现在调度到共享 Python loop，不再长期占住线程。
-        let num_threads = std::thread::available_parallelism()
-            .map(|n| n.get().clamp(2, 4))
+        let capacity = queue_capacity("PYWEBRON_STREAM_QUEUE_CAPACITY", 128);
+        let (tx, rx) = channel::bounded::<IpcRequest>(capacity);
+        let parallelism = std::thread::available_parallelism()
+            .map(|n| n.get())
             .unwrap_or(2);
+        let num_threads = thread_count("PYWEBRON_STREAM_THREADS", parallelism.clamp(1, 2), 1, 4);
 
-        for i in 0..num_threads {
+        for index in 0..num_threads {
             let rx = rx.clone();
             std::thread::Builder::new()
-                .name(format!("pywebron-stream-{}", i))
-                .spawn(move || loop {
-                    match rx.recv() {
-                        Ok(req) => process_stream_request(req),
-                        Err(_) => break,
+                .name(format!("pywebron-stream-{}", index))
+                .spawn(move || {
+                    while let Ok(request) = rx.recv() {
+                        process_stream_request(request);
                     }
                 })
                 .expect("Failed to spawn stream worker");
@@ -265,20 +265,25 @@ fn ensure_stream_pool() -> &'static channel::Sender<IpcRequest> {
     })
 }
 
-/// 处理 invoke 请求
 fn process_invoke_request(request: IpcRequest) {
-    let handle_id = request.handle_id.clone();
-    let window_id = request.window_id;
-    let request_id = request.request_id.clone();
-    let payload = request.payload.clone();
+    let IpcRequest {
+        handle_id,
+        window_id,
+        request_id,
+        payload,
+        proxy,
+        result_tx,
+    } = request;
 
-    let t_total = std::time::Instant::now();
-    eprintln!(
-        "[Invoke] >>> 开始调用 | handle={} | wid={} | req_id={:?}",
-        handle_id, window_id, request_id
-    );
+    let total_start = std::time::Instant::now();
+    debug_log(|| {
+        format!(
+            "[Invoke] start handle={} wid={} req_id={:?}",
+            handle_id, window_id, request_id
+        )
+    });
 
-    let mut result = match make_handler_future(
+    let result = match make_handler_future(
         handle_id.clone(),
         "invoke",
         window_id,
@@ -286,39 +291,52 @@ fn process_invoke_request(request: IpcRequest) {
         payload,
     ) {
         Ok(future) => {
-            let (tx, rx) = channel::bounded::<Result<Value, String>>(1);
+            let (tx, rx) = oneshot::channel::<Result<Value, String>>();
             PYTHON_HANDLER_RUNTIME.spawn(async move {
                 let _ = tx.send(future.await);
             });
-            rx.recv()
+            rx.blocking_recv()
                 .unwrap_or_else(|_| Err("Invoke async worker channel closed".to_string()))
         }
         Err(err) => Err(err),
     };
 
-    let _elapsed = t_total.elapsed();
-    eprintln!("[Invoke] 全流程耗时：{:?} | handle={}", _elapsed, handle_id);
+    debug_log(|| {
+        format!(
+            "[Invoke] done handle={} elapsed={:?}",
+            handle_id,
+            total_start.elapsed()
+        )
+    });
 
-    // 根据模式处理结果
-    if let Some(tx) = request.result_tx {
+    if let Some(tx) = result_tx {
         let _ = tx.send(result);
-    } else if let Some(proxy) = request.proxy {
+        return;
+    }
+
+    if let Some(proxy) = proxy {
         let response = match result {
-            Ok(ref mut r) => {
-                if let Some(obj) = r.as_object_mut() {
-                    obj.insert("handle_type".into(), serde_json::json!("invoke"));
-                    obj.insert("request_id".into(), serde_json::json!(request_id));
+            Ok(mut value) => {
+                if let Some(object) = value.as_object_mut() {
+                    object.insert("handle_type".into(), Value::String("invoke".to_string()));
+                    object.insert(
+                        "request_id".into(),
+                        request_id
+                            .as_ref()
+                            .map(|item| Value::String(item.clone()))
+                            .unwrap_or(Value::Null),
+                    );
                 }
-                r.clone()
+                value
             }
-            Err(ref e) => serde_json::json!({
+            Err(error) => serde_json::json!({
                 "window_id": window_id,
                 "handle_id": handle_id,
                 "handle_type": "invoke",
                 "request_id": request_id,
                 "payload": {
                     "code": 500,
-                    "mssg": e,
+                    "mssg": error,
                     "data": null
                 }
             }),
@@ -333,48 +351,47 @@ fn process_invoke_request(request: IpcRequest) {
             script: std::sync::Arc::new(js_code),
         });
     }
-    // eprintln!("[Invoke] <<< 调用完成 | handle={}", handle_id);
 }
 
-/// 处理 stream 请求
 fn process_stream_request(request: IpcRequest) {
-    let handle_id = request.handle_id.clone();
-    let window_id = request.window_id;
-    let request_id = request.request_id.clone();
-    let payload = request.payload.clone();
-
-    eprintln!(
-        "[Stream] >>> 开始调用 | handle={} | wid={} | req_id={:?}",
-        handle_id, window_id, request_id
-    );
-
-    // 注册订阅关系
-    crate::app::stream::register_stream_window(&handle_id, window_id);
-
-    // 标记 handler 为活跃状态
-    let active_handlers = crate::app::stream::get_active_handlers();
-    active_handlers.write().insert(handle_id.clone());
-
-    let future = match make_handler_future(
-        handle_id.clone(),
-        "stream",
+    let IpcRequest {
+        handle_id,
         window_id,
         request_id,
         payload,
-    ) {
-        Ok(future) => future,
-        Err(err) => {
-            active_handlers.write().remove(&handle_id);
-            eprintln!("[Stream] Handler 启动失败：{} | handle={}", err, handle_id);
-            return;
-        }
-    };
+        proxy: _,
+        result_tx: _,
+    } = request;
+
+    debug_log(|| {
+        format!(
+            "[Stream] start handle={} wid={} req_id={:?}",
+            handle_id, window_id, request_id
+        )
+    });
+
+    crate::app::stream::register_stream_window(&handle_id, window_id);
+    let active_handlers = crate::app::stream::get_active_handlers();
+    active_handlers.write().insert(handle_id.clone());
+
+    let future =
+        match make_handler_future(handle_id.clone(), "stream", window_id, request_id, payload) {
+            Ok(future) => future,
+            Err(err) => {
+                active_handlers.write().remove(&handle_id);
+                eprintln!(
+                    "[Stream] Handler start failed: {} | handle={}",
+                    err, handle_id
+                );
+                return;
+            }
+        };
 
     PYTHON_HANDLER_RUNTIME.spawn(async move {
         let result = future.await;
         active_handlers.write().remove(&handle_id);
         if let Err(err) = result {
-            eprintln!("[Stream] Handler 错误：{} | handle={}", err, handle_id);
+            eprintln!("[Stream] Handler error: {} | handle={}", err, handle_id);
         }
     });
 }
@@ -388,46 +405,49 @@ pub fn shutdown_python_runtime() {
     }
 }
 
-// === 公开 API ===
-
-/// 提交 invoke 请求到线程池（IPC 模式：结果自动发回前端）
 pub fn submit_invoke_ipc(
     handle_id: String,
     window_id: u64,
     request_id: Option<String>,
     payload: Value,
     proxy: EventLoopProxy<UserEvent>,
-) {
-    let _ = ensure_invoke_pool().send(IpcRequest {
-        handle_id,
-        window_id,
-        request_id,
-        payload,
-        proxy: Some(proxy),
-        result_tx: None,
-        is_stream: false,
-    });
+) -> Result<(), String> {
+    ensure_invoke_pool()
+        .try_send(IpcRequest {
+            handle_id,
+            window_id,
+            request_id,
+            payload,
+            proxy: Some(proxy),
+            result_tx: None,
+        })
+        .map_err(|err| match err {
+            channel::TrySendError::Full(_) => "invoke queue is full".to_string(),
+            channel::TrySendError::Disconnected(_) => "invoke queue is closed".to_string(),
+        })
 }
 
-/// 提交 stream 请求到线程池
 pub fn submit_stream_ipc(
     handle_id: String,
     window_id: u64,
     request_id: Option<String>,
     payload: Value,
-) {
-    let _ = ensure_stream_pool().send(IpcRequest {
-        handle_id,
-        window_id,
-        request_id,
-        payload,
-        proxy: None,
-        result_tx: None,
-        is_stream: true,
-    });
+) -> Result<(), String> {
+    ensure_stream_pool()
+        .try_send(IpcRequest {
+            handle_id,
+            window_id,
+            request_id,
+            payload,
+            proxy: None,
+            result_tx: None,
+        })
+        .map_err(|err| match err {
+            channel::TrySendError::Full(_) => "stream queue is full".to_string(),
+            channel::TrySendError::Disconnected(_) => "stream queue is closed".to_string(),
+        })
 }
 
-/// Python 可调用：提交 invoke 到线程池，返回 future 供 Python await
 #[pyfunction(name = "rust_invoke_handle")]
 pub fn invoke_handle<'py>(
     py: Python<'py>,
@@ -436,38 +456,39 @@ pub fn invoke_handle<'py>(
     request_id: Option<String>,
     payload: Bound<'py, PyAny>,
 ) -> PyResult<Bound<'py, PyAny>> {
-    let (tx, rx) = channel::bounded::<Result<Value, String>>(1);
+    let (tx, rx) = oneshot::channel::<Result<Value, String>>();
     let payload_value: Value = pythonize::depythonize(&payload).unwrap_or(Value::Null);
 
-    let _ = ensure_invoke_pool().send(IpcRequest {
-        handle_id: handle_id.clone(),
-        window_id,
-        request_id,
-        payload: payload_value,
-        proxy: None,
-        result_tx: Some(tx),
-        is_stream: false,
-    });
+    ensure_invoke_pool()
+        .try_send(IpcRequest {
+            handle_id,
+            window_id,
+            request_id,
+            payload: payload_value,
+            proxy: None,
+            result_tx: Some(tx),
+        })
+        .map_err(|err| {
+            pyo3::exceptions::PyRuntimeError::new_err(match err {
+                channel::TrySendError::Full(_) => "invoke queue is full".to_string(),
+                channel::TrySendError::Disconnected(_) => "invoke queue is closed".to_string(),
+            })
+        })?;
 
     pyo3_async_runtimes::tokio::future_into_py(py, async move {
-        let result = tokio::task::spawn_blocking(move || {
-            rx.recv()
-                .unwrap_or(Err("Invoke channel closed".to_string()))
-        })
-        .await
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
-
-        match result {
-            Ok(value) => Python::attach(|py| {
+        match rx.await {
+            Ok(Ok(value)) => Python::attach(|py| {
                 let py_obj = pythonize::pythonize(py, &value)?;
                 Ok(py_obj.unbind())
             }),
-            Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e).into()),
+            Ok(Err(err)) => Err(pyo3::exceptions::PyRuntimeError::new_err(err).into()),
+            Err(_) => {
+                Err(pyo3::exceptions::PyRuntimeError::new_err("Invoke channel closed").into())
+            }
         }
     })
 }
 
-/// 获取所有处理器列表
 #[pyfunction(name = "rust_get_handles")]
 pub fn get_handles(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
     let result_dict = pyo3::types::PyDict::new(py);
@@ -475,31 +496,27 @@ pub fn get_handles(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
     let stream_dict = pyo3::types::PyDict::new(py);
 
     let configs_module = py.import("pywebron.configs")?;
-    let handles = configs_module.getattr("HANDLES")?;
-    // 使用 .items() 方法来遍历字典的键值对
-    let items_method = handles.getattr("items")?;
-    let items = items_method.call0()?;
-    let groups = items.try_iter()?;
-    for group_result in groups {
-        let group = group_result?;
-        let (_, handler_list) = group.extract::<(String, Bound<'_, PyAny>)>()?;
-        let items = handler_list.try_iter()?;
-        for item_result in items {
-            let item = item_result?;
-            let name: String = item.get_item("name")?.extract()?;
-            let htype: String = item.get_item("type")?.extract()?;
-            let handler = item.get_item("handler")?;
-            let handler_name = handler.getattr("__name__")?.extract::<String>()?;
-            if htype == "invoke" {
-                invoke_dict.set_item(name, handler_name)?;
-            } else {
-                stream_dict.set_item(name, handler_name)?;
-            }
-        }
+    let handle_index = configs_module.getattr("HANDLE_INDEX")?;
+
+    let invoke_index = handle_index.call_method1("__getitem__", ("invoke",))?;
+    let invoke_index = invoke_index.cast::<PyDict>()?;
+    for item in invoke_index.items().try_iter()? {
+        let item = item?;
+        let (name, handler): (String, Bound<'_, PyAny>) = item.extract()?;
+        let handler_name = handler.getattr("__name__")?.extract::<String>()?;
+        invoke_dict.set_item(name, handler_name)?;
+    }
+
+    let stream_index = handle_index.call_method1("__getitem__", ("stream",))?;
+    let stream_index = stream_index.cast::<PyDict>()?;
+    for item in stream_index.items().try_iter()? {
+        let item = item?;
+        let (name, handler): (String, Bound<'_, PyAny>) = item.extract()?;
+        let handler_name = handler.getattr("__name__")?.extract::<String>()?;
+        stream_dict.set_item(name, handler_name)?;
     }
 
     result_dict.set_item("invoke", invoke_dict)?;
     result_dict.set_item("stream", stream_dict)?;
-
     Ok(result_dict)
 }

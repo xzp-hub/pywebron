@@ -1,6 +1,8 @@
 #[cfg(target_os = "windows")]
 use crate::configs::WindowCorners;
+use dashmap::DashMap;
 use image::open;
+use once_cell::sync::Lazy;
 use std::path::Path;
 use tao::window::Icon;
 
@@ -11,10 +13,9 @@ use windows::Win32::{
         DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWM_WINDOW_CORNER_PREFERENCE,
     },
     UI::WindowsAndMessaging::{
-        CallWindowProcW, DefWindowProcW, GetPropW, GetWindowLongPtrW,
-        SetProcessDPIAware, SetPropW, SetWindowLongPtrW, SetWindowPos, GWLP_WNDPROC,
-        SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE,
-        WNDPROC,
+        CallWindowProcW, DefWindowProcW, GetPropW, GetWindowLongPtrW, SetProcessDPIAware, SetPropW,
+        SetWindowLongPtrW, SetWindowPos, GWLP_WNDPROC, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE,
+        SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE, WNDPROC,
     },
 };
 
@@ -77,14 +78,26 @@ pub fn make_window_frameless_but_resizable(hwnd: HWND) {
     }
 }
 
+type CachedIcon = (Vec<u8>, u32, u32);
+static ICON_CACHE: Lazy<DashMap<String, CachedIcon>> = Lazy::new(DashMap::new);
+
 pub fn generate_win_icon(path: String) -> Option<Icon> {
-    let p = &path;
+    let p = path.trim();
     if p.is_empty() || !Path::new(p).exists() {
         return None;
     }
+
+    if let Some(icon) = ICON_CACHE.get(p) {
+        let (rgba, width, height) = icon.value();
+        return Icon::from_rgba(rgba.clone(), *width, *height).ok();
+    }
+
     let img = open(p).ok()?.into_rgba8();
     let (w, h) = img.dimensions();
-    Icon::from_rgba(img.into_raw(), w, h).ok()
+    let rgba = img.into_raw();
+    let icon = Icon::from_rgba(rgba.clone(), w, h).ok()?;
+    ICON_CACHE.insert(p.to_string(), (rgba, w, h));
+    Some(icon)
 }
 
 #[cfg(target_os = "windows")]

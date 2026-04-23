@@ -2,7 +2,7 @@ use parking_lot::RwLock;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::sync::OnceLock;
 
@@ -18,21 +18,19 @@ type StreamInbox = (
     crossbeam::channel::Receiver<StreamMessage>,
 );
 type StreamInboxes = HashMap<String, StreamInbox>;
-
-// Active stream handlers by handle_id.
-static ACTIVE_HANDLERS: OnceLock<Arc<RwLock<HashSet<String>>>> = OnceLock::new();
-
-// The most recent message source window for each stream handle.
+type StreamHistory = HashMap<String, VecDeque<Value>>;
 type LastSourceMap = HashMap<String, u64>;
+type StreamSubscriptions = HashMap<String, HashSet<u64>>;
+type WindowStreams = HashMap<u64, HashSet<String>>;
+
+static ACTIVE_HANDLERS: OnceLock<Arc<RwLock<HashSet<String>>>> = OnceLock::new();
 static LAST_SOURCE_WINDOWS: OnceLock<Arc<RwLock<LastSourceMap>>> = OnceLock::new();
-
-// Saved stream history by handle_id.
-type StreamHistory = HashMap<String, Vec<Value>>;
 static STREAM_HISTORY: OnceLock<Arc<RwLock<StreamHistory>>> = OnceLock::new();
-const HISTORY_LIMIT: usize = 200;
-
-// Per-handle stream inbox, consumed by the single active Python stream handler.
 static STREAM_INBOXES: OnceLock<Arc<RwLock<StreamInboxes>>> = OnceLock::new();
+static STREAM_SUBSCRIPTIONS: OnceLock<Arc<RwLock<StreamSubscriptions>>> = OnceLock::new();
+static WINDOW_STREAMS: OnceLock<Arc<RwLock<WindowStreams>>> = OnceLock::new();
+
+const HISTORY_LIMIT: usize = 200;
 const RECV_QUEUE_LIMIT: usize = 100;
 
 #[inline]
@@ -41,8 +39,7 @@ pub(crate) fn get_active_handlers() -> &'static Arc<RwLock<HashSet<String>>> {
 }
 
 pub fn is_handler_active(handle_id: &str) -> bool {
-    let active = get_active_handlers();
-    active.read().contains(handle_id)
+    get_active_handlers().read().contains(handle_id)
 }
 
 #[inline]
@@ -60,54 +57,92 @@ fn get_stream_inboxes() -> &'static Arc<RwLock<StreamInboxes>> {
     STREAM_INBOXES.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
 }
 
-fn ensure_stream_sender(handle_id: &str) -> crossbeam::channel::Sender<StreamMessage> {
+#[inline]
+fn get_stream_subscriptions_storage() -> &'static Arc<RwLock<StreamSubscriptions>> {
+    STREAM_SUBSCRIPTIONS.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
+}
+
+#[inline]
+fn get_window_streams_storage() -> &'static Arc<RwLock<WindowStreams>> {
+    WINDOW_STREAMS.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
+}
+
+fn ensure_stream_inbox(handle_id: &str) -> StreamInbox {
     let inboxes = get_stream_inboxes();
     let mut guard = inboxes.write();
-    let entry = guard
+    guard
         .entry(handle_id.to_string())
-        .or_insert_with(|| crossbeam::channel::bounded(RECV_QUEUE_LIMIT));
-    entry.0.clone()
+        .or_insert_with(|| crossbeam::channel::bounded(RECV_QUEUE_LIMIT))
+        .clone()
+}
+
+fn ensure_stream_sender(handle_id: &str) -> crossbeam::channel::Sender<StreamMessage> {
+    ensure_stream_inbox(handle_id).0
 }
 
 fn ensure_stream_receiver(handle_id: &str) -> crossbeam::channel::Receiver<StreamMessage> {
-    let inboxes = get_stream_inboxes();
-    let mut guard = inboxes.write();
-    let entry = guard
-        .entry(handle_id.to_string())
-        .or_insert_with(|| crossbeam::channel::bounded(RECV_QUEUE_LIMIT));
-    entry.1.clone()
+    ensure_stream_inbox(handle_id).1
+}
+
+fn cleanup_handle_state_if_idle(handle_id: &str) {
+    let has_subscribers = {
+        let subscriptions = get_stream_subscriptions_storage();
+        subscriptions
+            .read()
+            .get(handle_id)
+            .map(|ids| !ids.is_empty())
+            .unwrap_or(false)
+    };
+
+    if has_subscribers || is_handler_active(handle_id) {
+        return;
+    }
+
+    get_last_source_windows().write().remove(handle_id);
+    get_stream_history().write().remove(handle_id);
+    get_stream_inboxes().write().remove(handle_id);
 }
 
 pub(crate) fn store_stream_history(handle_id: &str, payload: Value) {
     let history = get_stream_history();
-    let mut h = history.write();
-    let msgs = h.entry(handle_id.to_string()).or_insert_with(Vec::new);
-    if msgs.len() >= HISTORY_LIMIT {
-        msgs.remove(0);
+    let mut history = history.write();
+    let messages = history
+        .entry(handle_id.to_string())
+        .or_insert_with(|| VecDeque::with_capacity(HISTORY_LIMIT));
+    if messages.len() >= HISTORY_LIMIT {
+        messages.pop_front();
     }
-    msgs.push(payload);
+    messages.push_back(payload);
 }
 
 pub(crate) fn send_history_to_window(handle_id: &str, window_id: u64) {
     let messages = {
         let history = get_stream_history();
-        let h = history.read();
-        h.get(handle_id).cloned().unwrap_or_default()
+        let history = history.read();
+        history
+            .get(handle_id)
+            .map(|items| items.iter().cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
     };
 
-    for payload in messages {
-        let response = serde_json::json!({
-            "handle_id": handle_id,
-            "handle_type": "stream",
-            "request_id": null,
-            "payload": payload
-        });
-        let js_code = format!(
-            "window.__pywebron_dispatch({})",
-            serde_json::to_string(&response).unwrap_or_default()
-        );
-        crate::app::send_script_to_window(window_id, std::sync::Arc::new(js_code));
+    if messages.is_empty() {
+        return;
     }
+
+    let response = serde_json::json!({
+        "handle_id": handle_id,
+        "handle_type": "stream",
+        "request_id": null,
+        "payload": {
+            "__history_batch__": true,
+            "messages": messages
+        }
+    });
+    let js_code = format!(
+        "window.__pywebron_dispatch({})",
+        serde_json::to_string(&response).unwrap_or_default()
+    );
+    crate::app::send_script_to_window(window_id, std::sync::Arc::new(js_code));
 }
 
 #[pyfunction(name = "rust_stream_recv")]
@@ -147,50 +182,80 @@ pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'p
 
 pub(crate) fn is_stream_active(handle_id: &str, window_id: u64) -> bool {
     let subscriptions = get_stream_subscriptions_storage();
-    let subs = subscriptions.read();
-    subs.get(handle_id)
+    let subscriptions = subscriptions.read();
+    subscriptions
+        .get(handle_id)
         .map_or(false, |ids| ids.contains(&window_id))
 }
 
 pub(crate) fn register_stream_window(handle_id: &str, window_id: u64) {
-    register_stream_subscription(handle_id.to_string(), window_id);
+    {
+        let subscriptions = get_stream_subscriptions_storage();
+        let mut subscriptions = subscriptions.write();
+        subscriptions
+            .entry(handle_id.to_string())
+            .or_insert_with(HashSet::new)
+            .insert(window_id);
+    }
+
+    {
+        let window_streams = get_window_streams_storage();
+        let mut window_streams = window_streams.write();
+        window_streams
+            .entry(window_id)
+            .or_insert_with(HashSet::new)
+            .insert(handle_id.to_string());
+    }
+
     let _ = ensure_stream_receiver(handle_id);
 }
 
 pub(crate) fn unregister_stream_window(handle_id: &str, window_id: u64) -> bool {
-    let subscriptions = get_stream_subscriptions_storage();
-    let mut subs = subscriptions.write();
-    let mut removed = false;
-
-    let should_remove_handle = if let Some(ids) = subs.get_mut(handle_id) {
-        let before = ids.len();
-        ids.retain(|id| *id != window_id);
-        removed = ids.len() != before;
-        ids.is_empty()
-    } else {
-        false
+    let removed = {
+        let subscriptions = get_stream_subscriptions_storage();
+        let mut subscriptions = subscriptions.write();
+        if let Some(ids) = subscriptions.get_mut(handle_id) {
+            let removed = ids.remove(&window_id);
+            if ids.is_empty() {
+                subscriptions.remove(handle_id);
+            }
+            removed
+        } else {
+            false
+        }
     };
 
-    if should_remove_handle {
-        subs.remove(handle_id);
+    {
+        let window_streams = get_window_streams_storage();
+        let mut window_streams = window_streams.write();
+        if let Some(handles) = window_streams.get_mut(&window_id) {
+            handles.remove(handle_id);
+            if handles.is_empty() {
+                window_streams.remove(&window_id);
+            }
+        }
     }
 
-    let last_source = get_last_source_windows();
-    let mut last_source_guard = last_source.write();
-    if last_source_guard.get(handle_id) == Some(&window_id) {
-        last_source_guard.remove(handle_id);
+    {
+        let last_source = get_last_source_windows();
+        let mut last_source = last_source.write();
+        if last_source.get(handle_id) == Some(&window_id) {
+            last_source.remove(handle_id);
+        }
     }
 
+    cleanup_handle_state_if_idle(handle_id);
     removed
 }
 
 pub(crate) fn cleanup_window_streams(window_id: u64) {
-    let handle_ids: Vec<String> = {
-        let subscriptions = get_stream_subscriptions_storage();
-        let subs = subscriptions.read();
-        subs.iter()
-            .filter_map(|(handle_id, ids)| ids.contains(&window_id).then(|| handle_id.clone()))
-            .collect()
+    let handle_ids = {
+        let window_streams = get_window_streams_storage();
+        let mut window_streams = window_streams.write();
+        window_streams
+            .remove(&window_id)
+            .map(|handles| handles.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
     };
 
     for handle_id in handle_ids {
@@ -200,35 +265,28 @@ pub(crate) fn cleanup_window_streams(window_id: u64) {
 
 pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
     let sender = ensure_stream_sender(handle_id);
-    let _ = sender.try_send((window_id, data));
-
-    let last_source = get_last_source_windows();
-    last_source.write().insert(handle_id.to_string(), window_id);
-}
-
-type StreamSubscriptions = HashMap<String, Vec<u64>>;
-static STREAM_SUBSCRIPTIONS: OnceLock<Arc<parking_lot::RwLock<StreamSubscriptions>>> =
-    OnceLock::new();
-
-#[inline]
-fn get_stream_subscriptions_storage() -> &'static Arc<parking_lot::RwLock<StreamSubscriptions>> {
-    STREAM_SUBSCRIPTIONS
-        .get_or_init(|| Arc::new(parking_lot::RwLock::new(HashMap::with_capacity(16))))
-}
-
-fn register_stream_subscription(handle_id: String, window_id: u64) {
-    let subscriptions = get_stream_subscriptions_storage();
-    let mut subs = subscriptions.write();
-    let ids = subs.entry(handle_id).or_insert_with(Vec::new);
-    if !ids.contains(&window_id) {
-        ids.push(window_id);
+    match sender.try_send((window_id, data)) {
+        Ok(()) => {}
+        Err(crossbeam::channel::TrySendError::Full((window_id, data))) => {
+            let receiver = ensure_stream_receiver(handle_id);
+            let _ = receiver.try_recv();
+            let _ = sender.try_send((window_id, data));
+        }
+        Err(crossbeam::channel::TrySendError::Disconnected(_)) => {}
     }
+
+    get_last_source_windows()
+        .write()
+        .insert(handle_id.to_string(), window_id);
 }
 
 pub(crate) fn get_stream_subscriptions(handle_id: &str) -> Vec<u64> {
     let subscriptions = get_stream_subscriptions_storage();
-    let subs = subscriptions.read();
-    subs.get(handle_id).cloned().unwrap_or_default()
+    let subscriptions = subscriptions.read();
+    subscriptions
+        .get(handle_id)
+        .map(|ids| ids.iter().copied().collect())
+        .unwrap_or_default()
 }
 
 #[pyfunction(name = "rust_stream_send")]
@@ -241,8 +299,7 @@ pub fn stream_send<'py>(
     window_ids: Option<Vec<u64>>,
     save_history: Option<bool>,
 ) -> PyResult<Bound<'py, PyAny>> {
-    let payload_json: Value =
-        Python::attach(|_py| pythonize::depythonize(&payload).unwrap_or(Value::Null));
+    let payload_json: Value = pythonize::depythonize(&payload).unwrap_or(Value::Null);
 
     let response = serde_json::json!({
         "handle_id": handle_id,
@@ -252,7 +309,9 @@ pub fn stream_send<'py>(
     });
 
     if save_history.unwrap_or(true) {
-        store_stream_history(&handle_id, payload_json);
+        if let Some(payload) = response.get("payload").cloned() {
+            store_stream_history(&handle_id, payload);
+        }
     }
 
     let js_code = Arc::new(format!(
@@ -263,23 +322,23 @@ pub fn stream_send<'py>(
     let target_windows: Vec<u64> = match send_mode.as_str() {
         "broadcast" => crate::app::get_all_window_ids(),
         "multicast" => window_ids.unwrap_or_default(),
-        "unitycast" => {
-            let last_source = get_last_source_windows();
-            let source_map = last_source.read();
-            source_map.get(&handle_id).map(|&id| vec![id]).unwrap_or_default()
-        }
+        "unitycast" => get_last_source_windows()
+            .read()
+            .get(&handle_id)
+            .map(|&id| vec![id])
+            .unwrap_or_default(),
         _ => {
             let subscribed = get_stream_subscriptions(&handle_id);
-            if !subscribed.is_empty() {
-                subscribed
-            } else {
+            if subscribed.is_empty() {
                 crate::app::get_all_window_ids()
+            } else {
+                subscribed
             }
         }
     };
 
     for window_id in target_windows {
-        crate::app::send_script_to_window(window_id, std::sync::Arc::clone(&js_code));
+        crate::app::send_script_to_window(window_id, Arc::clone(&js_code));
     }
 
     pyo3_async_runtimes::tokio::future_into_py(py, async move { Ok(()) })

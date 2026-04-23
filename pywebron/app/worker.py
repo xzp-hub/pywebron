@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict
 from asyncio import get_running_loop
 from ..utils import get_gil_status
 from os import cpu_count
+from os import getenv
 from .. import configs
 
 
@@ -15,12 +16,14 @@ class Worker:
     def init_worker_pool(cls) -> ProcessPoolExecutor | ThreadPoolExecutor | None:
         if configs.WORKER_POOL is not None:
             return configs.WORKER_POOL
+        configured = getenv("PYWEBRON_WORKER_MAX")
+        configured_workers = int(configured) if configured and configured.isdigit() else None
         if get_gil_status():
             configs.WORKER_POOL = ProcessPoolExecutor(
-                max_workers=5,
+                max_workers=configured_workers or min(max((cpu_count() or 1) - 1, 1), 4),
             )
         else:
-            workers = max((cpu_count() or 1) * 2, 2)
+            workers = configured_workers or min(max(cpu_count() or 1, 2), 8)
             configs.WORKER_POOL = ThreadPoolExecutor(max_workers=workers)
         return configs.WORKER_POOL
 
