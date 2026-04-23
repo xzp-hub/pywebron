@@ -43,11 +43,9 @@ class Handle:
                     handles.append(lambda req, pak=pk, inj=ier, tgt=target: (pak, inj(req, tgt)))
                     continue
 
-            handles.append(
-                lambda req, dk=pk, dv=pv.default: (
-                    dk, req['payload'][dk] if dv is Parameter.empty else req['payload'].get(dk, dv)
-                )
-            )
+            handles.append(lambda req, dk=pk, dv=pv.default: (
+                dk, req['payload'][dk] if dv is Parameter.empty else req['payload'].get(dk, dv)
+            ))
 
         return handles
 
