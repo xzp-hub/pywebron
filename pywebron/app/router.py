@@ -4,7 +4,7 @@ from .handler import Handle, Invoke, Stream
 
 
 class Router:
-    def __init__(self, title: str = ""):
+    def __init__(self, title: str):
         self.title = title
         self.handlers: List[tuple] = []
         self.invoke = SimpleNamespace(
