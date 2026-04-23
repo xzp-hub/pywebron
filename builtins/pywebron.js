@@ -156,7 +156,9 @@
                     // 防止 pending Map 无限增长
                     if (pending.size > 1000) {
                         const oldest = pending.keys().next().value;
-                        pending.delete(oldest);
+                        const dropped = oldest !== undefined ? pending.get(oldest) : null;
+                        if (oldest !== undefined) pending.delete(oldest);
+                        dropped?.reject?.(new Error('Pending queue overflow'));
                     }
                     pending.set(request_id, { resolve, reject });
 
@@ -188,7 +190,15 @@
                         return this;
                     },
                     close() {
+                        ipcSend({
+                            window_id,
+                            handle_id: hid,
+                            handle_type: 'stream_close',
+                            request_id: generateRequestId(hid),
+                            payload: null
+                        });
                         streams.delete(this.handle);
+                        streamMessages.delete(this.handle);
                     },
                     send(data) {
                         ipcSend({
@@ -202,6 +212,7 @@
                     }
                 };
 
+                streams.get(hid)?.close();
                 streams.set(hid, obj);
 
                 ipcSend({

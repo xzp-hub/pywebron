@@ -12,6 +12,11 @@ type HandleCache = std::collections::HashMap<String, Py<PyAny>>;
 static HANDLE_CACHE: LazyLock<parking_lot::RwLock<HandleCache>> =
     LazyLock::new(|| parking_lot::RwLock::new(HandleCache::with_capacity(32)));
 
+#[inline]
+fn cache_key(handle_id: &str, handler_type: &str) -> String {
+    format!("{}:{}", handler_type, handle_id)
+}
+
 /// 从 HANDLES 字典中按 handle_id 和 handler_type 查找 handler
 /// HANDLES 结构: { group_name: [ {"name": str, "type": "invoke"|"stream", "handler": callable}, ... ] }
 fn find_handler<'py>(
@@ -144,17 +149,18 @@ fn process_invoke_request(request: IpcRequest) {
 
     // 获取 Python GIL，执行 handler
     let mut result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
+        let handler_cache_key = cache_key(&handle_id, "invoke");
         // 优先从缓存获取 handler，避免重复 Python import
         let handler = {
             let cache = HANDLE_CACHE.read();
-            if let Some(h) = cache.get(&handle_id) {
+            if let Some(h) = cache.get(&handler_cache_key) {
                 h.bind(py).to_owned()
             } else {
                 drop(cache);
                 if let Some(h) = find_handler(py, &handle_id, "invoke")? {
                     HANDLE_CACHE
                         .write()
-                        .insert(handle_id.clone(), h.clone().unbind());
+                        .insert(handler_cache_key.clone(), h.clone().unbind());
                     h
                 } else {
                     return Err(pyo3::exceptions::PyValueError::new_err(format!(
@@ -249,17 +255,18 @@ fn process_stream_request(request: IpcRequest) {
 
     // 获取 Python GIL，执行 handler
     let result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
+        let handler_cache_key = cache_key(&handle_id, "stream");
         // 优先从缓存获取 handler，避免重复 Python import
         let handler = {
             let cache = HANDLE_CACHE.read();
-            if let Some(h) = cache.get(&handle_id) {
+            if let Some(h) = cache.get(&handler_cache_key) {
                 h.bind(py).to_owned()
             } else {
                 drop(cache);
                 if let Some(h) = find_handler(py, &handle_id, "stream")? {
                     HANDLE_CACHE
                         .write()
-                        .insert(handle_id.clone(), h.clone().unbind());
+                        .insert(handler_cache_key.clone(), h.clone().unbind());
                     h
                 } else {
                     return Err(pyo3::exceptions::PyValueError::new_err(format!(

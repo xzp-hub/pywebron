@@ -86,11 +86,15 @@ static CACHE_TOTAL_SIZE: AtomicUsize = AtomicUsize::new(0);
 const MAX_CACHE_SIZE: usize = 50 * 1024 * 1024; // 50MB
 
 fn cleanup_window(window_id: u64) {
+    crate::app::stream::cleanup_window_streams(window_id);
     WINDOWS.remove(&window_id);
     WINDOW_PROXIES.remove(&window_id);
     WINDOW_READY.remove(&window_id);
     EVENT_PROXIES.remove(&window_id);
     WEBVIEWS.remove(&window_id);
+    if let Ok(mut configs) = WINDOW_CONFIGS.write() {
+        configs.remove(&window_id);
+    }
 }
 
 /// 获取文件的 MIME 类型
@@ -345,6 +349,8 @@ fn create_window_in_event_loop(
             Ok(p) => Some(p),
             Err(_) => None,
         };
+        let allowed_absolute_file = std::path::Path::new(&config.icon_path).canonicalize().ok();
+        let allow_absolute_protocol_paths = config.link_content.is_none();
 
         let builder = WebViewBuilder::new()
             .with_devtools(config.enable_devtools)
@@ -440,6 +446,24 @@ fn create_window_in_event_loop(
                 let wb_cache_key = wb_id.as_ref().map(|id| format!("{}//_wb{}", direct_cache_key, id));
                 eprintln!("[Protocol] 拼接完整路径={} | 缓存key={} | wb_cachekey={:?}", full_path.display(), direct_cache_key, wb_cache_key);
 
+                let is_absolute_request = is_standard_abs || missing_colon_abs;
+                let canonical_full_for_policy = full_path.canonicalize().ok();
+                if is_absolute_request && !allow_absolute_protocol_paths {
+                    let allowed = match (&canonical_full_for_policy, &allowed_absolute_file) {
+                        (Some(full), Some(allowed_file)) => full == allowed_file,
+                        _ => false,
+                    };
+
+                    if !allowed {
+                        eprintln!("[Protocol] 🚫 绝对路径访问被拒绝: {}", full_path.display());
+                        return http::Response::builder()
+                            .status(403)
+                            .header("Access-Control-Allow-Origin", "*")
+                            .body(std::borrow::Cow::Borrowed(&b"Forbidden"[..]))
+                            .unwrap();
+                    }
+                }
+
                 // 先尝试从缓存直接命中（处理已预缓存的资源）
                 // 优先查找带 _wb 前缀的 key（HTML 每个窗口独立缓存），再查找通用 key
                 let cache_lookup_key = if let Some(ref wb_key) = wb_cache_key {
@@ -500,10 +524,13 @@ fn create_window_in_event_loop(
                             .unwrap();
                     }
                 };
-                let canonical_full = match full_path.canonicalize() {
-                    Ok(p) => p,
-                    Err(e) => {
-                        eprintln!("[Protocol] ❌ canonicalize 失败: {} | 错误: {}", full_path.display(), e);
+                let canonical_full = if let Some(path) = canonical_full_for_policy.clone() {
+                    path
+                } else {
+                    match full_path.canonicalize() {
+                        Ok(path) => path,
+                        Err(_) => {
+                        eprintln!("[Protocol] ❌ canonicalize 失败: {}", full_path.display());
                         // 资源不存在，返回 200 + 空（避免控制台 404 报错）
                         return http::Response::builder()
                             .status(200)
@@ -511,12 +538,13 @@ fn create_window_in_event_loop(
                             .header("Access-Control-Allow-Origin", "*")
                             .body(std::borrow::Cow::Borrowed(&[][..]))
                             .unwrap();
+                        }
                     }
                 };
-                eprintln!("[Protocol] canonicalize 成功: {} | base={} | is_abs_path={}", canonical_full.display(), canonical_base.display(), is_standard_abs || missing_colon_abs);
+                eprintln!("[Protocol] canonicalize 成功: {} | base={} | is_abs_path={}", canonical_full.display(), canonical_base.display(), is_absolute_request);
                 // 路径穿越防护：仅对相对路径资源检查
                 // 绝对路径（用户显式指定的外部资源如图标）跳过此检查
-                if !(is_standard_abs || missing_colon_abs) && !canonical_full.starts_with(canonical_base) {
+                if !is_absolute_request && !canonical_full.starts_with(canonical_base) {
                     eprintln!("[Protocol] 🚫 路径穿越拦截: {} 不在 {} 内", canonical_full.display(), canonical_base.display());
                     return http::Response::builder()
                         .status(403)
@@ -1272,6 +1300,11 @@ fn handle_ipc_message(
                         );
                     }
                 }
+                "stream_close" => {
+                    if !handle_id.is_empty() {
+                        crate::app::stream::unregister_stream_window(&handle_id, window_id);
+                    }
+                }
                 _ => {}
             }
         }
@@ -1671,7 +1704,7 @@ pub fn shutdown_window(id: u64) -> PyResult<bool> {
             return Ok(true);
         }
     }
-    WINDOWS.remove(&id);
+    cleanup_window(id);
     Ok(true)
 }
 
@@ -1680,20 +1713,23 @@ pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
     let result_dict = pyo3::types::PyDict::new(py);
 
     if let Ok(configs) = WINDOW_CONFIGS.read() {
-        for (window_id, config) in configs.iter() {
-            let window_dict = pyo3::types::PyDict::new(py);
-            window_dict.set_item("window_title", &config.title)?;
-            window_dict.set_item("window_width", config.width)?;
-            window_dict.set_item("window_height", config.height)?;
-            window_dict.set_item("window_html_content", &config.html_content)?;
-            window_dict.set_item("window_link_content", &config.link_content)?;
-            window_dict.set_item("window_dist_content", &config.dist_content)?;
-            window_dict.set_item("window_icon_path", &config.icon_path)?;
-            window_dict.set_item("window_show_title_bar", config.show_title_bar)?;
-            window_dict.set_item("window_enable_resizable", config.enable_resizable)?;
-            window_dict.set_item("window_enable_devtools", config.enable_devtools)?;
+        let live_window_ids: Vec<u64> = EVENT_PROXIES.iter().map(|entry| *entry.key()).collect();
+        for window_id in live_window_ids {
+            if let Some(config) = configs.get(&window_id) {
+                let window_dict = pyo3::types::PyDict::new(py);
+                window_dict.set_item("window_title", &config.title)?;
+                window_dict.set_item("window_width", config.width)?;
+                window_dict.set_item("window_height", config.height)?;
+                window_dict.set_item("window_html_content", &config.html_content)?;
+                window_dict.set_item("window_link_content", &config.link_content)?;
+                window_dict.set_item("window_dist_content", &config.dist_content)?;
+                window_dict.set_item("window_icon_path", &config.icon_path)?;
+                window_dict.set_item("window_show_title_bar", config.show_title_bar)?;
+                window_dict.set_item("window_enable_resizable", config.enable_resizable)?;
+                window_dict.set_item("window_enable_devtools", config.enable_devtools)?;
 
-            result_dict.set_item(*window_id, window_dict)?;
+                result_dict.set_item(window_id, window_dict)?;
+            }
         }
     }
 

@@ -20,7 +20,8 @@ class Worker:
                 max_workers=5,
             )
         else:
-            configs.WORKER_POOL = ThreadPoolExecutor(max_workers=cpu_count() * 2)
+            workers = max((cpu_count() or 1) * 2, 2)
+            configs.WORKER_POOL = ThreadPoolExecutor(max_workers=workers)
         return configs.WORKER_POOL
 
     @classmethod
