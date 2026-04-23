@@ -12,25 +12,23 @@ class Router:
         self.invoke = self._create_namespace(Invoke, "invoke")
         self.stream = self._create_namespace(Stream, "stream")
 
-    def _create_namespace(self, handle_cls, handle_type: str):
-        def handle(name: str | None = None):
-            return self._register_handler(handle_cls, handle_type, name)
+    def _create_namespace(self, cls, type_: str):
+        return SimpleNamespace(
+            server=cls,
+            struct=Handle.struct,
+            handle=lambda name=None: self._register_handler(cls, type_, name)
+        )
 
-        return SimpleNamespace(server=handle_cls, struct=Handle.struct, handle=handle)
-
-    def _register_handler(self, handle_cls, handle_type: str, name: str | None = None):
+    def _register_handler(self, cls, type_: str, name: str | None):
         def decorator(func):
-            self.handlers.append((name or func.__name__, handle_cls._create_wrapper_(func), handle_type))
+            self.handlers.append((name or func.__name__, cls._create_wrapper_(func), type_))
             return func
-
         return decorator
 
     @staticmethod
     def register_routers(*routers: 'Router'):
         from ..configs import HANDLES
-
-        for router in routers:
-            HANDLES.setdefault(router.title, []).extend(
-                {'name': name, 'type': handle_type, 'handler': wrapper}
-                for name, wrapper, handle_type in router.handlers
+        for r in routers:
+            HANDLES.setdefault(r.title, []).extend(
+                {'name': n, 'type': t, 'handler': w} for n, w, t in r.handlers
             )
