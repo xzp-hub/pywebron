@@ -30,13 +30,12 @@ async def system_monitoring(server: stream.server):
 async def terminal_log(server: stream.server):
     try:
         with TerminalLogger.pause():
-            await server.send(True, "历史日志", {"logs": TerminalLogger.get_history_logs()})
+            await server.send(True, "历史日志", {"logs": TerminalLogger.get_history_logs()}, save_history=True)
         while True:
             try:
                 if new_logs := TerminalLogger.get_current():
                     with TerminalLogger.pause():
-                        await server.send(True, "终端日志", {"logs": new_logs},
-                                          send_mode=StreamSendModes.BROADCAST)
+                        await server.send(True, "终端日志", {"logs": new_logs})
                 await asyncio_sleep(0.3)
             except Exception:
                 with TerminalLogger.pause():

@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import Callable, Any, List
+from typing import Callable, Any
 from inspect import Parameter, signature
 from .worker import Worker
 from .window import Window
@@ -7,34 +7,10 @@ from .._pywebron_ import rust_stream_send
 from ..configs import StreamSendModes
 from .._pywebron_ import rust_stream_recv
 
+
 class Handle:
-    struct = SimpleNamespace
     __slots__ = ("handle_id", "window_id")
-
-    _BUILTIN_INJECTORS = {
-        'Invoke': lambda req, hc: hc(req['handle_id'], req['window_id']),
-        'Stream': lambda req, hc: hc(req['handle_id'], req['window_id']),
-        'Worker': lambda req, _: Worker,
-        'Window': lambda req, _: Window,
-        'Struct': lambda req, a: a(
-            **{k: req['payload'].get(k, getattr(a, k, None)) for k in a.__annotations__}),
-    }
-
-    @classmethod
-    def _get_injector(cls, a):
-        tn = getattr(a, '__name__', None)
-        return (cls._BUILTIN_INJECTORS[tn], cls) if tn in cls._BUILTIN_INJECTORS else \
-               (cls._BUILTIN_INJECTORS['Struct'], a) if hasattr(a, '__annotations__') else (None, None)
-
-    @classmethod
-    def _resolve(cls, pn, p):
-        a, d = p.annotation, p.default
-        _get = lambda req, k=pn, dv=d: (k, req['payload'][k] if dv is Parameter.empty else req['payload'].get(k, dv))
-        if a is not Parameter.empty:
-            inj, tgt = cls._get_injector(a)
-            if inj:
-                return lambda req, k=pn: (k, inj(req, tgt))
-        return _get
+    struct = SimpleNamespace
 
     def __init__(self, handle_id: str, window_id: int):
         self.handle_id = handle_id
@@ -44,9 +20,46 @@ class Handle:
         header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
         print(f"{header}-[{send_mode}]: {payload}" if send_mode else f"{header}: {payload}")
 
+    _BUILTIN_INJECTORS = {
+        'Invoke': lambda req, handle_cls: handle_cls(req['handle_id'], req['window_id']),
+        'Stream': lambda req, handle_cls: handle_cls(req['handle_id'], req['window_id']),
+        'Worker': lambda req, _target: Worker,
+        'Window': lambda req, _target: Window,
+        'Struct': lambda req, annotation: annotation(
+            **{
+                k: req['payload'].get(k, getattr(annotation, k, None))
+                for k in annotation.__annotations__
+            }
+        ),
+    }
+
+    @classmethod
+    def _build_param_handles(cls, func: Callable):
+        handles, injectors = [], cls._BUILTIN_INJECTORS
+
+        for param_name, param in signature(func).parameters.items():
+            annotation, default = param.annotation, param.default
+            if annotation is not Parameter.empty:
+                type_name = getattr(annotation, '__name__', None)
+                injector = injectors.get(type_name) if isinstance(type_name, str) else None
+                target = cls if injector else annotation if hasattr(annotation, '__annotations__') else None
+                if target is not None:
+                    handles.append(
+                        lambda req, k=param_name, inj=injector or injectors['Struct'], tgt=target: (k, inj(req, tgt))
+                    )
+                    continue
+
+            handles.append(
+                lambda req, k=param_name, dv=default: (
+                    k, req['payload'][k] if dv is Parameter.empty else req['payload'].get(k, dv)
+                )
+            )
+
+        return handles
+
     @classmethod
     def _create_wrapper_(cls, func: Callable):
-        handles = [cls._resolve(pn, p) for pn, p in signature(func).parameters.items()]
+        handles = cls._build_param_handles(func)
 
         async def wrapper(req: dict):
             try:

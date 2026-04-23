@@ -128,11 +128,6 @@ export function useStream(handleId, onData, options = {}) {
         try {
             streamInstance = await stream(handleId)
             streamInstance.recv(onData)
-            if (streamInstance.end && autoRetry) {
-                streamInstance.end(() => {
-                    retryTimer = setTimeout(connect, retryDelay)
-                })
-            }
         } catch (e) {
             if (autoRetry) {
                 retryTimer = setTimeout(connect, retryDelay)
