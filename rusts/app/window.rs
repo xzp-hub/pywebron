@@ -1313,9 +1313,14 @@ fn handle_ipc_message(
 
 #[pyfunction(name = "rust_init")]
 #[pyo3(signature = (prewarm_webview=false))]
-pub fn init(prewarm_webview: bool) -> PyResult<()> {
+pub fn init(py: Python<'_>, prewarm_webview: bool) -> PyResult<()> {
     #[cfg(target_os = "windows")]
     std::env::set_var("WEBVIEW2_DEFAULT_BACKGROUND_COLOR", "00000000");
+
+    // `warm_python_runtime` spawns a dedicated Python loop thread and waits for it
+    // to attach. Detach the current thread first so the spawned thread can attach
+    // instead of deadlocking against this Python->Rust call.
+    py.detach(crate::app::invoke::warm_python_runtime)?;
 
     #[cfg(target_os = "windows")]
     if prewarm_webview {

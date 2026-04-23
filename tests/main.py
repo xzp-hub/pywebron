@@ -7,8 +7,15 @@ from pywebron import App
 
 
 def main():
+    print("[DEBUG] 开始创建 App...")
     app = App(prewarm_webview=False)
+    print("[DEBUG] App 创建成功")
+    
+    print("[DEBUG] 注册路由...")
     app.router.register_routers(wc.router, sm.router, oc.router, qs.router)
+    print("[DEBUG] 路由注册成功")
+    
+    print("[DEBUG] 注册窗口...")
     main_win = app.window.register_window(
         title="PYWEBRON测试面板",
         width=1200,
@@ -23,7 +30,13 @@ def main():
         # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/dist_content/dist",
         # icon_path=f"{PROJECT_ROOT_PATH}/builtins/pywebron.png",
     )
+    print(f"[DEBUG] 窗口注册成功，ID: {main_win}")
+    
+    print("[DEBUG] 添加窗口到应用...")
     app.window.register_windows(main_win)  # pyright: ignore[reportUnknownMemberType]
+    print("[DEBUG] 窗口添加成功，准备运行...")
+    
+    print("[DEBUG] 启动应用...")
     app.run()
 
 

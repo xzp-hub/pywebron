@@ -1,7 +1,11 @@
 use crossbeam::channel;
+use once_cell::sync::Lazy;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
+use pyo3_async_runtimes::TaskLocals;
 use serde_json::Value;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::{LazyLock, OnceLock};
 use tao::event_loop::EventLoopProxy;
 
@@ -16,6 +20,20 @@ static HANDLE_CACHE: LazyLock<parking_lot::RwLock<HandleCache>> =
 fn cache_key(handle_id: &str, handler_type: &str) -> String {
     format!("{}:{}", handler_type, handle_id)
 }
+
+type HandlerFuture = Pin<Box<dyn Future<Output = Result<Value, String>> + Send>>;
+
+static PYTHON_HANDLER_RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .thread_name("pywebron-pyasync")
+        .build()
+        .expect("failed to create pywebron async runtime")
+});
+
+static PYTHON_TASK_LOCALS: LazyLock<Result<TaskLocals, String>> =
+    LazyLock::new(init_python_task_locals);
 
 /// 从 HANDLES 字典中按 handle_id 和 handler_type 查找 handler
 /// HANDLES 结构: { group_name: [ {"name": str, "type": "invoke"|"stream", "handler": callable}, ... ] }
@@ -59,6 +77,117 @@ fn find_handler<'py>(
     }
     eprintln!("[DEBUG-RUST] 未找到 handler: {}", handle_id);
     Ok(None)
+}
+
+fn get_handler<'py>(
+    py: Python<'py>,
+    handle_id: &str,
+    handler_type: &str,
+) -> PyResult<Bound<'py, PyAny>> {
+    let handler_cache_key = cache_key(handle_id, handler_type);
+    let cache = HANDLE_CACHE.read();
+    if let Some(h) = cache.get(&handler_cache_key) {
+        return Ok(h.bind(py).to_owned());
+    }
+
+    drop(cache);
+    if let Some(h) = find_handler(py, handle_id, handler_type)? {
+        HANDLE_CACHE
+            .write()
+            .insert(handler_cache_key, h.clone().unbind());
+        Ok(h)
+    } else {
+        Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "{} handler not found: {}",
+            if handler_type == "invoke" {
+                "Invoke"
+            } else {
+                "Stream"
+            },
+            handle_id
+        )))
+    }
+}
+
+fn init_python_task_locals() -> Result<TaskLocals, String> {
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+
+    std::thread::Builder::new()
+        .name("pywebron-python-loop".to_string())
+        .spawn(move || {
+            let init_result = Python::attach(|py| -> PyResult<TaskLocals> {
+                let asyncio = py.import("asyncio")?;
+                let event_loop = asyncio.call_method0("new_event_loop")?;
+                asyncio.call_method1("set_event_loop", (event_loop.clone(),))?;
+                TaskLocals::new(event_loop).copy_context(py)
+            })
+            .map_err(|e| e.to_string());
+
+            match init_result {
+                Ok(locals) => {
+                    let _ = tx.send(Ok(locals.clone()));
+                    let run_result = Python::attach(|py| -> PyResult<()> {
+                        let asyncio = py.import("asyncio")?;
+                        let event_loop = locals.event_loop(py);
+                        asyncio.call_method1("set_event_loop", (event_loop.clone(),))?;
+                        event_loop.call_method0("run_forever")?;
+                        Ok(())
+                    });
+                    if let Err(err) = run_result {
+                        eprintln!("[PyAsync] Python event loop stopped unexpectedly: {}", err);
+                    }
+                }
+                Err(err) => {
+                    let _ = tx.send(Err(err));
+                }
+            }
+        })
+        .map_err(|e| e.to_string())?;
+
+    rx.recv()
+        .map_err(|e| format!("failed to receive Python event loop locals: {}", e))?
+}
+
+fn python_task_locals() -> Result<TaskLocals, String> {
+    match &*PYTHON_TASK_LOCALS {
+        Ok(locals) => Ok(locals.clone()),
+        Err(err) => Err(err.clone()),
+    }
+}
+
+pub fn warm_python_runtime() -> PyResult<()> {
+    python_task_locals().map(|_| ()).map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+fn make_handler_future(
+    handle_id: String,
+    handler_type: &'static str,
+    window_id: u64,
+    request_id: Option<String>,
+    payload: Value,
+) -> Result<HandlerFuture, String> {
+    let locals = python_task_locals()?;
+    let future = Python::attach(|py| -> PyResult<_> {
+        let handler = get_handler(py, &handle_id, handler_type)?;
+        let request_obj = serde_json::json!({
+            "window_id": window_id,
+            "handle_id": &handle_id,
+            "request_id": &request_id,
+            "payload": payload
+        });
+        let py_request = pythonize::pythonize(py, &request_obj)?;
+        let coroutine = handler.call1((py_request,))?;
+        pyo3_async_runtimes::into_future_with_locals(&locals, coroutine)
+    })
+    .map_err(|e| e.to_string())?;
+
+    Ok(Box::pin(async move {
+        let py_result = future.await.map_err(|e| e.to_string())?;
+        Python::attach(|py| {
+            let bound = py_result.into_bound(py);
+            pythonize::depythonize(&bound).map_err(|e| e.to_string())
+        })
+    }))
 }
 
 // === 统一的 IPC 处理线程池 ===
@@ -114,8 +243,10 @@ fn ensure_invoke_pool() -> &'static channel::Sender<IpcRequest> {
 fn ensure_stream_pool() -> &'static channel::Sender<IpcRequest> {
     STREAM_TX.get_or_init(|| {
         let (tx, rx) = channel::unbounded::<IpcRequest>();
-        // Stream 线程池不需要太多线程，因为每个 stream handler 是长期运行的
-        let num_threads = 8;
+        // Stream handler 现在调度到共享 Python loop，不再长期占住线程。
+        let num_threads = std::thread::available_parallelism()
+            .map(|n| n.get().clamp(2, 4))
+            .unwrap_or(2);
 
         for i in 0..num_threads {
             let rx = rx.clone();
@@ -147,52 +278,23 @@ fn process_invoke_request(request: IpcRequest) {
         handle_id, window_id, request_id
     );
 
-    // 获取 Python GIL，执行 handler
-    let mut result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
-        let handler_cache_key = cache_key(&handle_id, "invoke");
-        // 优先从缓存获取 handler，避免重复 Python import
-        let handler = {
-            let cache = HANDLE_CACHE.read();
-            if let Some(h) = cache.get(&handler_cache_key) {
-                h.bind(py).to_owned()
-            } else {
-                drop(cache);
-                if let Some(h) = find_handler(py, &handle_id, "invoke")? {
-                    HANDLE_CACHE
-                        .write()
-                        .insert(handler_cache_key.clone(), h.clone().unbind());
-                    h
-                } else {
-                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                        "Invoke handler not found: {}",
-                        handle_id
-                    )));
-                }
-            }
-        };
-
-        // 构建请求对象
-        let request_obj = serde_json::json!({
-            "window_id": window_id,
-            "handle_id": &handle_id,
-            "request_id": &request_id,
-            "payload": payload
-        });
-        let py_request = pythonize::pythonize(py, &request_obj)?;
-        let coroutine = handler.call1((py_request,))?;
-        // eprintln!("[Invoke]     协程已创建 | handle={}", handle_id);
-
-        // 使用 asyncio.run() 运行协程
-        let asyncio = py.import("asyncio")?;
-        eprintln!("[Invoke]     调用 asyncio.run() | handle={}", handle_id);
-        let py_result = asyncio.call_method1("run", (coroutine,))?;
-        eprintln!("[Invoke]     协程执行完毕 | handle={}", handle_id);
-
-        // 解析结果
-        let value: Value = pythonize::depythonize(&py_result)?;
-        Ok(value)
-    })
-    .map_err(|e| e.to_string());
+    let mut result = match make_handler_future(
+        handle_id.clone(),
+        "invoke",
+        window_id,
+        request_id.clone(),
+        payload,
+    ) {
+        Ok(future) => {
+            let (tx, rx) = channel::bounded::<Result<Value, String>>(1);
+            PYTHON_HANDLER_RUNTIME.spawn(async move {
+                let _ = tx.send(future.await);
+            });
+            rx.recv()
+                .unwrap_or_else(|_| Err("Invoke async worker channel closed".to_string()))
+        }
+        Err(err) => Err(err),
+    };
 
     let _elapsed = t_total.elapsed();
     eprintln!("[Invoke] 全流程耗时：{:?} | handle={}", _elapsed, handle_id);
@@ -253,57 +355,36 @@ fn process_stream_request(request: IpcRequest) {
     let active_handlers = crate::app::stream::get_active_handlers();
     active_handlers.write().insert(handle_id.clone());
 
-    // 获取 Python GIL，执行 handler
-    let result: Result<Value, String> = Python::attach(|py| -> PyResult<Value> {
-        let handler_cache_key = cache_key(&handle_id, "stream");
-        // 优先从缓存获取 handler，避免重复 Python import
-        let handler = {
-            let cache = HANDLE_CACHE.read();
-            if let Some(h) = cache.get(&handler_cache_key) {
-                h.bind(py).to_owned()
-            } else {
-                drop(cache);
-                if let Some(h) = find_handler(py, &handle_id, "stream")? {
-                    HANDLE_CACHE
-                        .write()
-                        .insert(handler_cache_key.clone(), h.clone().unbind());
-                    h
-                } else {
-                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                        "Stream handler not found: {}",
-                        handle_id
-                    )));
-                }
-            }
-        };
+    let future = match make_handler_future(
+        handle_id.clone(),
+        "stream",
+        window_id,
+        request_id,
+        payload,
+    ) {
+        Ok(future) => future,
+        Err(err) => {
+            active_handlers.write().remove(&handle_id);
+            eprintln!("[Stream] Handler 启动失败：{} | handle={}", err, handle_id);
+            return;
+        }
+    };
 
-        // 构建请求对象
-        let request_obj = serde_json::json!({
-            "window_id": window_id,
-            "handle_id": &handle_id,
-            "request_id": &request_id,
-            "payload": payload
+    PYTHON_HANDLER_RUNTIME.spawn(async move {
+        let result = future.await;
+        active_handlers.write().remove(&handle_id);
+        if let Err(err) = result {
+            eprintln!("[Stream] Handler 错误：{} | handle={}", err, handle_id);
+        }
+    });
+}
+
+pub fn shutdown_python_runtime() {
+    if let Ok(locals) = python_task_locals() {
+        Python::attach(|py| {
+            let event_loop = locals.event_loop(py);
+            let _ = event_loop.call_method0("stop");
         });
-        let py_request = pythonize::pythonize(py, &request_obj)?;
-        let coroutine = handler.call1((py_request,))?;
-        // eprintln!("[Stream]     协程已创建 | handle={}", handle_id);
-
-        // 使用 asyncio.run() 运行协程（stream handler 是无限循环）
-        let asyncio = py.import("asyncio")?;
-        // eprintln!("[Stream]     调用 asyncio.run() | handle={}", handle_id);
-        let _ = asyncio.call_method1("run", (coroutine,))?;
-
-        // Stream handler 通常不会返回（无限循环）
-        // eprintln!("[Stream]     协程已结束（意外） | handle={}", handle_id);
-        Ok(serde_json::json!({"started": true}))
-    })
-    .map_err(|e| e.to_string());
-
-    // handler 结束后，移除活跃状态
-    active_handlers.write().remove(&handle_id);
-
-    if let Err(_e) = result {
-        eprintln!("[Stream] Handler 错误：{} | handle={}", _e, handle_id);
     }
 }
 
