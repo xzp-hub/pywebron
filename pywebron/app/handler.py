@@ -62,14 +62,7 @@ class Handle:
         handles = cls._build_param_handles(func)
 
         async def wrapper(req: dict):
-            try:
-                kwargs = dict(h(req) for h in handles)
-                result = await func(**kwargs)
-                if cls is Stream:
-                    return None
-                return result
-            except Exception:
-                raise
+            return await func(**dict(handle(req) for handle in handles))
 
         return wrapper
 
