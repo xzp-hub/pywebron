@@ -18,7 +18,7 @@ class App:
         self.router = Router
 
     def run(self):
-        if self._app_router.handlers:
+        if self._app_router.handles:
             Router.register_routers(self._app_router)
         rust_run()
 
