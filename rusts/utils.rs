@@ -2,7 +2,7 @@
 use crate::configs::WindowCorners;
 use dashmap::DashMap;
 use image::open;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::path::Path;
 use tao::window::Icon;
 
@@ -79,7 +79,7 @@ pub fn make_window_frameless_but_resizable(hwnd: HWND) {
 }
 
 type CachedIcon = (Vec<u8>, u32, u32);
-static ICON_CACHE: Lazy<DashMap<String, CachedIcon>> = Lazy::new(DashMap::new);
+static ICON_CACHE: LazyLock<DashMap<String, CachedIcon>> = LazyLock::new(DashMap::new);
 
 pub fn generate_win_icon(path: String) -> Option<Icon> {
     let p = path.trim();

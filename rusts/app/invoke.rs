@@ -1,5 +1,4 @@
 use crossbeam::channel;
-use once_cell::sync::Lazy;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
 use pyo3_async_runtimes::TaskLocals;
@@ -10,7 +9,7 @@ use std::sync::{LazyLock, OnceLock};
 use tao::event_loop::EventLoopProxy;
 use tokio::sync::oneshot;
 
-use crate::configs::UserEvent;
+use crate::configs::{debug_log, UserEvent};
 
 type HandleCache = std::collections::HashMap<String, Py<PyAny>>;
 static HANDLE_CACHE: LazyLock<parking_lot::RwLock<HandleCache>> =
@@ -18,7 +17,7 @@ static HANDLE_CACHE: LazyLock<parking_lot::RwLock<HandleCache>> =
 
 type HandlerFuture = Pin<Box<dyn Future<Output = Result<Value, String>> + Send>>;
 
-static PYTHON_HANDLER_RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+static PYTHON_HANDLER_RUNTIME: LazyLock<tokio::runtime::Runtime> = LazyLock::new(|| {
     let worker_threads = std::env::var("PYWEBRON_PY_ASYNC_THREADS")
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
@@ -35,24 +34,6 @@ static PYTHON_HANDLER_RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
 
 static PYTHON_TASK_LOCALS: LazyLock<Result<TaskLocals, String>> =
     LazyLock::new(init_python_task_locals);
-
-static LOG_DEBUG: LazyLock<bool> = LazyLock::new(|| {
-    matches!(
-        std::env::var("PYWEBRON_LOG_LEVEL")
-            .unwrap_or_else(|_| "error".to_string())
-            .trim()
-            .to_ascii_lowercase()
-            .as_str(),
-        "debug"
-    )
-});
-
-#[inline]
-fn debug_log(message: impl FnOnce() -> String) {
-    if *LOG_DEBUG {
-        eprintln!("{}", message());
-    }
-}
 
 #[inline]
 fn cache_key(handle_id: &str, handler_type: &str) -> String {

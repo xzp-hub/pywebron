@@ -1,8 +1,7 @@
 use crate::app::load_js_api;
-use crate::configs::UserEvent;
+use crate::configs::{debug_log, UserEvent};
 use crate::utils::generate_win_icon;
 use dashmap::DashMap;
-use once_cell::sync::Lazy;
 use pyo3::ffi::{PyEval_RestoreThread, PyEval_SaveThread};
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
@@ -47,29 +46,25 @@ use wry::WebViewBuilderExtUnix;
 #[cfg(target_os = "windows")]
 use wry::WebViewBuilderExtWindows;
 
-static WEBVIEW_CREATE_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
-static WINDOWS: Lazy<DashMap<u64, tao::window::Window>> = Lazy::new(DashMap::new);
-static WINDOW_PROXIES: Lazy<DashMap<u64, WindowHandle>> = Lazy::new(DashMap::new);
-static WINDOW_READY: Lazy<DashMap<u64, bool>> = Lazy::new(DashMap::new);
-// 全局 EventLoopProxy 存储，用于跨线程发送消息到前端
-static EVENT_PROXIES: Lazy<DashMap<u64, tao::event_loop::EventLoopProxy<UserEvent>>> =
-    Lazy::new(DashMap::new);
-// 主事件循环的 Proxy（用于唤醒事件循环）
-static MAIN_EVENT_PROXY: once_cell::sync::Lazy<
-    Mutex<Option<tao::event_loop::EventLoopProxy<UserEvent>>>,
-> = once_cell::sync::Lazy::new(|| Mutex::new(None));
-// 待创建的窗口队列
-static PENDING_WINDOWS: Lazy<Mutex<HashMap<u64, WindowConfig>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
-// 主窗口 ID 存储（只允许一个主窗口）
-static MAIN_WINDOW_ID: Lazy<Mutex<Option<u64>>> = Lazy::new(|| Mutex::new(None));
-// 存储 webview 对象（WebView 包含非 Send 的原始指针，需要 unsafe wrapper）
+static WEBVIEW_CREATE_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+static WINDOWS: LazyLock<DashMap<u64, tao::window::Window>> = LazyLock::new(DashMap::new);
+static WINDOW_PROXIES: LazyLock<DashMap<u64, WindowHandle>> = LazyLock::new(DashMap::new);
+static WINDOW_READY: LazyLock<DashMap<u64, bool>> = LazyLock::new(DashMap::new);
+static EVENT_PROXIES: LazyLock<DashMap<u64, tao::event_loop::EventLoopProxy<UserEvent>>> =
+    LazyLock::new(DashMap::new);
+static MAIN_EVENT_PROXY: LazyLock<Mutex<Option<tao::event_loop::EventLoopProxy<UserEvent>>>> =
+    LazyLock::new(|| Mutex::new(None));
+static PENDING_WINDOWS: LazyLock<Mutex<HashMap<u64, WindowConfig>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static MAIN_WINDOW_ID: LazyLock<Mutex<Option<u64>>> = LazyLock::new(|| Mutex::new(None));
+// SAFETY: WebView contains non-Send raw pointers, but all access is guarded by the inner Mutex.
+// Only event-loop thread touches the WebView through the Mutex; other threads only hold the Arc.
 struct WebViewWrapper(std::sync::Arc<Mutex<Option<wry::WebView>>>);
 unsafe impl Send for WebViewWrapper {}
 unsafe impl Sync for WebViewWrapper {}
 
-static WEBVIEWS: Lazy<DashMap<u64, WebViewWrapper>> = Lazy::new(DashMap::new);
-static WINDOW_CACHE_KEYS: Lazy<DashMap<u64, HashSet<String>>> = Lazy::new(DashMap::new);
+static WEBVIEWS: LazyLock<DashMap<u64, WebViewWrapper>> = LazyLock::new(DashMap::new);
+static WINDOW_CACHE_KEYS: LazyLock<DashMap<u64, HashSet<String>>> = LazyLock::new(DashMap::new);
 
 /// 资源缓存条目：包含数据、MIME 类型、ETag 和访问时间（用于 LRU 驱逐）
 struct CacheEntry {
@@ -79,29 +74,10 @@ struct CacheEntry {
     last_access: std::time::Instant,
 }
 
-// 资源文件缓存：用于自定义协议处理器
-static RESOURCE_CACHE: Lazy<DashMap<String, CacheEntry>> = Lazy::new(DashMap::new);
+static RESOURCE_CACHE: LazyLock<DashMap<String, CacheEntry>> = LazyLock::new(DashMap::new);
 
-// 缓存总大小追踪
 static CACHE_TOTAL_SIZE: AtomicUsize = AtomicUsize::new(0);
 const MAX_CACHE_SIZE: usize = 50 * 1024 * 1024; // 50MB
-static LOG_DEBUG: LazyLock<bool> = LazyLock::new(|| {
-    matches!(
-        std::env::var("PYWEBRON_LOG_LEVEL")
-            .unwrap_or_else(|_| "error".to_string())
-            .trim()
-            .to_ascii_lowercase()
-            .as_str(),
-        "debug"
-    )
-});
-
-#[inline]
-fn debug_log(message: impl FnOnce() -> String) {
-    if *LOG_DEBUG {
-        eprintln!("{}", message());
-    }
-}
 
 fn remember_window_cache_key(window_id: u64, cache_key: impl Into<String>) {
     let cache_key = cache_key.into();
@@ -452,13 +428,13 @@ fn create_window_in_event_loop(
                     (raw_path, None)
                 };
 
-                eprintln!(
+                debug_log(|| format!(
                     "[Protocol] 请求 URI={} | 解析路径={} | wb_id={:?} | dist_base={}",
                     uri,
                     file_path,
                     wb_id,
                     dist_path_for_protocol.display()
-                );
+                ));
 
                 // 空路径直接返回空，避免无意义的请求
                 if file_path.is_empty() {
@@ -500,10 +476,10 @@ fn create_window_in_event_loop(
                 } else if let Some(ref reconstructed) = reconstructed_path {
                     // 验证重建后的路径是否存在，如果存在则用它
                     if std::path::Path::new(reconstructed).exists() {
-                        eprintln!(
-                            "[Protocol] 🔧 检测到无冒号路径，已重建为: {}",
+                        debug_log(|| format!(
+                            "[Protocol] 检测到无冒号路径，已重建为: {}",
                             reconstructed
-                        );
+                        ));
                         std::path::PathBuf::from(reconstructed)
                     } else {
                         // 不存在则回退到相对路径拼接
@@ -519,12 +495,12 @@ fn create_window_in_event_loop(
                 let wb_cache_key = wb_id
                     .as_ref()
                     .map(|id| format!("{}//_wb{}", direct_cache_key, id));
-                eprintln!(
+                debug_log(|| format!(
                     "[Protocol] 拼接完整路径={} | 缓存key={} | wb_cachekey={:?}",
                     full_path.display(),
                     direct_cache_key,
                     wb_cache_key
-                );
+                ));
 
                 let is_absolute_request = is_standard_abs || missing_colon_abs;
                 let canonical_full_for_policy = full_path.canonicalize().ok();
@@ -535,7 +511,7 @@ fn create_window_in_event_loop(
                     };
 
                     if !allowed {
-                        eprintln!("[Protocol] 🚫 绝对路径访问被拒绝: {}", full_path.display());
+                        debug_log(|| format!("[Protocol] 绝对路径访问被拒绝: {}", full_path.display()));
                         return http::Response::builder()
                             .status(403)
                             .header("Access-Control-Allow-Origin", "*")
@@ -568,12 +544,12 @@ fn create_window_in_event_loop(
                         let data = entry.data.clone();
                         let mime = entry.mime;
                         let etag = entry.etag.clone();
-                        eprintln!(
-                            "[Protocol] ✅ 直接缓存命中: {} | mime={} | size={}",
+                        debug_log(|| format!(
+                            "[Protocol] 直接缓存命中: {} | mime={} | size={}",
                             used_key,
                             mime,
                             data.len()
-                        );
+                        ));
 
                         let if_none_match = request
                             .headers()
@@ -599,7 +575,7 @@ fn create_window_in_event_loop(
                     }
                 }
 
-                eprintln!("[Protocol] ⏳ 未命中直接缓存，尝试磁盘查找...");
+                debug_log(|| "[Protocol] 未命中直接缓存，尝试磁盘查找...".to_string());
 
                 // 路径穿越防护：使用预计算的 canonical_base
                 let canonical_base = match &canonical_base {
@@ -1595,11 +1571,10 @@ pub fn register_window(
     Ok(window_id)
 }
 
-// 存储窗口配置，用于 get_windows 返回
 use std::sync::RwLock;
 
-static WINDOW_CONFIGS: Lazy<RwLock<HashMap<u64, WindowConfig>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
+static WINDOW_CONFIGS: LazyLock<RwLock<HashMap<u64, WindowConfig>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 /// 运行主循环（在 Python 主线程运行 TAO 事件循环）
 #[pyfunction(name = "rust_run")]

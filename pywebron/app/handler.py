@@ -82,7 +82,7 @@ class Stream(Handle):
                 wids = mcast_wids
             case _:
                 wids = None
-        return await rust_stream_send(
+        return rust_stream_send(
             payload=pld,
             handle_id=self.handle_id,
             send_mode=send_mode,

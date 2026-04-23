@@ -7,8 +7,8 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 
 pub fn load_js_api() -> &'static str {
-    static JS_API: once_cell::sync::Lazy<String> =
-        once_cell::sync::Lazy::new(|| include_str!("../../builtins/pywebron.js").to_string());
+    static JS_API: std::sync::LazyLock<String> =
+        std::sync::LazyLock::new(|| include_str!("../../builtins/pywebron.js").to_string());
     &JS_API
 }
 
@@ -291,14 +291,13 @@ pub(crate) fn get_stream_subscriptions(handle_id: &str) -> Vec<u64> {
 
 #[pyfunction(name = "rust_stream_send")]
 #[pyo3(signature = (payload, handle_id, send_mode, window_ids=None, save_history=None))]
-pub fn stream_send<'py>(
-    py: Python<'py>,
+pub fn stream_send(
     payload: Bound<'_, PyAny>,
     handle_id: String,
     send_mode: String,
     window_ids: Option<Vec<u64>>,
     save_history: Option<bool>,
-) -> PyResult<Bound<'py, PyAny>> {
+) -> PyResult<bool> {
     let payload_json: Value = pythonize::depythonize(&payload).unwrap_or(Value::Null);
 
     let response = serde_json::json!({
@@ -341,5 +340,5 @@ pub fn stream_send<'py>(
         crate::app::send_script_to_window(window_id, Arc::clone(&js_code));
     }
 
-    pyo3_async_runtimes::tokio::future_into_py(py, async move { Ok(()) })
+    Ok(true)
 }
