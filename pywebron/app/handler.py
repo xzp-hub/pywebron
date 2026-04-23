@@ -16,9 +16,9 @@ class Handle:
         self.handle_id = handle_id
         self.window_id = window_id
 
-    def _logger_(self, payload: dict, send_mode: str = None):
+    def _logger_(self, payload: dict):
         header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
-        print(f"{header}-[{send_mode}]: {payload}" if send_mode else f"{header}: {payload}")
+        print(f"{header}: {payload}")
 
     __TYPE_INJECTORS = {
         'Invoke': lambda req, klass: klass(req['handle_id'], req['window_id']),
@@ -75,7 +75,7 @@ class Stream(Handle):
             mcast_wids: list[int] = None,
             save_history: bool = False
     ) -> bool:
-        self._logger_(pld := {"stat": stat, "mssg": mssg, "data": data}, send_mode)
+        self._logger_(pld := {"stat": stat, "mssg": mssg, "data": data})
         match send_mode:
             case StreamSendModes.UNITYCAST:
                 wids = [self.window_id]
