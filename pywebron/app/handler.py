@@ -1,11 +1,11 @@
+from .._pywebron_ import rust_stream_send
+from .._pywebron_ import rust_stream_recv
+from inspect import Parameter, signature
+from ..configs import StreamSendModes
 from types import SimpleNamespace
 from typing import Callable, Any
-from inspect import Parameter, signature
 from .worker import Worker
 from .window import Window
-from .._pywebron_ import rust_stream_send
-from ..configs import StreamSendModes
-from .._pywebron_ import rust_stream_recv
 
 
 class Handle:
@@ -45,8 +45,8 @@ class Handle:
                     continue
 
             handles.append(
-                lambda req, k=pk, dv=pv.default: (
-                    k, req['payload'][k] if dv is Parameter.empty else req['payload'].get(k, dv)
+                lambda req, dk=pk, dv=pv.default: (
+                    dk, req['payload'][dk] if dv is Parameter.empty else req['payload'].get(dk, dv)
                 )
             )
 
