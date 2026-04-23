@@ -20,37 +20,34 @@ class Handle:
         header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
         print(f"{header}-[{send_mode}]: {payload}" if send_mode else f"{header}: {payload}")
 
-    _BUILTIN_INJECTORS = {
-        'Invoke': lambda req, handle_cls: handle_cls(req['handle_id'], req['window_id']),
-        'Stream': lambda req, handle_cls: handle_cls(req['handle_id'], req['window_id']),
-        'Worker': lambda req, _target: Worker,
-        'Window': lambda req, _target: Window,
-        'Struct': lambda req, annotation: annotation(
-            **{
-                k: req['payload'].get(k, getattr(annotation, k, None))
-                for k in annotation.__annotations__
-            }
-        ),
+    __TYPE_INJECTORS = {
+        'Invoke': lambda req, klass: klass(req['handle_id'], req['window_id']),
+        'Stream': lambda req, klass: klass(req['handle_id'], req['window_id']),
+        'Worker': lambda req, klass: Worker,
+        'Window': lambda req, klass: Window,
+        'Struct': lambda req, klass: klass(**{ann: req['payload'].get(
+            ann, getattr(klass, ann, None)) for ann in klass.__annotations__
+        })
     }
 
     @classmethod
-    def _build_param_handles(cls, func: Callable):
-        handles, injectors = [], cls._BUILTIN_INJECTORS
+    def _maker_(cls, func: Callable):
+        handles, injectors = [], cls.__TYPE_INJECTORS
 
-        for param_name, param in signature(func).parameters.items():
-            annotation, default = param.annotation, param.default
+        for param_key, param_value in signature(func).parameters.items():
+            annotation, default = param_value.annotation, param_value.default
             if annotation is not Parameter.empty:
                 type_name = getattr(annotation, '__name__', None)
                 injector = injectors.get(type_name) if isinstance(type_name, str) else None
                 target = cls if injector else annotation if hasattr(annotation, '__annotations__') else None
                 if target is not None:
                     handles.append(
-                        lambda req, k=param_name, inj=injector or injectors['Struct'], tgt=target: (k, inj(req, tgt))
+                        lambda req, k=param_key, inj=injector or injectors['Struct'], tgt=target: (k, inj(req, tgt))
                     )
                     continue
 
             handles.append(
-                lambda req, k=param_name, dv=default: (
+                lambda req, k=param_key, dv=default: (
                     k, req['payload'][k] if dv is Parameter.empty else req['payload'].get(k, dv)
                 )
             )
@@ -59,7 +56,7 @@ class Handle:
 
     @classmethod
     def _create_wrapper_(cls, func: Callable):
-        handles = cls._build_param_handles(func)
+        handles = cls._maker_(func)
 
         async def wrapper(req: dict):
             return await func(**dict(handle(req) for handle in handles))
