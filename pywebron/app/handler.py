@@ -34,20 +34,18 @@ class Handle:
     def _maker_(cls, func: Callable):
         handles, injectors = [], cls.__TYPE_INJECTORS
 
-        for param_key, param_value in signature(func).parameters.items():
-            annotation, default = param_value.annotation, param_value.default
-            if annotation is not Parameter.empty:
-                type_name = getattr(annotation, '__name__', None)
+        for pk, pv in signature(func).parameters.items():
+            if (ann := pv.annotation) is not Parameter.empty:
+                type_name = getattr(ann, '__name__', None)
                 injector = injectors.get(type_name) if isinstance(type_name, str) else None
-                target = cls if injector else annotation if hasattr(annotation, '__annotations__') else None
+                target = cls if injector else ann if hasattr(ann, '__annotations__') else None
                 if target is not None:
-                    handles.append(
-                        lambda req, k=param_key, inj=injector or injectors['Struct'], tgt=target: (k, inj(req, tgt))
-                    )
+                    ier = injector or injectors['Struct']
+                    handles.append(lambda req, pak=pk, inj=ier, tgt=target: (pak, inj(req, tgt)))
                     continue
 
             handles.append(
-                lambda req, k=param_key, dv=default: (
+                lambda req, k=pk, dv=pv.default: (
                     k, req['payload'][k] if dv is Parameter.empty else req['payload'].get(k, dv)
                 )
             )
