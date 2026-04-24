@@ -2,47 +2,44 @@ use parking_lot::RwLock;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use std::sync::OnceLock;
 
 pub fn load_js_api() -> &'static str {
-    static JS_API: once_cell::sync::Lazy<String> =
-        once_cell::sync::Lazy::new(|| include_str!("../../builtins/pywebron.js").to_string());
+    static JS_API: std::sync::LazyLock<String> =
+        std::sync::LazyLock::new(|| include_str!("../../builtins/pywebron.js").to_string());
     &JS_API
 }
 
-// === Stream 鎺ユ敹鏁版嵁闃熷垪锛堟湁鐣岄槦鍒楅槻�?OOM锛宧andle_id:window_id -> Queue�?===
-// 瀛樺�?(source_window_id, payload) 鍏冪�?
-type RecvQueues = HashMap<String, crossbeam::queue::ArrayQueue<(u64, Value)>>;
-static RECV_QUEUES: OnceLock<Arc<RwLock<RecvQueues>>> = OnceLock::new();
-
-// === 娲昏�?Handler 璺熻釜锛坔andle_id -> 鏄惁鏈夋鍦ㄨ繍琛岀�?handler�?===
-static ACTIVE_HANDLERS: OnceLock<Arc<RwLock<HashSet<String>>>> = OnceLock::new();
-
-// === 鏈€杩戞秷鎭潵婧愮獥鍙ｏ紙handle_id -> 鏉ユ�?window_id锛夛紝鐢ㄤ簬 UNITYCAST 璺�?===
+type StreamMessage = (u64, Value);
+type StreamInbox = (
+    crossbeam::channel::Sender<StreamMessage>,
+    crossbeam::channel::Receiver<StreamMessage>,
+);
+type StreamInboxes = HashMap<String, StreamInbox>;
+type StreamHistory = HashMap<String, VecDeque<Value>>;
 type LastSourceMap = HashMap<String, u64>;
-static LAST_SOURCE_WINDOWS: OnceLock<Arc<RwLock<LastSourceMap>>> = OnceLock::new();
+type StreamSubscriptions = HashMap<String, HashSet<u64>>;
+type WindowStreams = HashMap<u64, HashSet<String>>;
 
-// === 鍘嗗彶娑堟伅瀛樺偍锛坔andle_id -> messages�?===
-type StreamHistory = HashMap<String, Vec<Value>>;
+static ACTIVE_HANDLERS: OnceLock<Arc<RwLock<HashSet<String>>>> = OnceLock::new();
+static LAST_SOURCE_WINDOWS: OnceLock<Arc<RwLock<LastSourceMap>>> = OnceLock::new();
 static STREAM_HISTORY: OnceLock<Arc<RwLock<StreamHistory>>> = OnceLock::new();
+static STREAM_INBOXES: OnceLock<Arc<RwLock<StreamInboxes>>> = OnceLock::new();
+static STREAM_SUBSCRIPTIONS: OnceLock<Arc<RwLock<StreamSubscriptions>>> = OnceLock::new();
+static WINDOW_STREAMS: OnceLock<Arc<RwLock<WindowStreams>>> = OnceLock::new();
+
 const HISTORY_LIMIT: usize = 200;
+const RECV_QUEUE_LIMIT: usize = 100;
 
 #[inline]
 pub(crate) fn get_active_handlers() -> &'static Arc<RwLock<HashSet<String>>> {
     ACTIVE_HANDLERS.get_or_init(|| Arc::new(RwLock::new(HashSet::with_capacity(16))))
 }
 
-/// 妫€鏌ユ寚�?handle_id 鏄惁鏈夋椿璺冪�?handler 姝ｅ湪杩愯
 pub fn is_handler_active(handle_id: &str) -> bool {
-    let active = get_active_handlers();
-    active.read().contains(handle_id)
-}
-
-#[inline]
-fn get_recv_queues() -> &'static Arc<RwLock<RecvQueues>> {
-    RECV_QUEUES.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
+    get_active_handlers().read().contains(handle_id)
 }
 
 #[inline]
@@ -55,77 +52,109 @@ fn get_last_source_windows() -> &'static Arc<RwLock<LastSourceMap>> {
     LAST_SOURCE_WINDOWS.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
 }
 
-// 姣忎�?handle_id 鏈€澶氱紦�?100 鏉℃秷鎭?
-const RECV_QUEUE_LIMIT: usize = 100;
-
-// === 鍘嗗彶娑堟伅绠＄�?===
-
-/// 瀛樺偍娑堟伅鍒板巻鍙茶�?
-pub(crate) fn store_stream_history(handle_id: &str, payload: Value) {
-    let history = get_stream_history();
-    let mut h = history.write();
-    let msgs = h.entry(handle_id.to_string()).or_insert_with(Vec::new);
-    if msgs.len() >= HISTORY_LIMIT {
-        msgs.remove(0);
-    }
-    msgs.push(payload);
+#[inline]
+fn get_stream_inboxes() -> &'static Arc<RwLock<StreamInboxes>> {
+    STREAM_INBOXES.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
 }
 
-/// 鍚戞柊璁㈤槄绐楀彛鍙戦€佸巻鍙叉秷鎭?
+#[inline]
+fn get_stream_subscriptions_storage() -> &'static Arc<RwLock<StreamSubscriptions>> {
+    STREAM_SUBSCRIPTIONS.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
+}
+
+#[inline]
+fn get_window_streams_storage() -> &'static Arc<RwLock<WindowStreams>> {
+    WINDOW_STREAMS.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))))
+}
+
+fn ensure_stream_inbox(handle_id: &str) -> StreamInbox {
+    let inboxes = get_stream_inboxes();
+    let mut guard = inboxes.write();
+    guard
+        .entry(handle_id.to_string())
+        .or_insert_with(|| crossbeam::channel::bounded(RECV_QUEUE_LIMIT))
+        .clone()
+}
+
+fn ensure_stream_sender(handle_id: &str) -> crossbeam::channel::Sender<StreamMessage> {
+    ensure_stream_inbox(handle_id).0
+}
+
+fn ensure_stream_receiver(handle_id: &str) -> crossbeam::channel::Receiver<StreamMessage> {
+    ensure_stream_inbox(handle_id).1
+}
+
+fn cleanup_handle_state_if_idle(handle_id: &str) {
+    let has_subscribers = {
+        let subscriptions = get_stream_subscriptions_storage();
+        subscriptions
+            .read()
+            .get(handle_id)
+            .map(|ids| !ids.is_empty())
+            .unwrap_or(false)
+    };
+
+    if has_subscribers || is_handler_active(handle_id) {
+        return;
+    }
+
+    get_last_source_windows().write().remove(handle_id);
+    get_stream_history().write().remove(handle_id);
+    get_stream_inboxes().write().remove(handle_id);
+}
+
+pub(crate) fn store_stream_history(handle_id: &str, payload: Value) {
+    let history = get_stream_history();
+    let mut history = history.write();
+    let messages = history
+        .entry(handle_id.to_string())
+        .or_insert_with(|| VecDeque::with_capacity(HISTORY_LIMIT));
+    if messages.len() >= HISTORY_LIMIT {
+        messages.pop_front();
+    }
+    messages.push_back(payload);
+}
+
 pub(crate) fn send_history_to_window(handle_id: &str, window_id: u64) {
     let messages = {
         let history = get_stream_history();
-        let h = history.read();
-        h.get(handle_id).cloned().unwrap_or_default()
+        let history = history.read();
+        history
+            .get(handle_id)
+            .map(|items| items.iter().cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
     };
 
-    for payload in messages {
-        let response = serde_json::json!({
-            "handle_id": handle_id,
-            "handle_type": "stream",
-            "request_id": null,
-            "payload": payload
-        });
-        let js_code = format!(
-            "window.__pywebron_dispatch({})",
-            serde_json::to_string(&response).unwrap_or_default()
-        );
-        crate::app::send_script_to_window(window_id, std::sync::Arc::new(js_code));
+    if messages.is_empty() {
+        return;
     }
+
+    let response = serde_json::json!({
+        "handle_id": handle_id,
+        "handle_type": "stream",
+        "request_id": null,
+        "payload": {
+            "__history_batch__": true,
+            "messages": messages
+        }
+    });
+    let js_code = format!(
+        "window.__pywebron_dispatch({})",
+        serde_json::to_string(&response).unwrap_or_default()
+    );
+    crate::app::send_script_to_window(window_id, std::sync::Arc::new(js_code));
 }
 
-// === Stream 鎺ユ敹鏁版嵁锛堜粠浠绘剰璁㈤槄绐楀彛鐨勯槦鍒楀彇娑堟伅�?===
 #[pyfunction(name = "rust_stream_recv")]
 pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'py, PyAny>> {
     let hid = handle_id.clone();
+    let receiver = ensure_stream_receiver(&handle_id);
     let future = pyo3_async_runtimes::tokio::future_into_py(py, async move {
-        let queues = get_recv_queues();
-        let queues_read = queues.read();
+        let result = tokio::task::spawn_blocking(move || receiver.recv().ok())
+            .await
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
 
-        // 鑾峰彇璇?handle 鐨勬墍鏈夎闃呯獥鍙?
-        let subscriptions = get_stream_subscriptions_storage();
-        let subs = subscriptions.read();
-        let window_ids: Vec<u64> = subs.get(&hid).cloned().unwrap_or_default();
-
-        if window_ids.is_empty() {
-            return Ok(None);
-        }
-
-        // 杞鎵€鏈夎闃呯獥鍙ｇ殑闃熷垪锛屼粠浠绘剰绐楀彛鍙栨秷�?
-        let mut result_data = None;
-
-        for window_id in &window_ids {
-            let queue_key = format!("{}:{}", hid, window_id);
-            if let Some(queue) = queues_read.get(&queue_key) {
-                if let Some((source_window_id, payload)) = queue.pop() {
-                    result_data = Some((source_window_id, payload));
-                    break;
-                }
-            }
-        }
-
-        let result = if let Some((source_window_id, payload)) = result_data {
-            // 鏋勫缓瀹屾暣鐨勫崗璁搷搴旀牸寮忥紙鍖呭�?source_window_id�?
+        if let Some((source_window_id, payload)) = result {
             let response = serde_json::json!({
                 "handle_id": hid,
                 "handle_type": "stream",
@@ -145,103 +174,132 @@ pub fn stream_recv<'py>(py: Python<'py>, handle_id: String) -> PyResult<Bound<'p
             }
         } else {
             Ok(None)
-        };
-
-        result
+        }
     })?;
 
     Ok(future)
 }
 
-/// 妫€鏌ユ寚�?handle_id + window_id �?stream 鏄惁宸叉縺�?
 pub(crate) fn is_stream_active(handle_id: &str, window_id: u64) -> bool {
     let subscriptions = get_stream_subscriptions_storage();
-    let subs = subscriptions.read();
-    subs.get(handle_id)
+    let subscriptions = subscriptions.read();
+    subscriptions
+        .get(handle_id)
         .map_or(false, |ids| ids.contains(&window_id))
 }
 
-/// 浠呮敞鍐岀獥鍙ｈ闃呭叧绯伙紙涓嶅惎鍔?handler锛夛紝鐢ㄤ簬宸叉湁娲昏穬 handler 鏃剁殑鍚庣画绐楀彛璁㈤槄
 pub(crate) fn register_stream_window(handle_id: &str, window_id: u64) {
-    // 娉ㄥ唽璁㈤槄鍏崇�?
-    register_stream_subscription(handle_id.to_string(), window_id);
+    {
+        let subscriptions = get_stream_subscriptions_storage();
+        let mut subscriptions = subscriptions.write();
+        subscriptions
+            .entry(handle_id.to_string())
+            .or_insert_with(HashSet::new)
+            .insert(window_id);
+    }
 
-    // 鍒涘�?recv 闃熷�?
-    let queue_key = format!("{}:{}", handle_id, window_id);
-    let queues = get_recv_queues();
-    let mut queues_guard = queues.write();
-    queues_guard
-        .entry(queue_key)
-        .or_insert_with(|| crossbeam::queue::ArrayQueue::new(RECV_QUEUE_LIMIT));
+    {
+        let window_streams = get_window_streams_storage();
+        let mut window_streams = window_streams.write();
+        window_streams
+            .entry(window_id)
+            .or_insert_with(HashSet::new)
+            .insert(handle_id.to_string());
+    }
+
+    let _ = ensure_stream_receiver(handle_id);
 }
 
-/// 灏嗗墠绔彂鏉ョ殑鏁版嵁鎺ㄥ�?recv 闃熷垪锛堜緵 Python stream.recv() 娑堣垂锛?
-/// 鍚屾椂璁板綍鏉ユ簮绐楀�?ID锛屼互渚?handler 鍙互瀹氬悜鍥炲
-pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
-    let queue_key = format!("{}:{}", handle_id, window_id);
-    let queues = get_recv_queues();
-    let mut queues_guard = queues.write();
+pub(crate) fn unregister_stream_window(handle_id: &str, window_id: u64) -> bool {
+    let removed = {
+        let subscriptions = get_stream_subscriptions_storage();
+        let mut subscriptions = subscriptions.write();
+        if let Some(ids) = subscriptions.get_mut(handle_id) {
+            let removed = ids.remove(&window_id);
+            if ids.is_empty() {
+                subscriptions.remove(handle_id);
+            }
+            removed
+        } else {
+            false
+        }
+    };
 
-    let queue = queues_guard
-        .entry(queue_key)
-        .or_insert_with(|| crossbeam::queue::ArrayQueue::new(RECV_QUEUE_LIMIT));
-    // 瀛樺�?(source_window_id, payload)锛宻ource_window_id 灏辨槸鍙戦€佹秷鎭殑绐楀�?
-    let _ = queue.push((window_id, data));
+    {
+        let window_streams = get_window_streams_storage();
+        let mut window_streams = window_streams.write();
+        if let Some(handles) = window_streams.get_mut(&window_id) {
+            handles.remove(handle_id);
+            if handles.is_empty() {
+                window_streams.remove(&window_id);
+            }
+        }
+    }
 
-    // 鏇存柊鏈€杩戞秷鎭潵婧愮獥鍙ｏ紙鐢ㄤ簬 UNITYCAST 瀹氬悜鍥炲�?
-    let last_source = get_last_source_windows();
-    last_source.write().insert(handle_id.to_string(), window_id);
+    {
+        let last_source = get_last_source_windows();
+        let mut last_source = last_source.write();
+        if last_source.get(handle_id) == Some(&window_id) {
+            last_source.remove(handle_id);
+        }
+    }
+
+    cleanup_handle_state_if_idle(handle_id);
+    removed
 }
 
-// === Stream 璁㈤槄绠＄悊锛坔andle_id -> 璁㈤槄淇℃伅�?===
-type StreamSubscriptions = HashMap<String, Vec<u64>>;
-static STREAM_SUBSCRIPTIONS: OnceLock<Arc<parking_lot::RwLock<StreamSubscriptions>>> =
-    OnceLock::new();
+pub(crate) fn cleanup_window_streams(window_id: u64) {
+    let handle_ids = {
+        let window_streams = get_window_streams_storage();
+        let mut window_streams = window_streams.write();
+        window_streams
+            .remove(&window_id)
+            .map(|handles| handles.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default()
+    };
 
-#[inline]
-fn get_stream_subscriptions_storage() -> &'static Arc<parking_lot::RwLock<StreamSubscriptions>> {
-    STREAM_SUBSCRIPTIONS
-        .get_or_init(|| Arc::new(parking_lot::RwLock::new(HashMap::with_capacity(16))))
-}
-
-/// 娉ㄥ�?stream 璁㈤槄锛坔andle_id �?window_id 鐨勭粦瀹氬叧绯伙紝甯﹀幓閲嶏級
-fn register_stream_subscription(handle_id: String, window_id: u64) {
-    let subscriptions = get_stream_subscriptions_storage();
-    let mut subs = subscriptions.write();
-    subs.entry(handle_id.clone())
-        .or_insert_with(Vec::new);
-    // 鍘婚噸锛氬鏋滃凡璁㈤槄鍒欎笉鍐嶆坊�?
-    let ids = subs.get_mut(&handle_id).unwrap(); // safe: just inserted above if missing
-    if !ids.contains(&window_id) {
-        ids.push(window_id);
+    for handle_id in handle_ids {
+        unregister_stream_window(&handle_id, window_id);
     }
 }
 
-/// 鑾峰彇鎸囧畾 handle_id 鐨勬墍鏈夎闃呯獥鍙?
-pub(crate) fn get_stream_subscriptions(handle_id: &str) -> Vec<u64> {
-    let subscriptions = get_stream_subscriptions_storage();
-    let subs = subscriptions.read();
-    subs.get(handle_id).cloned().unwrap_or_default()
+pub(crate) fn push_stream_data(handle_id: &str, window_id: u64, data: Value) {
+    let sender = ensure_stream_sender(handle_id);
+    match sender.try_send((window_id, data)) {
+        Ok(()) => {}
+        Err(crossbeam::channel::TrySendError::Full((window_id, data))) => {
+            let receiver = ensure_stream_receiver(handle_id);
+            let _ = receiver.try_recv();
+            let _ = sender.try_send((window_id, data));
+        }
+        Err(crossbeam::channel::TrySendError::Disconnected(_)) => {}
+    }
+
+    get_last_source_windows()
+        .write()
+        .insert(handle_id.to_string(), window_id);
 }
 
-// === Stream 鍙戦€佹暟鎹埌鍓嶇锛堝紓姝ョ増鏈紝鏀寔 Python await�?===
+pub(crate) fn get_stream_subscriptions(handle_id: &str) -> Vec<u64> {
+    let subscriptions = get_stream_subscriptions_storage();
+    let subscriptions = subscriptions.read();
+    subscriptions
+        .get(handle_id)
+        .map(|ids| ids.iter().copied().collect())
+        .unwrap_or_default()
+}
+
 #[pyfunction(name = "rust_stream_send")]
 #[pyo3(signature = (payload, handle_id, send_mode, window_ids=None, save_history=None))]
-pub fn stream_send<'py>(
-    py: Python<'py>,
+pub fn stream_send(
     payload: Bound<'_, PyAny>,
     handle_id: String,
     send_mode: String,
     window_ids: Option<Vec<u64>>,
     save_history: Option<bool>,
-) -> PyResult<Bound<'py, PyAny>> {
-    let t_entry = std::time::Instant::now();
+) -> PyResult<bool> {
+    let payload_json: Value = pythonize::depythonize(&payload).unwrap_or(Value::Null);
 
-    // �?Python payload 杞崲涓?JSON
-    let payload_json: Value =
-        Python::attach(|_py| pythonize::depythonize(&payload).unwrap_or(Value::Null));
-
-    // 鏋勫缓鍝嶅簲娑堟�?
     let response = serde_json::json!({
         "handle_id": handle_id,
         "handle_type": "stream",
@@ -249,44 +307,38 @@ pub fn stream_send<'py>(
         "payload": payload_json
     });
 
-    // 存储到历史消息（默认保存，save_history=False 时跳过）
     if save_history.unwrap_or(true) {
-        store_stream_history(&handle_id, payload_json);
+        if let Some(payload) = response.get("payload").cloned() {
+            store_stream_history(&handle_id, payload);
+        }
     }
 
-    // 鏋勫�?JavaScript 浠ｇ爜锛堜娇�?Arc 閬垮厤澶氱獥鍙ｅ箍鎾椂鐨勫瓧绗︿覆 clone�?
     let js_code = Arc::new(format!(
         "window.__pywebron_dispatch({})",
         serde_json::to_string(&response).unwrap_or_default()
     ));
-    let _t_build_done = t_entry.elapsed();
 
-    // 鏍规嵁鍙戦€佹ā寮忓拰 window_ids 纭畾鐩爣绐楀�?
     let target_windows: Vec<u64> = match send_mode.as_str() {
         "broadcast" => crate::app::get_all_window_ids(),
         "multicast" => window_ids.unwrap_or_default(),
-        "unitycast" => {
-            // �?LAST_SOURCE_WINDOWS 鑾峰彇鏈€杩戠殑娑堟伅鏉ユ簮绐楀�?
-            let last_source = LAST_SOURCE_WINDOWS.get_or_init(|| Arc::new(RwLock::new(HashMap::with_capacity(16))));
-            let source_map = last_source.read();
-            source_map.get(&handle_id).map(|&id| vec![id]).unwrap_or_default()
-        }
+        "unitycast" => get_last_source_windows()
+            .read()
+            .get(&handle_id)
+            .map(|&id| vec![id])
+            .unwrap_or_default(),
         _ => {
             let subscribed = get_stream_subscriptions(&handle_id);
-            if !subscribed.is_empty() {
-                subscribed
-            } else {
+            if subscribed.is_empty() {
                 crate::app::get_all_window_ids()
+            } else {
+                subscribed
             }
         }
     };
 
-    // 鍙戦€佹秷鎭埌鐩爣绐楀彛锛圓rc 鍏变韩寮曠敤锛岄伩鍏嶉噸�?clone 瀛楃涓诧級
     for window_id in target_windows {
-        crate::app::send_script_to_window(window_id, std::sync::Arc::clone(&js_code));
+        crate::app::send_script_to_window(window_id, Arc::clone(&js_code));
     }
 
-    // 杩斿洖涓€涓彲 await �?Future锛堝疄闄呭凡鍚屾瀹屾垚锛屼絾鏀寔 Python await 璇硶锛?
-    pyo3_async_runtimes::tokio::future_into_py(py, async move { Ok(()) })
+    Ok(true)
 }
-

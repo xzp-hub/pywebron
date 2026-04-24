@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Window:
-    _window_ids: list[int] = []
+    _window_ids: set[int] = set()
 
     @classmethod
     def register_window(
@@ -68,8 +68,7 @@ class Window:
     def register_windows(cls, *window_ids):
         """注册一个或多个窗口"""
         for wid in window_ids:
-            cls._window_ids.append(wid)
-            print(f"[Window] 注册窗口 ID: {wid}")
+            cls._window_ids.add(wid)
 
     @staticmethod
     def minimize_window(window_id: int) -> bool:

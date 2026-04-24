@@ -1,13 +1,31 @@
+use std::sync::LazyLock;
+
 #[derive(Debug, Clone)]
 pub enum UserEvent {
     CloseWindow(u64),
-    // IPC 消息分发到 WebView（Arc<String> 避免多窗口广播时重复 clone）
     EvaluateScript {
         window_id: u64,
         script: std::sync::Arc<String>,
     },
-    // 唤醒事件循环，处理待创建的窗口
     WakeUp,
+}
+
+pub static LOG_DEBUG: LazyLock<bool> = LazyLock::new(|| {
+    matches!(
+        std::env::var("PYWEBRON_LOG_LEVEL")
+            .unwrap_or_else(|_| "error".to_string())
+            .trim()
+            .to_ascii_lowercase()
+            .as_str(),
+        "debug"
+    )
+});
+
+#[inline]
+pub fn debug_log(message: impl FnOnce() -> String) {
+    if *LOG_DEBUG {
+        eprintln!("{}", message());
+    }
 }
 
 #[cfg(target_os = "windows")]

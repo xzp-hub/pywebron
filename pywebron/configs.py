@@ -2,6 +2,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from typing import Dict, Callable, List
 from enum import StrEnum, IntEnum
 from pathlib import Path
+from os import getenv
 
 # 项目根目录路径
 PROJECT_ROOT_PATH = str(Path(__file__).parents[1])
@@ -28,6 +29,9 @@ class DwmCorners(IntEnum):
 #     'router_title': [{'name': 'handler_name', 'type': 'invoke'|'stream', 'handler': <function>}],
 # }
 HANDLES: Dict[str, List[Dict[str, str | Callable]]] = {}  # pyright: ignore[reportUnknownVariableType, reportDeprecated, reportMissingTypeArgument]
+HANDLE_INDEX: Dict[str, Dict[str, Callable]] = {"invoke": {}, "stream": {}}
 
 # 工作任务池（进程池或线程池）
 WORKER_POOL: ProcessPoolExecutor | ThreadPoolExecutor | None = None
+LOG_LEVEL = getenv("PYWEBRON_LOG_LEVEL", "error").strip().lower()
+ENABLE_HANDLE_LOGS = LOG_LEVEL == "debug"

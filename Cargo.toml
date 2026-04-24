@@ -20,21 +20,16 @@ pyo3 = { version = "*", features = ["extension-module", "multiple-pymethods", "e
 tao = "*"
 wry = { version = "*", features = ["protocol", "transparent"] }
 
-once_cell = "*"
 parking_lot = "*"
 crossbeam = "*"
 image = { version = "*", default-features = false, features = ["png", "jpeg", "ico"] }
 dashmap = "*"
-base64 = "*"
 mimalloc = { version = "*", optional = true }
-tokio = { version = "*", features = ["full", "rt-multi-thread"] }
+tokio = { version = "*", features = ["rt-multi-thread", "sync", "macros"] }
 pyo3-async-runtimes = { version = "*", features = ["tokio-runtime"] }
 http = "*"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
-rkyv = { version = "*", features = ["validation"] }
-uuid = { version = "*", features = ["v4"] }
-num_cpus = "*"
 pythonize = "*"
 rfd = { version = "*", features = ["common-controls-v6"] }
 

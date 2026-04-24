@@ -1,7 +1,7 @@
 from .._pywebron_ import rust_stream_send
 from .._pywebron_ import rust_stream_recv
 from inspect import Parameter, signature
-from ..configs import StreamSendModes
+from ..configs import StreamSendModes, ENABLE_HANDLE_LOGS
 from types import SimpleNamespace
 from typing import Callable, Any
 from .worker import Worker
@@ -26,6 +26,8 @@ class Handle:
         self.window_id = window_id
 
     def _logger_(self, payload: dict):
+        if not ENABLE_HANDLE_LOGS:
+            return
         header = f"[{self.__class__.__name__}]-[{self.window_id}]-[{self.handle_id}]"
         print(f"{header}: {payload}")
 
@@ -43,11 +45,9 @@ class Handle:
                     handles.append(lambda req, pak=pk, inj=ier, tgt=target: (pak, inj(req, tgt)))
                     continue
 
-            handles.append(
-                lambda req, dk=pk, dv=pv.default: (
-                    dk, req['payload'][dk] if dv is Parameter.empty else req['payload'].get(dk, dv)
-                )
-            )
+            handles.append(lambda req, dk=pk, dv=pv.default: (
+                dk, req['payload'][dk] if dv is Parameter.empty else req['payload'].get(dk, dv)
+            ))
 
         return handles
 
@@ -82,7 +82,7 @@ class Stream(Handle):
                 wids = mcast_wids
             case _:
                 wids = None
-        return await rust_stream_send(
+        return rust_stream_send(
             payload=pld,
             handle_id=self.handle_id,
             send_mode=send_mode,
