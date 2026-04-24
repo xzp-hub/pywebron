@@ -41,8 +41,8 @@ defineProps({
   background: var(--bg-card);
   box-sizing: border-box;
   border: 1px solid var(--border-default);
-  height: 100%;
   flex: 1;
+  min-height: 0;
 }
 
 .base-card-header {
@@ -77,8 +77,10 @@ defineProps({
 .base-card-body {
   flex: 1;
   min-height: 0;
+  max-height: 100%;
   background: var(--bg-card);
   overflow: hidden;
+  position: relative;
 }
 
 [data-theme="dark"] .base-card-body {

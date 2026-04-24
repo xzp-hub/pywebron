@@ -21,7 +21,7 @@ def main():
         width=1200,
         height=1200,
         show_title_bar=False,
-        enable_resizable=True,
+        enable_resizable=False,
         window_radius=6,
         is_main=True,
         dwm_corner=DwmCorners.LITTLE_ROUND,

@@ -80,12 +80,15 @@ onMounted(() => {
 
 .content-area {
   height: 100%;
+  max-height: 100%;
   padding: 5px;
   overflow-y: auto;
+  overflow-x: hidden;
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-log-normal);
+  position: relative;
 }
 
 .content-area::-webkit-scrollbar {

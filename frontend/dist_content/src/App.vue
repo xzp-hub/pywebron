@@ -30,6 +30,7 @@ import TerminalLog from '@/components/console_viewer.vue'
 
 <style scoped>
 .window {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -59,9 +60,12 @@ import TerminalLog from '@/components/console_viewer.vue'
 
 .window-top-content {
   height: 560px;
+  max-height: 560px;
   display: flex;
   flex-direction: row;
   gap: 5px;
+  min-height: 0;
+  flex-shrink: 0;
 }
 
 .window-left-content {
