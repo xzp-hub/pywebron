@@ -32,11 +32,6 @@ fn _pywebron_(pymodule: &Bound<'_, PyModule>) -> PyResult<()> {
     pymodule.add_function(wrap_pyfunction!(app::init, pymodule)?)?;
     pymodule.add_function(wrap_pyfunction!(app::run, pymodule)?)?;
     pymodule.add_function(wrap_pyfunction!(app::register_window, pymodule)?)?;
-    pymodule.add_function(wrap_pyfunction!(app::minimize_window, pymodule)?)?;
-    pymodule.add_function(wrap_pyfunction!(app::maximize_window, pymodule)?)?;
-    pymodule.add_function(wrap_pyfunction!(app::reappear_window, pymodule)?)?;
-    pymodule.add_function(wrap_pyfunction!(app::shutdown_window, pymodule)?)?;
-    pymodule.add_function(wrap_pyfunction!(app::dragdrop_window, pymodule)?)?;
     pymodule.add_function(wrap_pyfunction!(app::get_handles, pymodule)?)?;
     pymodule.add_function(wrap_pyfunction!(app::get_windows, pymodule)?)?;
     pymodule.add_function(wrap_pyfunction!(app::stream_send, pymodule)?)?;

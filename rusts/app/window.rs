@@ -1446,6 +1446,56 @@ fn handle_ipc_message(
                         return;
                     }
 
+                    // 窗口控制操作 - 直达 Rust，不经过 Python invoke
+                    if handle_id.starts_with("__rust_window_") {
+                        let ok = match handle_id.as_str() {
+                            "__rust_window_minimize" => {
+                                WINDOWS.get(&window_id).map(|w| w.set_minimized(true)).is_some()
+                            }
+                            "__rust_window_maximize" => {
+                                WINDOWS.get(&window_id).map(|w| w.set_maximized(true)).is_some()
+                            }
+                            "__rust_window_reappear" => {
+                                WINDOWS.get(&window_id).map(|w| w.set_maximized(false)).is_some()
+                            }
+                            "__rust_window_shutdown" => {
+                                if let Some(handle) = WINDOW_PROXIES.get(&window_id) {
+                                    if !handle.close(window_id) {
+                                        cleanup_window(window_id);
+                                    }
+                                } else {
+                                    cleanup_window(window_id);
+                                }
+                                true
+                            }
+                            "__rust_window_dragdrop" => {
+                                let selector = payload.get("selector")
+                                    .and_then(|v| v.as_str()).unwrap_or(".header");
+                                internal_dragdrop_window(window_id, selector, proxy);
+                                true
+                            }
+                            _ => false,
+                        };
+                        if ok {
+                            let response = serde_json::json!({
+                                "window_id": window_id,
+                                "handle_id": handle_id,
+                                "handle_type": "invoke",
+                                "request_id": request_id,
+                                "payload": {"stat": true, "mssg": "ok", "data": null}
+                            });
+                            let js_code = format!(
+                                "window.__pywebron_dispatch({})",
+                                serde_json::to_string(&response).unwrap_or_default()
+                            );
+                            let _ = proxy.send_event(UserEvent::EvaluateScript {
+                                window_id,
+                                script: std::sync::Arc::new(js_code),
+                            });
+                            return;
+                        }
+                    }
+
                     // 提交到 invoke 线程池，结果自动通过 proxy 发回前端
                     if let Err(err) = crate::app::invoke::submit_invoke_ipc(
                         handle_id,
@@ -1731,15 +1781,6 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
     Ok(())
 }
 
-#[pyfunction(name = "rust_minimize_window")]
-pub fn minimize_window(id: u64) -> PyResult<bool> {
-    let window = WINDOWS
-        .get(&id)
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
-    window.set_minimized(true);
-    Ok(true)
-}
-
 /// Linux专用：开始窗口拖动（通过GTK原生API）- 内部函数，不导出到Python
 #[cfg(any(
     target_os = "linux",
@@ -1767,12 +1808,13 @@ fn escape_js_string(s: &str) -> String {
     s.replace('\\', "\\\\").replace('\'', "\\'")
 }
 
-#[pyfunction(name = "rust_dragdrop_window")]
-pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
+/// 内部函数：设置窗口拖拽区域（供 IPC handler 和 pyfunction 共用）
+fn internal_dragdrop_window(
+    id: u64,
+    selector: &str,
+    proxy: &tao::event_loop::EventLoopProxy<UserEvent>,
+) {
     let safe_selector = escape_js_string(selector);
-    let proxy = EVENT_PROXIES
-        .get(&id)
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
 
     #[cfg(target_os = "windows")]
     {
@@ -1837,8 +1879,8 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
                     }});
                     el.addEventListener('dblclick', (e) => {{
                         if (e.target.closest('button, input, [onclick], .win-btn')) return;
-                        if (window.pywebron && window.pywebron.invoke) {{
-                            window.pywebron.invoke('window_controls_invoke', {{ control_type: 'toggle' }});
+                        if (window.pywebron && window.pywebron.interfaces && window.pywebron.interfaces.windows) {{
+                            window.pywebron.interfaces.windows.reappear();
                         }}
                     }});
                 }}
@@ -1850,38 +1892,9 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
             script: std::sync::Arc::new(js_code),
         });
     }
-
-    Ok(true)
 }
 
-#[pyfunction(name = "rust_maximize_window")]
-pub fn maximize_window(id: u64) -> PyResult<bool> {
-    let window = WINDOWS
-        .get(&id)
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
-    window.set_maximized(true);
-    Ok(true)
-}
 
-#[pyfunction(name = "rust_reappear_window")]
-pub fn reappear_window(id: u64) -> PyResult<bool> {
-    let window = WINDOWS
-        .get(&id)
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
-    window.set_maximized(false);
-    Ok(true)
-}
-
-#[pyfunction(name = "rust_shutdown_window")]
-pub fn shutdown_window(id: u64) -> PyResult<bool> {
-    if let Some(handle) = WINDOW_PROXIES.get(&id) {
-        if handle.close(id) {
-            return Ok(true);
-        }
-    }
-    cleanup_window(id);
-    Ok(true)
-}
 
 #[pyfunction(name = "rust_get_windows")]
 pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {

@@ -12,8 +12,8 @@ import ToggleSwitch from './toggle_switch.vue'
 
 const pw = window.pywebron
 const isMaximized = ref(false)
-const invoke = pw?.interfaces?.invoke
 const attributes = pw?.attributes || {}
+const windows = pw?.interfaces?.windows
 const {currentTheme, toggleTheme} = useTheme()
 
 const themeValue = computed({
@@ -22,22 +22,12 @@ const themeValue = computed({
 })
 
 const windowAction = async (type) => {
-  const map = {
-    min: 'minimize_window',
-    max: 'maximize_window',
-    rep: 'reappear_window',
-    shut: 'shutdown_window'
-  }
   const action = type === 'toggle' ? (isMaximized.value ? 'rep' : 'max') : type
   try {
-    const res = await invoke('window_controls_invoke', {control_type: map[action]})
-    if (res?.stat === true) {
-      if (action === 'max') {
-        isMaximized.value = true
-      } else if (action === 'rep') {
-        isMaximized.value = false
-      }
-    }
+    const fn = {min: windows?.minimize, max: windows?.maximize, rep: windows?.reappear, shut: windows?.shutdown}[action]
+    if (fn) await fn()
+    if (action === 'max') isMaximized.value = true
+    else if (action === 'rep') isMaximized.value = false
   } catch (e) { /* noop */
   }
 }
@@ -57,7 +47,7 @@ onMounted(async () => {
     titleText.value = attributes.title
   }
   try {
-    await invoke('setup_drag_region_invoke', {selector: '#window-header'})
+    await windows?.dragdrop('#window-header')
   } catch (e) {
     console.error(e)
   }

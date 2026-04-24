@@ -2,11 +2,6 @@ from ..configs import PROJECT_ROOT_PATH, DwmCorners
 from ..utils import generate_window_id
 from .._pywebron_ import (
     rust_register_window,
-    rust_minimize_window,
-    rust_maximize_window,
-    rust_reappear_window,
-    rust_shutdown_window,
-    rust_dragdrop_window,
 )
 from typing import TYPE_CHECKING
 
@@ -63,29 +58,9 @@ class Window:
             is_main=is_main,
             window_id=window_id,
         )
-    
+
     @classmethod
     def register_windows(cls, *window_ids):
         """注册一个或多个窗口"""
         for wid in window_ids:
             cls._window_ids.add(wid)
-
-    @staticmethod
-    def minimize_window(window_id: int) -> bool:
-        return rust_minimize_window(window_id)
-
-    @staticmethod
-    def maximize_window(window_id: int) -> bool:
-        return rust_maximize_window(window_id)
-
-    @staticmethod
-    def reappear_window(window_id: int) -> bool:
-        return rust_reappear_window(window_id)
-
-    @staticmethod
-    def shutdown_window(window_id: int) -> bool:
-        return rust_shutdown_window(window_id)
-
-    @staticmethod
-    def dragdrop_window(window_id: int, selector: str) -> bool:
-        return rust_dragdrop_window(window_id, selector)

@@ -1,5 +1,4 @@
 from pywebron.configs import DwmCorners
-import routers.window_control as wc
 import routers.system_monitor as sm
 import routers.online_chatbox as oc
 import routers.quick_shortcut as qs
@@ -10,9 +9,9 @@ def main():
     print("[DEBUG] 开始创建 App...")
     app = App(prewarm_webview=False)
     print("[DEBUG] App 创建成功")
-    
+
     print("[DEBUG] 注册路由...")
-    app.router.register_routers(wc.router, sm.router, oc.router, qs.router)
+    app.router.register_routers(sm.router, oc.router, qs.router)
     print("[DEBUG] 路由注册成功")
     
     print("[DEBUG] 注册窗口...")

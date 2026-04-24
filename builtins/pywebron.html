@@ -112,20 +112,14 @@
         let isMaximized = false;
 
         async function windowAction(type) {
-            const map = {
-                min: 'minimize_window',
-                max: 'maximize_window',
-                rep: 'reappear_window',
-                shut: 'shutdown_window'
-            };
             const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
             try {
-                if (!window.pywebron?.interfaces?.invoke) return;
-                const res = await window.pywebron.interfaces.invoke('window_controls_invoke', {control_type: map[action]}, 5000);
-                if (res?.stat === true) {
-                    isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
-                }
+                if (!window.pywebron?.interfaces?.windows) return;
+                const w = window.pywebron.interfaces.windows;
+                const fn = {min: w.minimize, max: w.maximize, rep: w.reappear, shut: w.shutdown}[action];
+                if (fn) await fn();
                 if (['max', 'rep', 'toggle'].includes(type)) {
+                    isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
                     $('maximizeRestoreBtn').title = isMaximized ? '杩樺師' : '鏈€澶у寲';
                     $('maximizeRestoreBtn').querySelector('svg').innerHTML = isMaximized
                         ? '<rect x="4" y="8" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="4" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>'
@@ -146,7 +140,7 @@
                 if (body) body.style.border = isDark ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(0,0,0,0.35)';
             }
             try {
-                await window.pywebron.interfaces.invoke('setup_drag_region_invoke', {selector: '#windowHeader'});
+                await window.pywebron.interfaces.windows.dragdrop('#windowHeader');
             } catch (e) {
                 console.error(e);
             }

@@ -192,6 +192,14 @@
                 });
             },
 
+            windows: {
+                minimize: () => window.pywebron.interfaces.invoke('__rust_window_minimize'),
+                maximize: () => window.pywebron.interfaces.invoke('__rust_window_maximize'),
+                reappear: () => window.pywebron.interfaces.invoke('__rust_window_reappear'),
+                shutdown: () => window.pywebron.interfaces.invoke('__rust_window_shutdown'),
+                dragdrop: (selector = '.header') => window.pywebron.interfaces.invoke('__rust_window_dragdrop', { selector }),
+            },
+
             async stream(handle, payload = {}) {
                 const hid = String(handle);
                 const request_id = generateRequestId(hid);
