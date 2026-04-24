@@ -318,6 +318,8 @@ pub fn stream_send(
         serde_json::to_string(&response).unwrap_or_default()
     ));
 
+    ensure_idle_cleanup();
+
     let target_windows: Vec<u64> = match send_mode.as_str() {
         "broadcast" => crate::app::get_all_window_ids(),
         "multicast" => window_ids.unwrap_or_default(),
@@ -341,4 +343,29 @@ pub fn stream_send(
     }
 
     Ok(true)
+}
+
+static IDLE_CLEANUP_STARTED: OnceLock<()> = OnceLock::new();
+
+fn spawn_idle_stream_cleaner() {
+    std::thread::spawn(|| {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(300)); // 每 5 分钟清理一次
+            let all_handles: Vec<String> = {
+                let history = get_stream_history();
+                let history = history.read();
+                history.keys().cloned().collect()
+            };
+            for handle_id in all_handles {
+                cleanup_handle_state_if_idle(&handle_id);
+            }
+        }
+    });
+}
+
+#[inline]
+pub(crate) fn ensure_idle_cleanup() {
+    IDLE_CLEANUP_STARTED.get_or_init(|| {
+        spawn_idle_stream_cleaner();
+    });
 }

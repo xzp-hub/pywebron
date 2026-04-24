@@ -1,6 +1,6 @@
 from .handler import Handle, Invoke, Stream
 from types import SimpleNamespace
-from ..configs import HANDLES, HANDLE_INDEX
+from ..configs import HANDLE_INDEX, invalidate_handles_cache
 from typing import Callable
 
 
@@ -50,7 +50,6 @@ class Router:
                 pending.add(key)
 
         for router in routers:
-            bucket = HANDLES.setdefault(router.title, [])
             for name, wrapper, handler_type in router.handles:
-                bucket.append({'name': name, 'type': handler_type, 'handler': wrapper})
                 HANDLE_INDEX[handler_type][name] = wrapper
+        invalidate_handles_cache()

@@ -28,8 +28,30 @@ class DwmCorners(IntEnum):
 #     'app': [{'name': 'handler_name', 'type': 'invoke'|'stream', 'handler': <function>}],
 #     'router_title': [{'name': 'handler_name', 'type': 'invoke'|'stream', 'handler': <function>}],
 # }
-HANDLES: Dict[str, List[Dict[str, str | Callable]]] = {}  # pyright: ignore[reportUnknownVariableType, reportDeprecated, reportMissingTypeArgument]
 HANDLE_INDEX: Dict[str, Dict[str, Callable]] = {"invoke": {}, "stream": {}}
+
+# HANDLES 改为延迟构建，减少运行时冗余存储
+# 原结构按 router.title 分组；延迟构建时统一归入 "app" 组
+_HANDLES_CACHE: Dict[str, List[Dict[str, str | Callable]]] = {}  # pyright: ignore[reportUnknownVariableType, reportDeprecated, reportMissingTypeArgument]
+_HANDLES_BUILT = False
+
+def build_handles() -> Dict[str, List[Dict[str, str | Callable]]]:
+    """从 HANDLE_INDEX 延迟构建 handlers 列表"""
+    global _HANDLES_BUILT, _HANDLES_CACHE
+    if _HANDLES_BUILT:
+        return _HANDLES_CACHE
+    result: Dict[str, List[Dict[str, str | Callable]]] = {"app": []}
+    for handler_type, mapping in HANDLE_INDEX.items():
+        for name, handler in mapping.items():
+            result["app"].append({'name': name, 'type': handler_type, 'handler': handler})
+    _HANDLES_CACHE = result
+    _HANDLES_BUILT = True
+    return result
+
+def invalidate_handles_cache():
+    """注册新 handler 时调用，使缓存失效"""
+    global _HANDLES_BUILT
+    _HANDLES_BUILT = False
 
 # 工作任务池（进程池或线程池）
 WORKER_POOL: ProcessPoolExecutor | ThreadPoolExecutor | None = None

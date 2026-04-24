@@ -32,8 +32,8 @@ class App:
 
     @staticmethod
     def get_all_handlers():
-        from .configs import HANDLES
-        return HANDLES
+        from .configs import build_handles
+        return build_handles()
 
 
 __all__ = ("App", "Window", "Invoke", "Stream", "Worker", "Router", "StreamSendModes")

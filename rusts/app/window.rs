@@ -6,7 +6,7 @@ use pyo3::ffi::{PyEval_RestoreThread, PyEval_SaveThread};
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 #[cfg(any(
     target_os = "linux",
@@ -57,8 +57,19 @@ static MAIN_EVENT_PROXY: LazyLock<Mutex<Option<tao::event_loop::EventLoopProxy<U
 static PENDING_WINDOWS: LazyLock<Mutex<HashMap<u64, WindowConfig>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 static MAIN_WINDOW_ID: LazyLock<Mutex<Option<u64>>> = LazyLock::new(|| Mutex::new(None));
-// SAFETY: WebView contains non-Send raw pointers, but all access is guarded by the inner Mutex.
-// Only event-loop thread touches the WebView through the Mutex; other threads only hold the Arc.
+static WINDOW_IDS_CACHE: LazyLock<Mutex<Vec<u64>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+static WINDOW_IDS_DIRTY: AtomicBool = AtomicBool::new(true);
+
+#[inline]
+fn invalidate_window_ids_cache() {
+    WINDOW_IDS_DIRTY.store(true, Ordering::Relaxed);
+}
+/// SAFETY: WebView contains non-Send raw pointers (e.g., COM pointers on Windows).
+/// All actual access to the inner WebView is guarded by the Mutex and only happens
+/// on the event-loop thread. Other threads merely hold the Arc<WebViewWrapper>
+/// without dereferencing the raw pointers. This invariant must be preserved:
+/// never access `webview.0.lock().as_ref()` from outside the event-loop thread.
+/// Only event-loop thread touches the WebView through the Mutex; other threads only hold the Arc.
 struct WebViewWrapper(std::sync::Arc<Mutex<Option<wry::WebView>>>);
 unsafe impl Send for WebViewWrapper {}
 unsafe impl Sync for WebViewWrapper {}
@@ -134,6 +145,7 @@ fn cleanup_window(window_id: u64) {
     if let Ok(mut configs) = WINDOW_CONFIGS.write() {
         configs.remove(&window_id);
     }
+    invalidate_window_ids_cache();
 }
 
 /// 获取文件的 MIME 类型
@@ -201,16 +213,18 @@ fn evict_cache_if_needed() {
     if CACHE_TOTAL_SIZE.load(Ordering::Relaxed) <= MAX_CACHE_SIZE {
         return;
     }
-    // 收集所有条目的 (key, last_access, data_len)，按 last_access 排序
-    let mut entries: Vec<(String, std::time::Instant, usize)> = RESOURCE_CACHE
+    use std::cmp::Reverse;
+    use std::collections::BinaryHeap;
+
+    // 使用最小堆按 last_access 排序，避免全量 O(n log n) 排序
+    let mut heap: BinaryHeap<Reverse<(std::time::Instant, String)>> = RESOURCE_CACHE
         .iter()
-        .map(|r| (r.key().clone(), r.value().last_access, r.value().data.len()))
+        .map(|r| Reverse((r.value().last_access, r.key().clone())))
         .collect();
-    entries.sort_by_key(|(_, t, _)| *t);
 
     // 从最旧的开始删除，直到总大小降到 MAX_CACHE_SIZE / 2
     let target = MAX_CACHE_SIZE / 2;
-    for (key, _, _len) in entries {
+    while let Some(Reverse((_, key))) = heap.pop() {
         if CACHE_TOTAL_SIZE.load(Ordering::Relaxed) <= target {
             break;
         }
@@ -388,7 +402,7 @@ fn create_window_in_event_loop(
             Err(_) => None,
         };
         let allowed_absolute_file = std::path::Path::new(&config.icon_path).canonicalize().ok();
-        let allow_absolute_protocol_paths = config.link_content.is_none();
+        let allow_absolute_protocol_paths = config.link_content.is_some();
 
         let builder = WebViewBuilder::new()
             .with_devtools(config.enable_devtools)
@@ -570,7 +584,9 @@ fn create_window_in_event_loop(
                             .header("ETag", &etag)
                             .header("Cache-Control", "public, max-age=31536000")
                             .header("Access-Control-Allow-Origin", "*")
-                            .body(std::borrow::Cow::Owned(data.to_vec()))
+                            .body(std::borrow::Cow::Owned(
+                                std::sync::Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone())
+                            ))
                             .unwrap();
                     }
                 }
@@ -605,12 +621,12 @@ fn create_window_in_event_loop(
                         }
                     }
                 };
-                eprintln!(
+                debug_log(|| format!(
                     "[Protocol] canonicalize 成功: {} | base={} | is_abs_path={}",
                     canonical_full.display(),
                     canonical_base.display(),
                     is_absolute_request
-                );
+                ));
                 // 路径穿越防护：仅对相对路径资源检查
                 // 绝对路径（用户显式指定的外部资源如图标）跳过此检查
                 if !is_absolute_request && !canonical_full.starts_with(canonical_base) {
@@ -635,7 +651,7 @@ fn create_window_in_event_loop(
                     .and_then(|v| v.to_str().ok());
                 if let Some(mut entry) = RESOURCE_CACHE.get_mut(&cache_key) {
                     entry.last_access = std::time::Instant::now();
-                    eprintln!("[Protocol] ✅ canonical 缓存命中(304检查): {}", cache_key);
+                    debug_log(|| format!("[Protocol] ✅ canonical 缓存命中(304检查): {}", cache_key));
                     if if_none_match == Some(entry.etag.as_str()) {
                         return http::Response::builder()
                             .status(304)
@@ -653,12 +669,12 @@ fn create_window_in_event_loop(
                     let data = entry.data.clone(); // Arc clone，零拷贝
                     let mime = entry.mime;
                     let etag = entry.etag.clone();
-                    eprintln!(
+                    debug_log(|| format!(
                         "[Protocol] ✅ canonical 缓存命中(返回内容): {} | mime={} | size={}",
                         cache_key,
                         mime,
                         data.len()
-                    );
+                    ));
 
                     // 检查 Range 请求
                     let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
@@ -699,20 +715,20 @@ fn create_window_in_event_loop(
                 // 先尝试从 dist 目录读取；失败后回退到绝对路径查找
                 // （resolveAssetUrl 只返回文件名如 "pywebron.png"，可能不在 dist 目录内）
                 let read_result = std::fs::read(&full_path);
-                eprintln!(
+                debug_log(|| format!(
                     "[Protocol] ⏳ 尝试磁盘读取: {} | exists={}",
                     full_path.display(),
                     full_path.exists()
-                );
+                ));
                 let (data, actual_mime) = match read_result {
                     Ok(data) => {
                         let mime = get_mime_type(&full_path);
-                        eprintln!(
+                        debug_log(|| format!(
                             "[Protocol] ✅ 磁盘读取成功: {} | size={} | mime={}",
                             full_path.display(),
                             data.len(),
                             mime
-                        );
+                        ));
                         (data, mime)
                     }
                     Err(ref e) => {
@@ -731,11 +747,11 @@ fn create_window_in_event_loop(
                             if abs_candidate.is_absolute() && abs_candidate.exists() {
                                 match std::fs::read(abs_candidate) {
                                     Ok(d) => {
-                                        eprintln!(
+                                        debug_log(|| format!(
                                             "[Protocol] ✅ 回退绝对路径成功: {} | size={}",
                                             abs_candidate.display(),
                                             d.len()
-                                        );
+                                        ));
                                         (d, get_mime_type(abs_candidate))
                                     }
                                     Err(e) => {
@@ -788,11 +804,11 @@ fn create_window_in_event_loop(
                         mime,
                         etag.clone(),
                     );
-                    eprintln!(
+                    debug_log(|| format!(
                         "[Protocol] 📦 已写入缓存: {} | size={}",
                         cache_key,
                         data.len()
-                    );
+                    ));
                     evict_cache_if_needed();
                 }
 
@@ -830,9 +846,13 @@ fn create_window_in_event_loop(
             });
 
         #[cfg(target_os = "windows")]
-        let builder = builder.with_additional_browser_args(
-            "--disable-features=IsolateOrigins,site-per-process,ThirdPartyStoragePartitioning,ThirdPartyCookiesBlocking --allow-file-access-from-files --disable-web-security",
-        );
+        let builder = if link_content.is_some() {
+            builder.with_additional_browser_args(
+                "--disable-features=IsolateOrigins,site-per-process,ThirdPartyStoragePartitioning,ThirdPartyCookiesBlocking --allow-file-access-from-files --disable-web-security",
+            )
+        } else {
+            builder
+        };
 
         #[cfg(any(
             target_os = "linux",
@@ -1042,10 +1062,10 @@ fn create_window_in_event_loop(
                                 .replace("src='/", &format!("src='app://{}", wb_prefix))
                         };
 
-                        eprintln!(
+                        debug_log(|| format!(
                             "[Window-{}] 已转换 HTML，添加缓存破坏前缀 _wb{}",
                             window_id, window_id
-                        );
+                        ));
 
                         converted
                     }
@@ -1152,11 +1172,23 @@ fn create_window_in_event_loop(
     WEBVIEWS.insert(id_clone, webview);
 
     WINDOW_READY.insert(id_clone, true);
+    invalidate_window_ids_cache();
 }
 
-/// 获取所有窗口 ID 列表
+/// 获取所有窗口 ID 列表（带缓存，减少高频 broadcast 场景下的临时分配）
 pub fn get_all_window_ids() -> Vec<u64> {
-    EVENT_PROXIES.iter().map(|entry| *entry.key()).collect()
+    if WINDOW_IDS_DIRTY.load(Ordering::Relaxed) {
+        let ids: Vec<u64> = EVENT_PROXIES.iter().map(|entry| *entry.key()).collect();
+        if let Ok(mut cache) = WINDOW_IDS_CACHE.lock() {
+            *cache = ids.clone();
+        }
+        WINDOW_IDS_DIRTY.store(false, Ordering::Relaxed);
+        ids
+    } else {
+        WINDOW_IDS_CACHE.lock().map(|g| g.clone()).unwrap_or_else(|_| {
+            EVENT_PROXIES.iter().map(|entry| *entry.key()).collect()
+        })
+    }
 }
 
 struct WindowHandle {
@@ -1611,6 +1643,30 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
     // 使用 PyEval_SaveThread/PyEval_RestoreThread 手动管理 GIL
     let _thread_state = unsafe { PyEval_SaveThread() };
 
+    fn handle_window_close(window_id: u64, flow: &mut ControlFlow) {
+        let is_main_window = if let Ok(main_id) = MAIN_WINDOW_ID.lock() {
+            main_id.as_ref() == Some(&window_id)
+        } else {
+            false
+        };
+
+        if is_main_window {
+            let all_window_ids: Vec<u64> = WINDOWS.iter().map(|entry| *entry.key()).collect();
+            for id in all_window_ids {
+                cleanup_window(id);
+            }
+            if let Ok(mut main_id) = MAIN_WINDOW_ID.lock() {
+                *main_id = None;
+            }
+            *flow = ControlFlow::Exit;
+        } else {
+            cleanup_window(window_id);
+            if WINDOWS.is_empty() {
+                *flow = ControlFlow::Exit;
+            }
+        }
+    }
+
     event_loop.run(move |event, event_loop, flow| {
         *flow = ControlFlow::Wait;
 
@@ -1634,40 +1690,13 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
                 }
             }
             Event::UserEvent(UserEvent::CloseWindow(window_id)) => {
-                // 检查是否是主窗口
-                let is_main_window = if let Ok(main_id) = MAIN_WINDOW_ID.lock() {
-                    main_id.as_ref() == Some(window_id)
-                } else {
-                    false
-                };
-
-                if is_main_window {
-                    // 关闭主窗口：清理所有窗口并退出应用
-                    let all_window_ids: Vec<u64> =
-                        WINDOWS.iter().map(|entry| *entry.key()).collect();
-                    for id in all_window_ids {
-                        cleanup_window(id);
-                    }
-                    // 清除主窗口 ID
-                    if let Ok(mut main_id) = MAIN_WINDOW_ID.lock() {
-                        *main_id = None;
-                    }
-                    *flow = ControlFlow::Exit;
-                } else {
-                    // 关闭普通窗口：只清理该窗口
-                    cleanup_window(*window_id);
-                    // 如果所有窗口都关闭了，退出应用
-                    if WINDOWS.is_empty() {
-                        *flow = ControlFlow::Exit;
-                    }
-                }
+                handle_window_close(*window_id, flow);
             }
             Event::WindowEvent {
                 window_id,
                 event: CloseRequested,
                 ..
             } => {
-                // 通过 tao WindowId 查找内部 u64 ID
                 let internal_id = WINDOWS.iter().find_map(|entry| {
                     if entry.value().id() == *window_id {
                         Some(*entry.key())
@@ -1675,35 +1704,8 @@ pub fn run(_py: Python<'_>) -> PyResult<()> {
                         None
                     }
                 });
-
                 if let Some(id) = internal_id {
-                    // 检查是否是主窗口
-                    let is_main_window = if let Ok(main_id) = MAIN_WINDOW_ID.lock() {
-                        main_id.as_ref() == Some(&id)
-                    } else {
-                        false
-                    };
-
-                    if is_main_window {
-                        // 关闭主窗口：清理所有窗口并退出应用
-                        let all_window_ids: Vec<u64> =
-                            WINDOWS.iter().map(|entry| *entry.key()).collect();
-                        for window_id in all_window_ids {
-                            cleanup_window(window_id);
-                        }
-                        // 清除主窗口 ID
-                        if let Ok(mut main_id) = MAIN_WINDOW_ID.lock() {
-                            *main_id = None;
-                        }
-                        *flow = ControlFlow::Exit;
-                    } else {
-                        // 关闭普通窗口：只清理该窗口
-                        cleanup_window(id);
-                        // 如果所有窗口都关闭了，退出应用
-                        if WINDOWS.is_empty() {
-                            *flow = ControlFlow::Exit;
-                        }
-                    }
+                    handle_window_close(id, flow);
                 }
             }
             Event::UserEvent(UserEvent::EvaluateScript { window_id, script }) => {
@@ -1759,8 +1761,15 @@ fn internal_start_drag(id: u64, button: u32) -> PyResult<bool> {
     Ok(true)
 }
 
+/// 转义 JavaScript 字符串中的特殊字符（单引号、反斜杠），防止 CSS selector 注入
+#[inline]
+fn escape_js_string(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('\'', "\\'")
+}
+
 #[pyfunction(name = "rust_dragdrop_window")]
 pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
+    let safe_selector = escape_js_string(selector);
     let proxy = EVENT_PROXIES
         .get(&id)
         .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("窗口 {} 不存在", id)))?;
@@ -1777,7 +1786,7 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
                     }});
                 }}
             }})()"#,
-            selector
+            safe_selector
         );
         let _ = proxy.send_event(UserEvent::EvaluateScript {
             window_id: id,
@@ -1797,7 +1806,7 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
                     }});
                 }}
             }})()"#,
-            selector
+            safe_selector
         );
         let _ = proxy.send_event(UserEvent::EvaluateScript {
             window_id: id,
@@ -1834,7 +1843,7 @@ pub fn dragdrop_window(id: u64, selector: &str) -> PyResult<bool> {
                     }});
                 }}
             }})()"#,
-            selector
+            safe_selector
         );
         let _ = proxy.send_event(UserEvent::EvaluateScript {
             window_id: id,
@@ -1879,7 +1888,7 @@ pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
     let result_dict = pyo3::types::PyDict::new(py);
 
     if let Ok(configs) = WINDOW_CONFIGS.read() {
-        let live_window_ids: Vec<u64> = EVENT_PROXIES.iter().map(|entry| *entry.key()).collect();
+        let live_window_ids = get_all_window_ids();
         for window_id in live_window_ids {
             if let Some(config) = configs.get(&window_id) {
                 let window_dict = pyo3::types::PyDict::new(py);
@@ -1973,7 +1982,11 @@ pub fn save_file_dialog(
                 Ok(_bytes_copied) => {
                     // 如果需要删除源文件
                     if is_del_source_file {
-                        let _ = fs::remove_file(&source_path);
+                        if let Err(e) = fs::remove_file(&source_path) {
+                            return Err(pyo3::exceptions::PyIOError::new_err(format!(
+                                "删除源文件失败: {}", e
+                            )));
+                        }
                     }
 
                     Ok(Some(target_path.to_string_lossy().to_string()))
