@@ -1344,11 +1344,6 @@ fn handle_ipc_message(
                             .and_then(|v| v.as_u64())
                             .unwrap_or(0);
 
-                        eprintln!(
-                            "[pywebron][resize] received request_window_id={} target_window_id={} hit_test={}",
-                            window_id, win_id, ht
-                        );
-
                         if let Some(window) = WINDOWS.get(&win_id) {
                             use tao::platform::windows::WindowExtWindows;
                             let hwnd = windows::Win32::Foundation::HWND(
@@ -1368,26 +1363,13 @@ fn handle_ipc_message(
                                     _ => 0,
                                 };
                                 let wparam = 0xF000 + resize_cmd;
-                                eprintln!(
-                                    "[pywebron][resize] hwnd={:?} hit_test={} resize_cmd={} wparam={} posting WM_SYSCOMMAND",
-                                    hwnd, ht, resize_cmd, wparam
-                                );
-                                let post_result = PostMessageW(
+                                let _ = PostMessageW(
                                     Some(hwnd),
                                     WM_SYSCOMMAND,
                                     windows::Win32::Foundation::WPARAM(wparam),
                                     windows::Win32::Foundation::LPARAM(0),
                                 );
-                                eprintln!(
-                                    "[pywebron][resize] PostMessageW result={:?}",
-                                    post_result
-                                );
                             }
-                        } else {
-                            eprintln!(
-                                "[pywebron][resize] window lookup failed for win_id={}",
-                                win_id
-                            );
                         }
 
                         // 发送成功响应

@@ -308,13 +308,6 @@
             const edge = target.dataset.edge;
             const ht = HIT_TEST[edge];
             if (edge && ht !== undefined) {
-                console.log('[pywebron][resize] mousedown', {
-                    window_id,
-                    edge,
-                    hit_test: ht,
-                    clientX: e.clientX,
-                    clientY: e.clientY
-                });
                 ipcSend({
                     window_id,
                     handle_id: '__rust_start_resize',
