@@ -282,7 +282,11 @@
 
     function setupWindowResizeHandles() {
         const area = ensureResizeLayer();
-        if (!area) return;
+        if (!area) {
+            console.warn('[Resize] resize layer not created, show_title_bar=' + show_title_bar + ' enable_resizable=' + enable_resizable);
+            return;
+        }
+        console.log('[Resize] resize layer created successfully, area=' + area.id);
 
         const HIT_TEST = {
             top: 12,
@@ -302,13 +306,21 @@
             e.stopPropagation();
 
             const edge = target.dataset.edge;
-            if (edge && HIT_TEST[edge] !== undefined) {
+            const ht = HIT_TEST[edge];
+            if (edge && ht !== undefined) {
+                console.log('[pywebron][resize] mousedown', {
+                    window_id,
+                    edge,
+                    hit_test: ht,
+                    clientX: e.clientX,
+                    clientY: e.clientY
+                });
                 ipcSend({
                     window_id,
                     handle_id: '__rust_start_resize',
                     handle_type: 'invoke',
                     request_id: generateRequestId('__rust_start_resize'),
-                    payload: { window_id, hit_test: HIT_TEST[edge] }
+                    payload: { window_id, hit_test: ht }
                 });
             }
         });

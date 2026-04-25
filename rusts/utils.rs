@@ -25,7 +25,7 @@ use windows::Win32::{
         GWLP_WNDPROC, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTCLIENT, HTLEFT,
         HTRIGHT, HTTOP, HTTOPLEFT, HTTOPRIGHT, SM_CXFRAME, SM_CXPADDEDBORDER, SM_CYFRAME,
         SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE,
-        WM_NCHITTEST, WNDPROC,
+        WM_NCHITTEST, WM_SYSCOMMAND, WNDPROC,
     },
 };
 
@@ -110,6 +110,13 @@ unsafe extern "system" fn frameless_proc(
         return result;
     }
 
+    if msg == WM_SYSCOMMAND {
+        let cmd = wparam.0 as u32 & 0xFFF0;
+        if cmd == 0xF000 {
+            // SC_SIZE — let it pass through for native resize
+        }
+    }
+
     if let Some(proc) = orig_proc {
         CallWindowProcW(Some(proc), hwnd, msg, wparam, lparam)
     } else {
@@ -127,7 +134,8 @@ pub fn make_window_frameless_but_resizable(hwnd: HWND) {
 
         use windows::Win32::UI::WindowsAndMessaging::{GWL_STYLE, WS_THICKFRAME};
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-        let _ = SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_THICKFRAME.0 as isize);
+        let new_style = style | WS_THICKFRAME.0 as isize;
+        let _ = SetWindowLongPtrW(hwnd, GWL_STYLE, new_style);
 
         let orig_proc = SetWindowLongPtrW(
             hwnd,

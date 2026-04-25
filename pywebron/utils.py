@@ -1,19 +1,23 @@
 from ._pywebron_ import rust_save_file_dialog
 import sys
-import time
 import threading
 
 _window_id_counter = 0
 _window_id_lock = threading.Lock()
 
+# JavaScript Number.MAX_SAFE_INTEGER = 2^53 - 1 = 9007199254740991
+# Window IDs must stay within this limit to avoid precision loss when
+# passed through JSON and handled in the browser.
+_JS_MAX_SAFE_INTEGER = (1 << 53) - 1
+
 
 def generate_window_id() -> int:
     global _window_id_counter
-    ns = time.perf_counter_ns()
     with _window_id_lock:
         _window_id_counter += 1
-        counter = _window_id_counter
-    return ns * 1000 + (counter % 1000)
+        if _window_id_counter > _JS_MAX_SAFE_INTEGER:
+            _window_id_counter = 1
+        return _window_id_counter
 
 
 def get_gil_status():

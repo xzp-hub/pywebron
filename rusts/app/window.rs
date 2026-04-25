@@ -1330,33 +1330,64 @@ fn handle_ipc_message(
                     // 特殊处理：Windows 无边框窗口调整大小
                     #[cfg(target_os = "windows")]
                     if handle_id == "__rust_start_resize" {
-                        use tao::window::ResizeDirection;
+                        use windows::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture;
+                        use windows::Win32::UI::WindowsAndMessaging::{
+                            PostMessageW, WM_SYSCOMMAND,
+                        };
 
                         let ht = payload
                             .get("hit_test")
                             .and_then(|v| v.as_u64())
-                            .unwrap_or(0) as i32;
+                            .unwrap_or(0) as usize;
                         let win_id = payload
                             .get("window_id")
                             .and_then(|v| v.as_u64())
                             .unwrap_or(0);
 
-                        if let Some(window) = WINDOWS.get(&win_id) {
-                            let direction = match ht {
-                                10 => Some(ResizeDirection::West),
-                                11 => Some(ResizeDirection::East),
-                                12 => Some(ResizeDirection::North),
-                                13 => Some(ResizeDirection::NorthWest),
-                                14 => Some(ResizeDirection::NorthEast),
-                                15 => Some(ResizeDirection::South),
-                                16 => Some(ResizeDirection::SouthWest),
-                                17 => Some(ResizeDirection::SouthEast),
-                                _ => None,
-                            };
+                        eprintln!(
+                            "[pywebron][resize] received request_window_id={} target_window_id={} hit_test={}",
+                            window_id, win_id, ht
+                        );
 
-                            if let Some(direction) = direction {
-                                let _ = window.drag_resize_window(direction);
+                        if let Some(window) = WINDOWS.get(&win_id) {
+                            use tao::platform::windows::WindowExtWindows;
+                            let hwnd = windows::Win32::Foundation::HWND(
+                                window.hwnd() as *mut std::ffi::c_void,
+                            );
+                            unsafe {
+                                let _ = ReleaseCapture();
+                                let resize_cmd = match ht {
+                                    10 => 1, // HTLEFT -> WMSZ_LEFT
+                                    11 => 2, // HTRIGHT -> WMSZ_RIGHT
+                                    12 => 3, // HTTOP -> WMSZ_TOP
+                                    13 => 4, // HTTOPLEFT -> WMSZ_TOPLEFT
+                                    14 => 5, // HTTOPRIGHT -> WMSZ_TOPRIGHT
+                                    15 => 6, // HTBOTTOM -> WMSZ_BOTTOM
+                                    16 => 7, // HTBOTTOMLEFT -> WMSZ_BOTTOMLEFT
+                                    17 => 8, // HTBOTTOMRIGHT -> WMSZ_BOTTOMRIGHT
+                                    _ => 0,
+                                };
+                                let wparam = 0xF000 + resize_cmd;
+                                eprintln!(
+                                    "[pywebron][resize] hwnd={:?} hit_test={} resize_cmd={} wparam={} posting WM_SYSCOMMAND",
+                                    hwnd, ht, resize_cmd, wparam
+                                );
+                                let post_result = PostMessageW(
+                                    Some(hwnd),
+                                    WM_SYSCOMMAND,
+                                    windows::Win32::Foundation::WPARAM(wparam),
+                                    windows::Win32::Foundation::LPARAM(0),
+                                );
+                                eprintln!(
+                                    "[pywebron][resize] PostMessageW result={:?}",
+                                    post_result
+                                );
                             }
+                        } else {
+                            eprintln!(
+                                "[pywebron][resize] window lookup failed for win_id={}",
+                                win_id
+                            );
                         }
 
                         // 发送成功响应
