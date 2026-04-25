@@ -24,7 +24,7 @@ def main():
         window_radius=6,
         is_main=True,
         dwm_corner=DwmCorners.LITTLE_ROUND,
-        link_content="http://localhost:5173/",
+        # link_content="http://localhost:5173/",
         # html_content=f"{PROJECT_ROOT_PATH}/builtins/pywebron.html",
         # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/dist_content/dist",
         # icon_path=f"{PROJECT_ROOT_PATH}/builtins/pywebron.png",
