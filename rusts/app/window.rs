@@ -253,12 +253,15 @@ fn create_window_in_event_loop(
     event_loop: &tao::event_loop::EventLoopWindowTarget<UserEvent>,
 ) {
     let id_clone = window_id;
+    let window_icon = generate_win_icon(config.icon_path.clone());
 
     #[cfg(target_os = "windows")]
     let window_builder = WindowBuilder::new()
         .with_title(&config.title)
         .with_inner_size(LogicalSize::new(config.width, config.height))
-        .with_window_icon(generate_win_icon(config.icon_path.clone()))
+        .with_window_icon(window_icon.clone())
+        .with_taskbar_icon(window_icon.clone())
+        .with_skip_taskbar(false)
         .with_decorations(config.show_title_bar)
         .with_resizable(config.enable_resizable)
         .with_min_inner_size(LogicalSize::new(400u32, 300u32))
@@ -270,7 +273,7 @@ fn create_window_in_event_loop(
     let window_builder = WindowBuilder::new()
         .with_title(&config.title)
         .with_inner_size(LogicalSize::new(config.width, config.height))
-        .with_window_icon(generate_win_icon(config.icon_path.clone()))
+        .with_window_icon(window_icon)
         .with_decorations(config.show_title_bar)
         .with_resizable(config.enable_resizable)
         .with_min_inner_size(LogicalSize::new(400u32, 300u32))
@@ -1327,33 +1330,32 @@ fn handle_ipc_message(
                     // 特殊处理：Windows 无边框窗口调整大小
                     #[cfg(target_os = "windows")]
                     if handle_id == "__rust_start_resize" {
-                        use windows::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture;
-                        use windows::Win32::UI::WindowsAndMessaging::{
-                            SendMessageW, WM_NCLBUTTONDOWN,
-                        };
+                        use tao::window::ResizeDirection;
 
                         let ht = payload
                             .get("hit_test")
                             .and_then(|v| v.as_u64())
-                            .unwrap_or(0) as usize;
+                            .unwrap_or(0) as i32;
                         let win_id = payload
                             .get("window_id")
                             .and_then(|v| v.as_u64())
                             .unwrap_or(0);
 
                         if let Some(window) = WINDOWS.get(&win_id) {
-                            use tao::platform::windows::WindowExtWindows;
-                            let hwnd = windows::Win32::Foundation::HWND(
-                                window.hwnd() as *mut std::ffi::c_void
-                            );
-                            unsafe {
-                                let _ = ReleaseCapture();
-                                let _ = SendMessageW(
-                                    hwnd,
-                                    WM_NCLBUTTONDOWN,
-                                    Some(windows::Win32::Foundation::WPARAM(ht)),
-                                    Some(windows::Win32::Foundation::LPARAM(0)),
-                                );
+                            let direction = match ht {
+                                10 => Some(ResizeDirection::West),
+                                11 => Some(ResizeDirection::East),
+                                12 => Some(ResizeDirection::North),
+                                13 => Some(ResizeDirection::NorthWest),
+                                14 => Some(ResizeDirection::NorthEast),
+                                15 => Some(ResizeDirection::South),
+                                16 => Some(ResizeDirection::SouthWest),
+                                17 => Some(ResizeDirection::SouthEast),
+                                _ => None,
+                            };
+
+                            if let Some(direction) = direction {
+                                let _ = window.drag_resize_window(direction);
                             }
                         }
 

@@ -28,6 +28,7 @@ static GLOBAL_MIMALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[pymodule]
 fn _pywebron_(pymodule: &Bound<'_, PyModule>) -> PyResult<()> {
     utils::setup_dpi_awareness();
+    utils::setup_app_user_model_id();
 
     pymodule.add_function(wrap_pyfunction!(app::init, pymodule)?)?;
     pymodule.add_function(wrap_pyfunction!(app::run, pymodule)?)?;

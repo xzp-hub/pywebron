@@ -2,22 +2,81 @@
 use crate::configs::WindowCorners;
 use dashmap::DashMap;
 use image::open;
-use std::sync::LazyLock;
 use std::path::Path;
+use std::sync::LazyLock;
 use tao::window::Icon;
 
 #[cfg(target_os = "windows")]
+#[link(name = "shell32")]
+unsafe extern "system" {
+    fn SetCurrentProcessExplicitAppUserModelID(app_id: windows::core::PCWSTR)
+    -> windows::core::HRESULT;
+}
+
+#[cfg(target_os = "windows")]
 use windows::Win32::{
-    Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+    Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
     Graphics::Dwm::{
         DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWM_WINDOW_CORNER_PREFERENCE,
     },
     UI::WindowsAndMessaging::{
-        CallWindowProcW, DefWindowProcW, GetPropW, GetWindowLongPtrW, SetProcessDPIAware, SetPropW,
-        SetWindowLongPtrW, SetWindowPos, GWLP_WNDPROC, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE,
-        SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE, WNDPROC,
+        CallWindowProcW, DefWindowProcW, GetPropW, GetSystemMetrics, GetWindowLongPtrW,
+        GetWindowRect, IsZoomed, SetProcessDPIAware, SetPropW, SetWindowLongPtrW, SetWindowPos,
+        GWLP_WNDPROC, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTCLIENT, HTLEFT,
+        HTRIGHT, HTTOP, HTTOPLEFT, HTTOPRIGHT, SM_CXFRAME, SM_CXPADDEDBORDER, SM_CYFRAME,
+        SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE,
+        WM_NCHITTEST, WNDPROC,
     },
 };
+
+#[cfg(target_os = "windows")]
+fn get_x_lparam(value: LPARAM) -> i32 {
+    (value.0 as i16) as i32
+}
+
+#[cfg(target_os = "windows")]
+fn get_y_lparam(value: LPARAM) -> i32 {
+    ((value.0 >> 16) as i16) as i32
+}
+
+#[cfg(target_os = "windows")]
+unsafe fn hit_test_resize_border(hwnd: HWND, lparam: LPARAM) -> Option<LRESULT> {
+    if IsZoomed(hwnd).as_bool() {
+        return None;
+    }
+
+    let mut rect = RECT::default();
+    if GetWindowRect(hwnd, &mut rect).is_err() {
+        return None;
+    }
+
+    let border_x = (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER)).max(8);
+    let border_y = (GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER)).max(8);
+
+    let cursor = POINT {
+        x: get_x_lparam(lparam),
+        y: get_y_lparam(lparam),
+    };
+
+    let on_left = cursor.x >= rect.left && cursor.x < rect.left + border_x;
+    let on_right = cursor.x <= rect.right && cursor.x > rect.right - border_x;
+    let on_top = cursor.y >= rect.top && cursor.y < rect.top + border_y;
+    let on_bottom = cursor.y <= rect.bottom && cursor.y > rect.bottom - border_y;
+
+    let hit = match (on_left, on_right, on_top, on_bottom) {
+        (true, _, true, _) => HTTOPLEFT,
+        (false, true, true, _) => HTTOPRIGHT,
+        (true, _, false, true) => HTBOTTOMLEFT,
+        (false, true, false, true) => HTBOTTOMRIGHT,
+        (true, _, _, _) => HTLEFT,
+        (false, true, _, _) => HTRIGHT,
+        (_, _, true, _) => HTTOP,
+        (_, _, false, true) => HTBOTTOM,
+        _ => return None,
+    };
+
+    Some(LRESULT(hit as isize))
+}
 
 #[cfg(target_os = "windows")]
 unsafe extern "system" fn frameless_proc(
@@ -32,6 +91,23 @@ unsafe extern "system" fn frameless_proc(
 
     if msg == WM_NCCALCSIZE {
         return LRESULT(0);
+    }
+
+    if msg == WM_NCHITTEST {
+        if let Some(hit) = hit_test_resize_border(hwnd, lparam) {
+            return hit;
+        }
+
+        let result = if let Some(proc) = orig_proc {
+            CallWindowProcW(Some(proc), hwnd, msg, wparam, lparam)
+        } else {
+            DefWindowProcW(hwnd, msg, wparam, lparam)
+        };
+
+        if result == LRESULT(HTCLIENT as isize) {
+            return LRESULT(HTCAPTION as isize);
+        }
+        return result;
     }
 
     if let Some(proc) = orig_proc {
@@ -125,6 +201,14 @@ pub fn set_window_corner(hwnd: HWND, pref: WindowCorners) -> Result<(), String> 
     }
 }
 
+#[cfg(target_os = "windows")]
+pub fn setup_app_user_model_id() {
+    let app_id: Vec<u16> = "PyWebron.App\0".encode_utf16().collect();
+    unsafe {
+        let _ = SetCurrentProcessExplicitAppUserModelID(windows::core::PCWSTR(app_id.as_ptr()));
+    }
+}
+
 /// Set process DPI awareness (Windows)
 #[cfg(target_os = "windows")]
 pub fn setup_dpi_awareness() {
@@ -162,3 +246,6 @@ pub fn setup_dpi_awareness() {
     std::env::set_var("GDK_SCALE", "1");
     std::env::set_var("GDK_DPI_SCALE", "1");
 }
+
+#[cfg(not(target_os = "windows"))]
+pub fn setup_app_user_model_id() {}
