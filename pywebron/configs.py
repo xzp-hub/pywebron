@@ -6,6 +6,8 @@ from os import getenv
 
 # 项目根目录路径
 PROJECT_ROOT_PATH = str(Path(__file__).parents[1])
+PACKAGE_ROOT_PATH = str(Path(__file__).parent)
+BUILTINS_PATH = str(Path(PACKAGE_ROOT_PATH) / "builtins")
 
 
 # 流消息发送模式

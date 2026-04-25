@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 
 pub fn load_js_api() -> &'static str {
     static JS_API: std::sync::LazyLock<String> =
-        std::sync::LazyLock::new(|| include_str!("../../builtins/pywebron.js").to_string());
+        std::sync::LazyLock::new(|| include_str!("../../pywebron/builtins/pywebron.js").to_string());
     &JS_API
 }
 

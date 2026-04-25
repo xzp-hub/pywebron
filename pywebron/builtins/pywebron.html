@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PyWebron 鎺у埗闈㈡澘</title>
+    <title>PyWebron 控制面板</title>
     <style>
         html, body {
             margin: 0;
@@ -120,7 +120,7 @@
                 if (fn) await fn();
                 if (['max', 'rep', 'toggle'].includes(type)) {
                     isMaximized = action === 'max' || (type === 'toggle' && !isMaximized);
-                    $('maximizeRestoreBtn').title = isMaximized ? '杩樺師' : '鏈€澶у寲';
+                    $('maximizeRestoreBtn').title = isMaximized ? '还原' : '最大化';
                     $('maximizeRestoreBtn').querySelector('svg').innerHTML = isMaximized
                         ? '<rect x="4" y="8" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="4" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>'
                         : '<rect x="4" y="4" width="16" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>';
@@ -159,21 +159,21 @@
                 <polyline points="2 17 12 22 22 17"/>
                 <polyline points="2 12 12 17 22 12"/>
             </svg>
-            <span class="h-title">PyWebron 鎺у埗闈㈡澘</span>
+            <span class="h-title">PyWebron 控制面板</span>
         </div>
         <div class="h-ctrls">
-            <div class="win-btn" onclick="windowAction('min')" title="鏈€灏忓寲">
+            <div class="win-btn" onclick="windowAction('min')" title="最小化">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="4" y1="12" x2="20" y2="12"/>
                 </svg>
             </div>
-            <div id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="鏈€澶у寲">
+            <div id="maximizeRestoreBtn" class="win-btn" onclick="windowAction('toggle')" title="最大化">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="1.5">
                     <rect x="4" y="4" width="16" height="16" rx="1"/>
                 </svg>
             </div>
-            <div class="win-btn close" onclick="windowAction('shut')" title="鍏抽棴">
+            <div class="win-btn close" onclick="windowAction('shut')" title="关闭">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>

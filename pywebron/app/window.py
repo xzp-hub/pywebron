@@ -1,4 +1,4 @@
-from ..configs import PROJECT_ROOT_PATH, DwmCorners
+from ..configs import BUILTINS_PATH, DwmCorners
 from ..utils import generate_window_id
 from .._pywebron_ import (
     rust_register_window,
@@ -31,7 +31,7 @@ class Window:
             window_id: int = None,
     ) -> int:
         """注册窗口，返回 window_id"""
-        pather = lambda name: fr"{PROJECT_ROOT_PATH}\builtins\{name}"
+        pather = lambda name: fr"{BUILTINS_PATH}\{name}"
 
         if sum(map(bool, (html_content, link_content, dist_content))) > 1:
             raise ValueError("html_content, link_content, and dist_content cannot be used at the same time")

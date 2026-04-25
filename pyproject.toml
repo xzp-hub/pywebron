@@ -28,15 +28,13 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: User Interfaces",
 ]
-dependencies = [
-    "psutil",
-    "maturin"
-]
+dependencies = []
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
+    "psutil",
     "black>=23.0",
     "ruff>=0.1.0",
 ]
@@ -61,6 +59,15 @@ pywebron = "pywebron.__main__:main"
 module-name = "pywebron._pywebron_"
 features = ["pyo3/extension-module"]
 bindings = "pyo3"
+include = [
+    { path = "pywebron/builtins/pywebron.html", format = "wheel" },
+    { path = "pywebron/builtins/pywebron.png", format = "wheel" },
+]
+exclude = [
+    "pywebron/builtins/pywebron.js",
+    "**/__pycache__/*",
+    "**/*.pyc",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
