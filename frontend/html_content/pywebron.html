@@ -236,10 +236,10 @@
         if (attributes.title) $('windowTitle').textContent = attributes.title;
         const icon = $('windowIcon');
         const fallbackIcon = $('fallbackIcon');
-        if (attributes.icon_path && interfaces.resolveAssetUrl) {
+        if (attributes.icon_path && interfaces.utils.resolveAssetUrl) {
           icon.onload = () => { icon.hidden = false; fallbackIcon.hidden = true; };
           icon.onerror = () => { icon.hidden = true; fallbackIcon.hidden = false; };
-          icon.src = interfaces.resolveAssetUrl(attributes.icon_path) || '';
+          icon.src = interfaces.utils.resolveAssetUrl(attributes.icon_path) || '';
         } else {
           icon.hidden = true;
           fallbackIcon.hidden = false;

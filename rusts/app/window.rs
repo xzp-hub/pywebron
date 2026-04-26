@@ -1,6 +1,6 @@
 use crate::app::load_js_api;
 use crate::configs::{debug_log, UserEvent};
-use crate::utils::generate_win_icon;
+use crate::utils::{generate_win_icon, BUILTIN_ICON_BYTES, BUILTIN_ICON_PATH};
 use dashmap::DashMap;
 use pyo3::ffi::{PyEval_RestoreThread, PyEval_SaveThread};
 use pyo3::prelude::*;
@@ -59,6 +59,7 @@ static PENDING_WINDOWS: LazyLock<Mutex<HashMap<u64, WindowConfig>>> =
 static MAIN_WINDOW_ID: LazyLock<Mutex<Option<u64>>> = LazyLock::new(|| Mutex::new(None));
 static WINDOW_IDS_CACHE: LazyLock<Mutex<Vec<u64>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 static WINDOW_IDS_DIRTY: AtomicBool = AtomicBool::new(true);
+static BUILTIN_HTML: &str = include_str!("../../pywebron/builtins/pywebron.html");
 
 #[inline]
 fn invalidate_window_ids_cache() {
@@ -327,6 +328,7 @@ fn create_window_in_event_loop(
         let is_url = link_content.is_some();
         let is_file_path = html_content.is_some();
         let is_dist = dist_content.is_some();
+        let is_builtin_html = !is_url && !is_file_path && !is_dist;
 
         let resolved_content = if let Some(ref link) = link_content {
             link.clone()
@@ -350,7 +352,7 @@ fn create_window_in_event_loop(
             "window_radius": config.window_radius,
             "enable_resizable": config.enable_resizable,
             "enable_devtools": config.enable_devtools,
-            "icon_path": config.icon_path
+            "icon_path": if config.icon_path == BUILTIN_ICON_PATH { BUILTIN_ICON_PATH } else { config.icon_path.as_str() }
         });
 
         let initialization_script = format!(
@@ -404,7 +406,11 @@ fn create_window_in_event_loop(
             Ok(p) => Some(p),
             Err(_) => None,
         };
-        let allowed_absolute_file = std::path::Path::new(&config.icon_path).canonicalize().ok();
+        let allowed_absolute_file = if config.icon_path == BUILTIN_ICON_PATH {
+            None
+        } else {
+            std::path::Path::new(&config.icon_path).canonicalize().ok()
+        };
         let allow_absolute_protocol_paths = config.link_content.is_some();
 
         let builder = WebViewBuilder::new()
@@ -445,15 +451,28 @@ fn create_window_in_event_loop(
                     (raw_path, None)
                 };
 
-                debug_log(|| format!(
-                    "[Protocol] 请求 URI={} | 解析路径={} | wb_id={:?} | dist_base={}",
-                    uri,
-                    file_path,
-                    wb_id,
-                    dist_path_for_protocol.display()
-                ));
+                debug_log(|| {
+                    format!(
+                        "[Protocol] 请求 URI={} | 解析路径={} | wb_id={:?} | dist_base={}",
+                        uri,
+                        file_path,
+                        wb_id,
+                        dist_path_for_protocol.display()
+                    )
+                });
 
                 // 空路径直接返回空，避免无意义的请求
+                if file_path == BUILTIN_ICON_PATH {
+                    return http::Response::builder()
+                        .status(200)
+                        .header("Content-Type", "image/png")
+                        .header("Content-Length", BUILTIN_ICON_BYTES.len())
+                        .header("Cache-Control", "public, max-age=31536000")
+                        .header("Access-Control-Allow-Origin", "*")
+                        .body(std::borrow::Cow::Borrowed(BUILTIN_ICON_BYTES))
+                        .unwrap();
+                }
+
                 if file_path.is_empty() {
                     return http::Response::builder()
                         .status(200)
@@ -493,10 +512,9 @@ fn create_window_in_event_loop(
                 } else if let Some(ref reconstructed) = reconstructed_path {
                     // 验证重建后的路径是否存在，如果存在则用它
                     if std::path::Path::new(reconstructed).exists() {
-                        debug_log(|| format!(
-                            "[Protocol] 检测到无冒号路径，已重建为: {}",
-                            reconstructed
-                        ));
+                        debug_log(|| {
+                            format!("[Protocol] 检测到无冒号路径，已重建为: {}", reconstructed)
+                        });
                         std::path::PathBuf::from(reconstructed)
                     } else {
                         // 不存在则回退到相对路径拼接
@@ -512,12 +530,14 @@ fn create_window_in_event_loop(
                 let wb_cache_key = wb_id
                     .as_ref()
                     .map(|id| format!("{}//_wb{}", direct_cache_key, id));
-                debug_log(|| format!(
-                    "[Protocol] 拼接完整路径={} | 缓存key={} | wb_cachekey={:?}",
-                    full_path.display(),
-                    direct_cache_key,
-                    wb_cache_key
-                ));
+                debug_log(|| {
+                    format!(
+                        "[Protocol] 拼接完整路径={} | 缓存key={} | wb_cachekey={:?}",
+                        full_path.display(),
+                        direct_cache_key,
+                        wb_cache_key
+                    )
+                });
 
                 let is_absolute_request = is_standard_abs || missing_colon_abs;
                 let canonical_full_for_policy = full_path.canonicalize().ok();
@@ -528,7 +548,9 @@ fn create_window_in_event_loop(
                     };
 
                     if !allowed {
-                        debug_log(|| format!("[Protocol] 绝对路径访问被拒绝: {}", full_path.display()));
+                        debug_log(|| {
+                            format!("[Protocol] 绝对路径访问被拒绝: {}", full_path.display())
+                        });
                         return http::Response::builder()
                             .status(403)
                             .header("Access-Control-Allow-Origin", "*")
@@ -561,12 +583,14 @@ fn create_window_in_event_loop(
                         let data = entry.data.clone();
                         let mime = entry.mime;
                         let etag = entry.etag.clone();
-                        debug_log(|| format!(
-                            "[Protocol] 直接缓存命中: {} | mime={} | size={}",
-                            used_key,
-                            mime,
-                            data.len()
-                        ));
+                        debug_log(|| {
+                            format!(
+                                "[Protocol] 直接缓存命中: {} | mime={} | size={}",
+                                used_key,
+                                mime,
+                                data.len()
+                            )
+                        });
 
                         let if_none_match = request
                             .headers()
@@ -588,7 +612,8 @@ fn create_window_in_event_loop(
                             .header("Cache-Control", "public, max-age=31536000")
                             .header("Access-Control-Allow-Origin", "*")
                             .body(std::borrow::Cow::Owned(
-                                std::sync::Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone())
+                                std::sync::Arc::try_unwrap(data)
+                                    .unwrap_or_else(|arc| (*arc).clone()),
                             ))
                             .unwrap();
                     }
@@ -624,12 +649,14 @@ fn create_window_in_event_loop(
                         }
                     }
                 };
-                debug_log(|| format!(
-                    "[Protocol] canonicalize 成功: {} | base={} | is_abs_path={}",
-                    canonical_full.display(),
-                    canonical_base.display(),
-                    is_absolute_request
-                ));
+                debug_log(|| {
+                    format!(
+                        "[Protocol] canonicalize 成功: {} | base={} | is_abs_path={}",
+                        canonical_full.display(),
+                        canonical_base.display(),
+                        is_absolute_request
+                    )
+                });
                 // 路径穿越防护：仅对相对路径资源检查
                 // 绝对路径（用户显式指定的外部资源如图标）跳过此检查
                 if !is_absolute_request && !canonical_full.starts_with(canonical_base) {
@@ -654,7 +681,9 @@ fn create_window_in_event_loop(
                     .and_then(|v| v.to_str().ok());
                 if let Some(mut entry) = RESOURCE_CACHE.get_mut(&cache_key) {
                     entry.last_access = std::time::Instant::now();
-                    debug_log(|| format!("[Protocol] ✅ canonical 缓存命中(304检查): {}", cache_key));
+                    debug_log(|| {
+                        format!("[Protocol] ✅ canonical 缓存命中(304检查): {}", cache_key)
+                    });
                     if if_none_match == Some(entry.etag.as_str()) {
                         return http::Response::builder()
                             .status(304)
@@ -672,12 +701,14 @@ fn create_window_in_event_loop(
                     let data = entry.data.clone(); // Arc clone，零拷贝
                     let mime = entry.mime;
                     let etag = entry.etag.clone();
-                    debug_log(|| format!(
-                        "[Protocol] ✅ canonical 缓存命中(返回内容): {} | mime={} | size={}",
-                        cache_key,
-                        mime,
-                        data.len()
-                    ));
+                    debug_log(|| {
+                        format!(
+                            "[Protocol] ✅ canonical 缓存命中(返回内容): {} | mime={} | size={}",
+                            cache_key,
+                            mime,
+                            data.len()
+                        )
+                    });
 
                     // 检查 Range 请求
                     let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
@@ -718,20 +749,24 @@ fn create_window_in_event_loop(
                 // 先尝试从 dist 目录读取；失败后回退到绝对路径查找
                 // （resolveAssetUrl 只返回文件名如 "pywebron.png"，可能不在 dist 目录内）
                 let read_result = std::fs::read(&full_path);
-                debug_log(|| format!(
-                    "[Protocol] ⏳ 尝试磁盘读取: {} | exists={}",
-                    full_path.display(),
-                    full_path.exists()
-                ));
+                debug_log(|| {
+                    format!(
+                        "[Protocol] ⏳ 尝试磁盘读取: {} | exists={}",
+                        full_path.display(),
+                        full_path.exists()
+                    )
+                });
                 let (data, actual_mime) = match read_result {
                     Ok(data) => {
                         let mime = get_mime_type(&full_path);
-                        debug_log(|| format!(
-                            "[Protocol] ✅ 磁盘读取成功: {} | size={} | mime={}",
-                            full_path.display(),
-                            data.len(),
-                            mime
-                        ));
+                        debug_log(|| {
+                            format!(
+                                "[Protocol] ✅ 磁盘读取成功: {} | size={} | mime={}",
+                                full_path.display(),
+                                data.len(),
+                                mime
+                            )
+                        });
                         (data, mime)
                     }
                     Err(ref e) => {
@@ -750,11 +785,13 @@ fn create_window_in_event_loop(
                             if abs_candidate.is_absolute() && abs_candidate.exists() {
                                 match std::fs::read(abs_candidate) {
                                     Ok(d) => {
-                                        debug_log(|| format!(
-                                            "[Protocol] ✅ 回退绝对路径成功: {} | size={}",
-                                            abs_candidate.display(),
-                                            d.len()
-                                        ));
+                                        debug_log(|| {
+                                            format!(
+                                                "[Protocol] ✅ 回退绝对路径成功: {} | size={}",
+                                                abs_candidate.display(),
+                                                d.len()
+                                            )
+                                        });
                                         (d, get_mime_type(abs_candidate))
                                     }
                                     Err(e) => {
@@ -807,11 +844,13 @@ fn create_window_in_event_loop(
                         mime,
                         etag.clone(),
                     );
-                    debug_log(|| format!(
-                        "[Protocol] 📦 已写入缓存: {} | size={}",
-                        cache_key,
-                        data.len()
-                    ));
+                    debug_log(|| {
+                        format!(
+                            "[Protocol] 📦 已写入缓存: {} | size={}",
+                            cache_key,
+                            data.len()
+                        )
+                    });
                     evict_cache_if_needed();
                 }
 
@@ -849,7 +888,7 @@ fn create_window_in_event_loop(
             });
 
         #[cfg(target_os = "windows")]
-        let builder = if link_content.is_some() {
+        let builder = if link_content.is_some() || is_builtin_html {
             builder.with_additional_browser_args(
                 "--disable-features=IsolateOrigins,site-per-process,ThirdPartyStoragePartitioning,ThirdPartyCookiesBlocking --allow-file-access-from-files --disable-web-security",
             )
@@ -965,10 +1004,25 @@ fn create_window_in_event_loop(
                 builder
                     .with_url(&format!("app://_wb{}/index.html", window_id))
                     .build_gtk(vbox)
-            } else {
+            } else if is_builtin_html {
+                let cache_key = format!(
+                    "{}//_wb{}",
+                    dist_path_for_cache.join("index.html").to_string_lossy(),
+                    window_id
+                );
+                let html_bytes = BUILTIN_HTML.as_bytes().to_vec();
+                insert_resource_cache(
+                    Some(window_id),
+                    cache_key,
+                    Arc::new(html_bytes),
+                    "text/html",
+                    compute_etag(BUILTIN_HTML.as_bytes(), "index.html"),
+                );
                 builder
-                    .with_html("<html><body>No content specified</body></html>")
+                    .with_url(&format!("app://_wb{}/index.html", window_id))
                     .build_gtk(vbox)
+            } else {
+                builder.with_html("").build_gtk(vbox)
             }
         };
 
@@ -1065,10 +1119,12 @@ fn create_window_in_event_loop(
                                 .replace("src='/", &format!("src='app://{}", wb_prefix))
                         };
 
-                        debug_log(|| format!(
-                            "[Window-{}] 已转换 HTML，添加缓存破坏前缀 _wb{}",
-                            window_id, window_id
-                        ));
+                        debug_log(|| {
+                            format!(
+                                "[Window-{}] 已转换 HTML，添加缓存破坏前缀 _wb{}",
+                                window_id, window_id
+                            )
+                        });
 
                         converted
                     }
@@ -1106,10 +1162,27 @@ fn create_window_in_event_loop(
                     .build_gtk(vbox);
 
                 build_result
+            } else if is_builtin_html {
+                let cache_key = format!(
+                    "{}//_wb{}",
+                    dist_path_for_cache.join("index.html").to_string_lossy(),
+                    window_id
+                );
+                let html_bytes = BUILTIN_HTML.as_bytes().to_vec();
+                insert_resource_cache(
+                    Some(window_id),
+                    cache_key,
+                    Arc::new(html_bytes),
+                    "text/html",
+                    compute_etag(BUILTIN_HTML.as_bytes(), "index.html"),
+                );
+                #[cfg(target_os = "windows")]
+                let url = format!("http://app._wb{}/index.html", window_id);
+                #[cfg(not(target_os = "windows"))]
+                let url = format!("app://_wb{}/index.html", window_id);
+                builder.with_url(&url).build(&window)
             } else {
-                builder
-                    .with_html("<html><body>No content specified</body></html>")
-                    .build(&window)
+                builder.with_html("").build(&window)
             };
             res
         };
@@ -1188,9 +1261,10 @@ pub fn get_all_window_ids() -> Vec<u64> {
         WINDOW_IDS_DIRTY.store(false, Ordering::Relaxed);
         ids
     } else {
-        WINDOW_IDS_CACHE.lock().map(|g| g.clone()).unwrap_or_else(|_| {
-            EVENT_PROXIES.iter().map(|entry| *entry.key()).collect()
-        })
+        WINDOW_IDS_CACHE
+            .lock()
+            .map(|g| g.clone())
+            .unwrap_or_else(|_| EVENT_PROXIES.iter().map(|entry| *entry.key()).collect())
     }
 }
 
@@ -1347,7 +1421,7 @@ fn handle_ipc_message(
                         if let Some(window) = WINDOWS.get(&win_id) {
                             use tao::platform::windows::WindowExtWindows;
                             let hwnd = windows::Win32::Foundation::HWND(
-                                window.hwnd() as *mut std::ffi::c_void,
+                                window.hwnd() as *mut std::ffi::c_void
                             );
                             unsafe {
                                 let _ = ReleaseCapture();
@@ -1464,15 +1538,18 @@ fn handle_ipc_message(
                     // 窗口控制操作 - 直达 Rust，不经过 Python invoke
                     if handle_id.starts_with("__rust_window_") {
                         let ok = match handle_id.as_str() {
-                            "__rust_window_minimize" => {
-                                WINDOWS.get(&window_id).map(|w| w.set_minimized(true)).is_some()
-                            }
-                            "__rust_window_maximize" => {
-                                WINDOWS.get(&window_id).map(|w| w.set_maximized(true)).is_some()
-                            }
-                            "__rust_window_reappear" => {
-                                WINDOWS.get(&window_id).map(|w| w.set_maximized(false)).is_some()
-                            }
+                            "__rust_window_minimize" => WINDOWS
+                                .get(&window_id)
+                                .map(|w| w.set_minimized(true))
+                                .is_some(),
+                            "__rust_window_maximize" => WINDOWS
+                                .get(&window_id)
+                                .map(|w| w.set_maximized(true))
+                                .is_some(),
+                            "__rust_window_reappear" => WINDOWS
+                                .get(&window_id)
+                                .map(|w| w.set_maximized(false))
+                                .is_some(),
                             "__rust_window_shutdown" => {
                                 if let Some(handle) = WINDOW_PROXIES.get(&window_id) {
                                     if !handle.close(window_id) {
@@ -1484,8 +1561,10 @@ fn handle_ipc_message(
                                 true
                             }
                             "__rust_window_dragdrop" => {
-                                let selector = payload.get("selector")
-                                    .and_then(|v| v.as_str()).unwrap_or(".header");
+                                let selector = payload
+                                    .get("selector")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or(".header");
                                 internal_dragdrop_window(window_id, selector, proxy);
                                 true
                             }
@@ -1909,8 +1988,6 @@ fn internal_dragdrop_window(
     }
 }
 
-
-
 #[pyfunction(name = "rust_get_windows")]
 pub fn get_windows(py: Python<'_>) -> PyResult<Bound<'_, pyo3::types::PyDict>> {
     let result_dict = pyo3::types::PyDict::new(py);
@@ -2012,7 +2089,8 @@ pub fn save_file_dialog(
                     if is_del_source_file {
                         if let Err(e) = fs::remove_file(&source_path) {
                             return Err(pyo3::exceptions::PyIOError::new_err(format!(
-                                "删除源文件失败: {}", e
+                                "删除源文件失败: {}",
+                                e
                             )));
                         }
                     }

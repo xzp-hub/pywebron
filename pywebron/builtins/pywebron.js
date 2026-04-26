@@ -156,101 +156,106 @@
         attributes: { ...config },
 
         interfaces: {
-            resolveAssetUrl(filePath) {
-                if (!filePath || typeof filePath !== 'string') return '';
-                const normalized = filePath.replace(/\\/g, '/');
-                // 保留完整路径，让协议处理器在 dist 目录找不到时回退到绝对路径
-                return 'http://app.' + normalized;
+            utils: {
+                resolveAssetUrl(filePath) {
+                    if (!filePath || typeof filePath !== 'string') return '';
+                    const normalized = filePath.replace(/\\/g, '/');
+                    // ?????????????? dist ?????????????
+                    return 'http://app.' + normalized;
+                }
             },
 
-            async invoke(handle, payload = {}, timeout = 6e4) {
-                const request_id = generateRequestId(handle);
+            handles: {
+                async invoke(handle, payload = {}, timeout = 6e4) {
+                    const request_id = generateRequestId(handle);
 
-                return new Promise((resolve, reject) => {
-                    // 防止 pending Map 无限增长
-                    if (pending.size > 1000) {
-                        const oldest = pending.keys().next().value;
-                        const dropped = oldest !== undefined ? pending.get(oldest) : null;
-                        if (oldest !== undefined) {
-                            pending.delete(oldest);
-                            if (dropped?.timerId) clearTimeout(dropped.timerId);
+                    return new Promise((resolve, reject) => {
+                        // ?? pending Map ????
+                        if (pending.size > 1000) {
+                            const oldest = pending.keys().next().value;
+                            const dropped = oldest !== undefined ? pending.get(oldest) : null;
+                            if (oldest !== undefined) {
+                                pending.delete(oldest);
+                                if (dropped?.timerId) clearTimeout(dropped.timerId);
+                            }
+                            dropped?.reject?.(new Error('Pending queue overflow'));
                         }
-                        dropped?.reject?.(new Error('Pending queue overflow'));
-                    }
-                    const timerId = setTimeout(() => {
-                        if (pending.delete(request_id)) reject(new Error('Timeout'));
-                    }, timeout);
-                    pending.set(request_id, { resolve, reject, timerId });
+                        const timerId = setTimeout(() => {
+                            if (pending.delete(request_id)) reject(new Error('Timeout'));
+                        }, timeout);
+                        pending.set(request_id, { resolve, reject, timerId });
+
+                        ipcSend({
+                            window_id,
+                            handle_id: handle,
+                            handle_type: 'invoke',
+                            request_id,
+                            payload
+                        });
+                    });
+                },
+
+                async stream(handle, payload = {}) {
+                    const hid = String(handle);
+                    const request_id = generateRequestId(hid);
+
+                    const obj = {
+                        request_id,
+                        handle: hid,
+                        onData: null,
+
+                        recv(cb) {
+                            this.onData = cb;
+                            return this;
+                        },
+                        close() {
+                            ipcSend({
+                                window_id,
+                                handle_id: hid,
+                                handle_type: 'stream_close',
+                                request_id: generateRequestId(hid),
+                                payload: null
+                            });
+                            streams.delete(this.handle);
+                            streamMessages.delete(this.handle);
+                        },
+                        send(data) {
+                            ipcSend({
+                                window_id,
+                                handle_id: hid,
+                                handle_type: 'stream',
+                                request_id: generateRequestId(hid),
+                                payload: data
+                            });
+                            return this;
+                        }
+                    };
+
+                    streams.get(hid)?.close();
+                    streams.set(hid, obj);
 
                     ipcSend({
                         window_id,
                         handle_id: handle,
-                        handle_type: 'invoke',
+                        handle_type: 'stream',
                         request_id,
                         payload
                     });
-                });
+
+                    return obj;
+                }
             },
 
             windows: {
-                minimize: () => window.pywebron.interfaces.invoke('__rust_window_minimize'),
-                maximize: () => window.pywebron.interfaces.invoke('__rust_window_maximize'),
-                reappear: () => window.pywebron.interfaces.invoke('__rust_window_reappear'),
-                shutdown: () => window.pywebron.interfaces.invoke('__rust_window_shutdown'),
-                dragdrop: (selector = '.header') => window.pywebron.interfaces.invoke('__rust_window_dragdrop', { selector }),
-            },
-
-            async stream(handle, payload = {}) {
-                const hid = String(handle);
-                const request_id = generateRequestId(hid);
-
-                const obj = {
-                    request_id,
-                    handle: hid,
-                    onData: null,
-
-                    recv(cb) {
-                        this.onData = cb;
-                        return this;
-                    },
-                    close() {
-                        ipcSend({
-                            window_id,
-                            handle_id: hid,
-                            handle_type: 'stream_close',
-                            request_id: generateRequestId(hid),
-                            payload: null
-                        });
-                        streams.delete(this.handle);
-                        streamMessages.delete(this.handle);
-                    },
-                    send(data) {
-                        ipcSend({
-                            window_id,
-                            handle_id: hid,
-                            handle_type: 'stream',
-                            request_id: generateRequestId(hid),
-                            payload: data
-                        });
-                        return this;
-                    }
-                };
-
-                streams.get(hid)?.close();
-                streams.set(hid, obj);
-
-                ipcSend({
-                    window_id,
-                    handle_id: handle,
-                    handle_type: 'stream',
-                    request_id,
-                    payload
-                });
-
-                return obj;
+                minimize: () => window.pywebron.interfaces.handles.invoke('__rust_window_minimize'),
+                maximize: () => window.pywebron.interfaces.handles.invoke('__rust_window_maximize'),
+                reappear: () => window.pywebron.interfaces.handles.invoke('__rust_window_reappear'),
+                shutdown: () => window.pywebron.interfaces.handles.invoke('__rust_window_shutdown'),
+                dragdrop: (selector = '.header') => window.pywebron.interfaces.handles.invoke('__rust_window_dragdrop', { selector }),
             }
         }
     };
+
 
     function ensureResizeLayer() {
         if (show_title_bar || enable_resizable === false) {

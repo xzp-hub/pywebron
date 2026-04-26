@@ -46,11 +46,11 @@ function handleLogData(data) {
 
 async function startTerminalLog() {
   try {
-    if (!window.pywebron?.interfaces?.stream) {
+    if (!window.pywebron?.interfaces?.handles?.stream) {
       setTimeout(startTerminalLog, 100)
       return
     }
-    const terminalStream = await window.pywebron.interfaces.stream('terminal_log_stream')
+    const terminalStream = await window.pywebron.interfaces.handles.stream('terminal_log_stream')
     terminalStream.recv(handleLogData)
   } catch (e) {
     console.error('Terminal log stream error:', e)

@@ -11,7 +11,7 @@ import {DesktopIcon} from 'tdesign-icons-vue-next'
 
 const isDark = ref(false)
 const pw = window.pywebron
-const stream = pw?.interfaces?.stream
+const stream = pw?.interfaces?.handles?.stream
 
 // 主题切换：监听系统偏好 + 手动切换
 function applyTheme() {

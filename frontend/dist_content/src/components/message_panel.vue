@@ -59,11 +59,11 @@ function onKeydown(e) {
 
 async function startChat() {
   try {
-    if (!window.pywebron?.interfaces?.stream) {
+    if (!window.pywebron?.interfaces?.handles?.stream) {
       setTimeout(startChat, 100)
       return
     }
-    chatStream = await window.pywebron.interfaces.stream('chat_room_stream')
+    chatStream = await window.pywebron.interfaces.handles.stream('chat_room_stream')
     chatStream.recv(displayMsg)
   } catch (e) {
     console.error('Chat stream error:', e)

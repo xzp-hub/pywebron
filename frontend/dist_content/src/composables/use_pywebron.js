@@ -6,8 +6,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 // 全局 pywebron 实例
 export const pw = window.pywebron
-export const invoke = pw?.interfaces?.invoke
-export const stream = pw?.interfaces?.stream
+export const invoke = pw?.interfaces?.handles?.invoke
+export const stream = pw?.interfaces?.handles?.stream
 export const attributes = pw?.attributes || {}
 
 /**

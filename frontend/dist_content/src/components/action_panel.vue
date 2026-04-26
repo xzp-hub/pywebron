@@ -8,7 +8,7 @@ export default {
 import {SaveIcon, CpuIcon, WindowIcon, AddIcon} from 'tdesign-icons-vue-next'
 import {ref} from 'vue'
 
-const invoke = window.pywebron?.interfaces?.invoke
+const invoke = window.pywebron?.interfaces?.handles?.invoke
 
 const saveFilesViaDialogRef = ref(false)
 const executeCpuIntensiveTasksRef = ref(false)

@@ -1,7 +1,7 @@
 #[cfg(target_os = "windows")]
 use crate::configs::WindowCorners;
 use dashmap::DashMap;
-use image::open;
+use image::{load_from_memory, open};
 use std::path::Path;
 use std::sync::LazyLock;
 use tao::window::Icon;
@@ -9,8 +9,9 @@ use tao::window::Icon;
 #[cfg(target_os = "windows")]
 #[link(name = "shell32")]
 unsafe extern "system" {
-    fn SetCurrentProcessExplicitAppUserModelID(app_id: windows::core::PCWSTR)
-    -> windows::core::HRESULT;
+    fn SetCurrentProcessExplicitAppUserModelID(
+        app_id: windows::core::PCWSTR,
+    ) -> windows::core::HRESULT;
 }
 
 #[cfg(target_os = "windows")]
@@ -22,10 +23,10 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{
         CallWindowProcW, DefWindowProcW, GetPropW, GetSystemMetrics, GetWindowLongPtrW,
         GetWindowRect, IsZoomed, SetProcessDPIAware, SetPropW, SetWindowLongPtrW, SetWindowPos,
-        GWLP_WNDPROC, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTCLIENT, HTLEFT,
-        HTRIGHT, HTTOP, HTTOPLEFT, HTTOPRIGHT, SM_CXFRAME, SM_CXPADDEDBORDER, SM_CYFRAME,
-        SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE,
-        WM_NCHITTEST, WM_SYSCOMMAND, WNDPROC,
+        GWLP_WNDPROC, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTCLIENT, HTLEFT, HTRIGHT,
+        HTTOP, HTTOPLEFT, HTTOPRIGHT, SM_CXFRAME, SM_CXPADDEDBORDER, SM_CYFRAME, SWP_FRAMECHANGED,
+        SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, WM_NCCALCSIZE, WM_NCHITTEST,
+        WM_SYSCOMMAND, WNDPROC,
     },
 };
 
@@ -164,19 +165,24 @@ pub fn make_window_frameless_but_resizable(hwnd: HWND) {
 
 type CachedIcon = (Vec<u8>, u32, u32);
 static ICON_CACHE: LazyLock<DashMap<String, CachedIcon>> = LazyLock::new(DashMap::new);
+pub const BUILTIN_ICON_PATH: &str = "__pywebron_builtin_icon__";
+pub static BUILTIN_ICON_BYTES: &[u8] = include_bytes!("../pywebron/builtins/pywebron.png");
 
 pub fn generate_win_icon(path: String) -> Option<Icon> {
     let p = path.trim();
-    if p.is_empty() || !Path::new(p).exists() {
-        return None;
-    }
-
     if let Some(icon) = ICON_CACHE.get(p) {
         let (rgba, width, height) = icon.value();
         return Icon::from_rgba(rgba.clone(), *width, *height).ok();
     }
 
-    let img = open(p).ok()?.into_rgba8();
+    let img = if p.is_empty() || p == BUILTIN_ICON_PATH {
+        load_from_memory(BUILTIN_ICON_BYTES).ok()?.into_rgba8()
+    } else {
+        if !Path::new(p).exists() {
+            return None;
+        }
+        open(p).ok()?.into_rgba8()
+    };
     let (w, h) = img.dimensions();
     let rgba = img.into_raw();
     let icon = Icon::from_rgba(rgba.clone(), w, h).ok()?;

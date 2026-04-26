@@ -37,7 +37,7 @@ const titleText = ref('PyWebron 控制面板')
 
 onMounted(async () => {
   if (attributes?.icon_path) {
-    const resolved = pw?.interfaces?.resolveAssetUrl(attributes.icon_path)
+    const resolved = pw?.interfaces?.utils?.resolveAssetUrl(attributes.icon_path)
     iconSrc.value = resolved || ''
   }
   if (!iconSrc.value && attributes?.icon_path === undefined) {

@@ -59,11 +59,9 @@ pywebron = "pywebron.__main__:main"
 module-name = "pywebron._pywebron_"
 features = ["pyo3/extension-module"]
 bindings = "pyo3"
-include = [
-    { path = "pywebron/builtins/pywebron.html", format = "wheel" },
-    { path = "pywebron/builtins/pywebron.png", format = "wheel" },
-]
 exclude = [
+    "pywebron/builtins/pywebron.html",
+    "pywebron/builtins/pywebron.png",
     "pywebron/builtins/pywebron.js",
     "**/__pycache__/*",
     "**/*.pyc",
