@@ -1,271 +1,311 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>PyWebron ????</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg-base: #f3f4f8;
-      --bg-card: #ffffff;
-      --text-primary: #202124;
-      --text-secondary: #667085;
-      --border: rgba(22, 24, 35, .22);
-      --border-strong: rgba(22, 24, 35, .38);
-      --inner-border: rgba(255, 255, 255, .55);
-      --purple: #8b5cf6;
-    }
-    [data-theme="dark"] {
-      --bg-base: #393b40;
-      --bg-card: #1f2024;
-      --text-primary: #ffffff;
-      --text-secondary: rgba(255,255,255,.78);
-      --border: rgba(255,255,255,.28);
-      --border-strong: rgba(255,255,255,.45);
-      --inner-border: rgba(255,255,255,.08);
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: transparent;
-      font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
-      color: var(--text-primary);
-    }
-    button { font: inherit; }
-    .window {
-      height: 100vh;
-      padding: 5px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      background: var(--bg-base);
-      border: 1px solid var(--border-strong);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    .header, .content {
-      border: 1px solid var(--border-strong);
-      box-shadow: inset 0 0 0 1px var(--inner-border);
-      background: var(--bg-card);
-    }
-    .header {
-      height: 36px;
-      min-height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-left: 8px;
-      border-radius: 5px;
-    }
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-    .window-icon {
-      width: 18px;
-      height: 18px;
-      object-fit: contain;
-      flex: 0 0 auto;
-    }
-    .fallback-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .window-title {
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .header-actions {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding-right: 4px;
-    }
-    .theme-toggle {
-      width: 42px;
-      height: 22px;
-      padding: 2px;
-      border: 0;
-      border-radius: 999px;
-      background: #e5e7eb;
-      cursor: pointer;
-      position: relative;
-    }
-    .theme-toggle span {
-      position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform .18s ease;
-      box-shadow: 0 1px 4px rgba(0,0,0,.18);
-    }
-    [data-theme="dark"] .theme-toggle { background: var(--purple); }
-    [data-theme="dark"] .theme-toggle span { transform: translateX(20px); }
-    .win-btn {
-      width: 32px;
-      height: 28px;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      background: transparent;
-      color: var(--text-secondary);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      line-height: 1;
-    }
-    .win-btn svg {
-      width: 15px;
-      height: 15px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      pointer-events: none;
-    }
-    .win-btn:hover {
-      background: rgba(139,92,246,.12);
-      color: var(--text-primary);
-    }
-    .win-btn.close:hover {
-      background: rgba(239,68,68,.9);
-      color: #fff;
-    }
-    .content {
-      flex: 1;
-      min-height: 0;
-      border-radius: 5px;
-      overflow: hidden;
-    }
-    #pywebron-iframe {
-      width: 100%;
-      height: 100%;
-      display: block;
-      border: 0;
-      background: var(--bg-card);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PyWebron ????</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg-base: #f3f4f8;
+            --bg-card: #ffffff;
+            --text-primary: #202124;
+            --text-secondary: #667085;
+            --border: rgba(22, 24, 35, .22);
+            --border-strong: rgba(22, 24, 35, .38);
+            --inner-border: rgba(255, 255, 255, .55);
+            --purple: #8b5cf6;
+        }
+
+        [data-theme="dark"] {
+            --bg-base: #393b40;
+            --bg-card: #1f2024;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, .78);
+            --border: rgba(255, 255, 255, .28);
+            --border-strong: rgba(255, 255, 255, .45);
+            --inner-border: rgba(255, 255, 255, .08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: transparent;
+            font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+            color: var(--text-primary);
+        }
+
+        button {
+            font: inherit;
+        }
+
+        .window {
+            height: 100vh;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .header, .content {
+            border: 1px solid var(--border-strong);
+            box-shadow: inset 0 0 0 1px var(--inner-border);
+            background: var(--bg-card);
+        }
+
+        .header {
+            height: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 8px;
+            border-radius: 5px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .window-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            flex: 0 0 auto;
+        }
+
+        .fallback-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .window-title {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-actions {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding-right: 4px;
+        }
+
+        .theme-toggle {
+            width: 42px;
+            height: 22px;
+            padding: 2px;
+            border: 0;
+            border-radius: 999px;
+            background: #e5e7eb;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .theme-toggle span {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform .18s ease;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
+        }
+
+        [data-theme="dark"] .theme-toggle {
+            background: var(--purple);
+        }
+
+        [data-theme="dark"] .theme-toggle span {
+            transform: translateX(20px);
+        }
+
+        .win-btn {
+            width: 32px;
+            height: 28px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .win-btn svg {
+            width: 15px;
+            height: 15px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            pointer-events: none;
+        }
+
+        .win-btn:hover {
+            background: rgba(139, 92, 246, .12);
+            color: var(--text-primary);
+        }
+
+        .win-btn.close:hover {
+            background: rgba(239, 68, 68, .9);
+            color: #fff;
+        }
+
+        .content {
+            flex: 1;
+            min-height: 0;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #pywebron-iframe {
+            position: absolute;
+            inset: 0;
+            width: calc(100% + 18px);
+            height: calc(100% + 18px);
+            display: block;
+            border: 0;
+            background: var(--bg-card);
+        }
+    </style>
 </head>
 <body>
-  <div class="window">
+<div class="window">
     <header id="window-header" class="header">
-      <div class="header-left">
-        <span id="fallbackIcon" class="window-icon fallback-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18">
-            <path d="M4 4h4v4H4z" fill="#2F80ED"/>
-            <path d="M10 4h4v4h-4z" fill="#27AE60"/>
-            <path d="M4 10h4v4H4z" fill="#27AE60"/>
-            <path d="M10 10h4v4h-4z" fill="#8B5CF6"/>
-            <path d="M16 4h4v4h-4z" fill="#8B5CF6"/>
-            <path d="M16 10h4v4h-4z" fill="#2F80ED"/>
-          </svg>
-        </span>
-        <img id="windowIcon" class="window-icon" alt="" hidden>
-        <span id="windowTitle" class="window-title">PyWebron ????</span>
-      </div>
-      <div class="header-actions">
-        <button id="themeToggle" class="theme-toggle" title="????"><span></span></button>
-        <button class="win-btn" id="minBtn" title="???" aria-label="???">
-          <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
-        </button>
-        <button class="win-btn" id="maxBtn" title="???" aria-label="???">
-          <svg id="maxIcon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
-        </button>
-        <button class="win-btn close" id="closeBtn" title="??" aria-label="??">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
+        <div class="header-left">
+            <img id="windowIcon" class="window-icon" alt="" hidden>
+            <span id="windowTitle" class="window-title">PyWebron ????</span>
+        </div>
+        <div class="header-actions">
+            <button id="themeToggle" class="theme-toggle" title="????"><span></span></button>
+            <button class="win-btn" id="minBtn" title="???" aria-label="???">
+                <svg viewBox="0 0 24 24">
+                    <path d="M5 12h14"/>
+                </svg>
+            </button>
+            <button class="win-btn" id="maxBtn" title="???" aria-label="???">
+                <svg id="maxIcon" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" rx="1.5"/>
+                </svg>
+            </button>
+            <button class="win-btn close" id="closeBtn" title="??" aria-label="??">
+                <svg viewBox="0 0 24 24">
+                    <path d="M6 6l12 12M18 6L6 18"/>
+                </svg>
+            </button>
+        </div>
     </header>
 
     <main class="content">
-      <iframe id="pywebron-iframe" src="https://drawnix.com/" scrolling="no"></iframe>
+        <iframe id="pywebron-iframe" src="https://drawnix.com/" scrolling="no"></iframe>
     </main>
-  </div>
+</div>
 
-  <script>
+<script>
     (() => {
-      const pywebron = window.pywebron || {};
-      const attributes = pywebron.attributes || {};
-      const interfaces = pywebron.interfaces || {};
-      const windows = interfaces.windows || {};
-      const $ = id => document.getElementById(id);
-      let isMaximized = false;
+        const {attributes, interfaces} = window.pywebron;
+        const windows = interfaces.windows;
+        const $ = id => document.getElementById(id);
+        let isMaximized = false;
 
-      function setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        try { localStorage.setItem('pywebron-theme', theme); } catch (_) {}
-      }
-
-      function initTheme() {
-        let theme = null;
-        try { theme = localStorage.getItem('pywebron-theme'); } catch (_) {}
-        if (!theme) theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        setTheme(theme);
-      }
-
-      async function windowAction(type) {
-        const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
-        const fn = { min: windows.minimize, max: windows.maximize, rep: windows.reappear, shut: windows.shutdown }[action];
-        try {
-          if (fn) await fn();
-          if (action === 'max') isMaximized = true;
-          if (action === 'rep') isMaximized = false;
-          $('maxIcon').innerHTML = isMaximized
-            ? '<rect x="5" y="8" width="11" height="11" rx="1.5"/><path d="M9 8V5h10v10h-3"/>'
-            : '<rect x="6" y="6" width="12" height="12" rx="1.5"/>';
-          $('maxBtn').title = isMaximized ? '??' : '???';
-        } catch (_) {}
-      }
-
-      function initWindow() {
-        if (attributes.title) $('windowTitle').textContent = attributes.title;
-        const icon = $('windowIcon');
-        const fallbackIcon = $('fallbackIcon');
-        if (attributes.icon_path && interfaces.utils.resolveAssetUrl) {
-          icon.onload = () => { icon.hidden = false; fallbackIcon.hidden = true; };
-          icon.onerror = () => { icon.hidden = true; fallbackIcon.hidden = false; };
-          icon.src = interfaces.utils.resolveAssetUrl(attributes.icon_path) || '';
-        } else {
-          icon.hidden = true;
-          fallbackIcon.hidden = false;
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            try {
+                localStorage.setItem('pywebron-theme', theme);
+            } catch (_) {
+            }
         }
-        try { windows.dragdrop?.('#window-header'); } catch (_) {}
-      }
 
-      function bindEvents() {
-        $('themeToggle').onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-        $('minBtn').onclick = () => windowAction('min');
-        $('maxBtn').onclick = () => windowAction('toggle');
-        $('closeBtn').onclick = () => windowAction('shut');
-      }
+        function initTheme() {
+            let theme = null;
+            try {
+                theme = localStorage.getItem('pywebron-theme');
+            } catch (_) {
+            }
+            if (!theme) theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            setTheme(theme);
+        }
 
-      function boot() {
-        initTheme();
-        initWindow();
-        bindEvents();
-      }
+        async function windowAction(type) {
+            const action = type === 'toggle' ? (isMaximized ? 'rep' : 'max') : type;
+            const fn = {
+                min: windows.minimize,
+                max: windows.maximize,
+                rep: windows.reappear,
+                shut: windows.shutdown
+            }[action];
+            try {
+                if (fn) await fn();
+                if (action === 'max') isMaximized = true;
+                if (action === 'rep') isMaximized = false;
+                $('maxIcon').innerHTML = isMaximized
+                    ? '<rect x="5" y="8" width="11" height="11" rx="1.5"/><path d="M9 8V5h10v10h-3"/>'
+                    : '<rect x="6" y="6" width="12" height="12" rx="1.5"/>';
+                $('maxBtn').title = isMaximized ? '??' : '???';
+            } catch (_) {
+            }
+        }
 
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot, { once: true });
-      } else {
-        boot();
-      }
+        function initWindow() {
+            if (attributes.title) $('windowTitle').textContent = attributes.title;
+            const icon = $('windowIcon');
+            if (attributes.icon_path && interfaces.utils.resolveAssetUrl) {
+                icon.onload = () => { icon.hidden = false; };
+                icon.onerror = () => { icon.hidden = true; };
+                icon.src = interfaces.utils.resolveAssetUrl(attributes.icon_path) || '';
+            } else {
+                icon.hidden = true;
+            }
+            try {
+                windows.dragdrop?.('#window-header');
+            } catch (_) {
+            }
+        }
+
+        function bindEvents() {
+            $('themeToggle').onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+            $('minBtn').onclick = () => windowAction('min');
+            $('maxBtn').onclick = () => windowAction('toggle');
+            $('closeBtn').onclick = () => windowAction('shut');
+        }
+
+        function boot() {
+            initTheme();
+            initWindow();
+            bindEvents();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', boot, {once: true});
+        } else {
+            boot();
+        }
     })();
-  </script>
+</script>
 </body>
 </html>
