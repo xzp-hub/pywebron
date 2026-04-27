@@ -1,4 +1,4 @@
-from pywebron.configs import DwmCorners
+from pywebron.configs import DwmCorners, PROJECT_ROOT_PATH
 import routers.system_monitor as sm
 import routers.online_chatbox as oc
 import routers.quick_shortcut as qs
@@ -25,9 +25,9 @@ def main():
         is_main=True,
         dwm_corner=DwmCorners.LITTLE_ROUND,
         # link_content="http://localhost:5173/",
-        # html_content=f"{PROJECT_ROOT_PATH}/builtins/pywebron.html",
-        # dist_content=f"{PROJECT_ROOT_PATH}/tests/uis/dist_content/dist",
-        # icon_path=f"{PROJECT_ROOT_PATH}/builtins/pywebron.png",
+        # html_content=f"{PROJECT_ROOT_PATH}/frontend/html_content/pywebron.html",
+        dist_content=f"{PROJECT_ROOT_PATH}/frontend/dist_content/dist",
+        icon_path=f"{PROJECT_ROOT_PATH}/frontend/test.jpg",
     )
     print(f"[DEBUG] 窗口注册成功，ID: {main_win}")
     
